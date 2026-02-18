@@ -32,6 +32,7 @@ func main() {
 	authSvc := core.NewAuthService(db)
 	docSvc := core.NewDocumentService(db, permSvc)
 	snapSvc := core.NewSnapshotService(db, permSvc)
+	workspaceSvc := core.NewWorkspaceService(db, permSvc)
 	attachSvc := core.NewAttachmentService(db, permSvc)
 
 	// Embed the frontend build (dist/) at compile time.
@@ -41,7 +42,7 @@ func main() {
 		staticFS = embeddedFS
 	}
 
-	srv := api.NewServer(db, authSvc, docSvc, snapSvc, permSvc, attachSvc, jwtSecret, staticFS)
+	srv := api.NewServer(db, authSvc, docSvc, snapSvc, permSvc, workspaceSvc, attachSvc, jwtSecret, staticFS)
 
 	httpServer := &http.Server{
 		Addr:         addr,

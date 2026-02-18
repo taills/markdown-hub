@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"markdownhub/internal/models"
@@ -25,7 +26,7 @@ func (s *SnapshotService) CreateSnapshot(ctx context.Context, documentID, author
 	if err != nil {
 		return nil, err
 	}
-	if err := s.permService.RequireDocumentPermission(ctx, documentID, authorID, doc.OwnerID, models.PermissionEdit); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, authorID, models.PermissionEdit); err != nil {
 		return nil, err
 	}
 	snap, err := s.db.CreateSnapshot(ctx, documentID, authorID, doc.Content, message)
@@ -41,7 +42,7 @@ func (s *SnapshotService) ListSnapshots(ctx context.Context, documentID, userID 
 	if err != nil {
 		return nil, err
 	}
-	if err := s.permService.RequireDocumentPermission(ctx, documentID, userID, doc.OwnerID, models.PermissionRead); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionRead); err != nil {
 		return nil, err
 	}
 	return s.db.ListSnapshotsByDocument(ctx, documentID, limit, offset)
@@ -57,7 +58,7 @@ func (s *SnapshotService) GetSnapshot(ctx context.Context, snapshotID, userID st
 	if err != nil {
 		return nil, err
 	}
-	if err := s.permService.RequireDocumentPermission(ctx, snap.DocumentID, userID, doc.OwnerID, models.PermissionRead); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionRead); err != nil {
 		return nil, err
 	}
 	return snap, nil
@@ -73,12 +74,44 @@ func (s *SnapshotService) RestoreSnapshot(ctx context.Context, snapshotID, userI
 	if err != nil {
 		return nil, err
 	}
-	if err := s.permService.RequireDocumentPermission(ctx, snap.DocumentID, userID, doc.OwnerID, models.PermissionEdit); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionEdit); err != nil {
 		return nil, err
 	}
-	// Save current state as a snapshot before restoring.
-	_, _ = s.db.CreateSnapshot(ctx, doc.ID, userID, doc.Content, "pre-restore snapshot")
-	return s.db.UpdateDocumentContent(ctx, doc.ID, snap.Content)
+
+	// Save current state and restore in a transaction
+	var restoredDoc *models.Document
+	err = s.db.WithTransaction(ctx, func(tx *sql.Tx) error {
+		// Save current state as a snapshot before restoring
+		_, err := s.db.CreateSnapshotTx(ctx, tx, doc.ID, userID, doc.Content, "pre-restore snapshot")
+		if err != nil {
+			return fmt.Errorf("create pre-restore snapshot: %w", err)
+		}
+
+		// Restore the snapshot content
+		restoredDoc, err = s.db.UpdateDocumentContentTx(ctx, tx, doc.ID, snap.Content)
+		if err != nil {
+			return fmt.Errorf("restore document content: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return restoredDoc, nil
+}
+
+func (s *SnapshotService) requireWorkspaceOrDocumentPermission(
+	ctx context.Context,
+	doc *models.Document,
+	userID string,
+	required models.PermissionLevel,
+) error {
+	if err := s.permService.RequireWorkspacePermission(ctx, doc.WorkspaceID, userID, required); err == nil {
+		return nil
+	}
+	return s.permService.RequireDocumentPermission(ctx, doc.ID, userID, doc.OwnerID, required)
 }
 
 // DiffSnapshots computes a line-level diff between two snapshot contents.

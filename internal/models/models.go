@@ -15,22 +15,24 @@ const (
 
 // User represents a registered account.
 type User struct {
-	ID           string    `json:"id"`
-	Username     string    `json:"username"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"-"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                 string    `json:"id"`
+	Username           string    `json:"username"`
+	Email              string    `json:"email"`
+	PasswordHash       string    `json:"-"`
+	DefaultWorkspaceID string    `json:"default_workspace_id"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 // Document is the top-level writable unit.
 type Document struct {
-	ID        string    `json:"id"`
-	OwnerID   string    `json:"owner_id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          string    `json:"id"`
+	WorkspaceID string    `json:"workspace_id"`
+	OwnerID     string    `json:"owner_id"`
+	Title       string    `json:"title"`
+	Content     string    `json:"content"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // Snapshot is an immutable point-in-time copy of a Document.
@@ -75,14 +77,15 @@ type HeadingSection struct {
 
 // Attachment represents a file upload associated with a document.
 type Attachment struct {
-	ID         string    `json:"id"`
-	DocumentID string    `json:"document_id"`
-	UploadBy   string    `json:"upload_by"`
-	Filename   string    `json:"filename"`
-	FileType   string    `json:"file_type"` // e.g. 'image/png'
-	FileSize   int64     `json:"file_size"` // bytes
-	FilePath   string    `json:"file_path"` // storage path
-	CreatedAt  time.Time `json:"created_at"`
+	ID          string    `json:"id"`
+	WorkspaceID string    `json:"workspace_id"`
+	DocumentID  *string   `json:"document_id,omitempty"`
+	UploadBy    string    `json:"upload_by"`
+	Filename    string    `json:"filename"`
+	FileType    string    `json:"file_type"` // e.g. 'image/png'
+	FileSize    int64     `json:"file_size"` // bytes
+	FilePath    string    `json:"file_path"` // storage path
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 // AttachmentReference tracks where an attachment is used in a document.
@@ -98,4 +101,23 @@ type AttachmentReference struct {
 type DocumentListItem struct {
 	*Document
 	Permission *PermissionLevel `json:"permission,omitempty"` // nil = owner, otherwise the permission level
+}
+
+// Workspace represents a collaborative space that contains documents and attachments.
+type Workspace struct {
+	ID        string    `json:"id"`
+	OwnerID   string    `json:"owner_id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// WorkspaceMember grants a user access to a workspace.
+type WorkspaceMember struct {
+	ID          string          `json:"id"`
+	WorkspaceID string          `json:"workspace_id"`
+	UserID      string          `json:"user_id"`
+	Level       PermissionLevel `json:"level"`
+	CreatedAt   time.Time       `json:"created_at"`
+	Username    string          `json:"username,omitempty"`
 }

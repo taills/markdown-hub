@@ -23,6 +23,7 @@ func NewServer(
 	docSvc *core.DocumentService,
 	snapSvc *core.SnapshotService,
 	permSvc *core.PermissionService,
+	workspaceSvc *core.WorkspaceService,
 	attachSvc *core.AttachmentService,
 	secret []byte,
 	staticFiles fs.FS,
@@ -37,6 +38,8 @@ func NewServer(
 	snapH := NewSnapshotHandler(snapSvc)
 	permH := NewPermissionHandler(permSvc, docSvc)
 	attachH := NewAttachmentHandler(attachSvc, docSvc)
+	workspaceH := NewWorkspaceHandler(workspaceSvc)
+	workspaceAttachH := NewWorkspaceAttachmentHandler(attachSvc)
 
 	// Public auth routes.
 	mux.HandleFunc("POST /api/auth/register", authH.Register)
@@ -97,6 +100,32 @@ func NewServer(
 		case r.Method == http.MethodDelete && isAttachmentPath(r.URL.Path, ""):
 			attachH.Delete(w, r)
 
+		// Workspaces
+		case r.Method == http.MethodPost && r.URL.Path == "/api/workspaces":
+			workspaceH.Create(w, r)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/workspaces":
+			workspaceH.List(w, r)
+		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, ""):
+			workspaceH.Get(w, r)
+		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, "/members"):
+			workspaceH.ListMembers(w, r)
+		case r.Method == http.MethodPut && isWorkspacePath(r.URL.Path, "/members"):
+			workspaceH.SetMember(w, r)
+		case r.Method == http.MethodDelete && isWorkspaceMemberPath(r.URL.Path):
+			workspaceH.DeleteMember(w, r)
+		case r.Method == http.MethodPut && isWorkspacePath(r.URL.Path, "/default"):
+			workspaceH.SetDefault(w, r)
+
+		// Workspace attachments
+		case r.Method == http.MethodPost && isWorkspacePath(r.URL.Path, "/attachments"):
+			workspaceAttachH.Upload(w, r)
+		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, "/attachments"):
+			workspaceAttachH.List(w, r)
+		case r.Method == http.MethodDelete && isWorkspaceAttachmentPath(r.URL.Path):
+			workspaceAttachH.Delete(w, r)
+		case r.Method == http.MethodGet && isWorkspaceAttachmentDownloadPath(r.URL.Path):
+			workspaceAttachH.Download(w, r)
+
 		default:
 			http.NotFound(w, r)
 		}
@@ -107,6 +136,9 @@ func NewServer(
 	mux.Handle("/api/documents/", protected)
 	mux.Handle("/api/snapshots/", protected)
 	mux.Handle("/api/attachments/", protected)
+	mux.Handle("/api/workspaces", protected)
+	mux.Handle("/api/workspaces/", protected)
+	mux.Handle("/api/workspace-attachments/", protected)
 
 	// WebSocket endpoint.
 	mux.HandleFunc("/ws", hub.ServeWS)
@@ -234,4 +266,47 @@ func isAttachmentDownloadPath(path string) bool {
 	}
 	parts := strings.Split(p, "/")
 	return len(parts) == 3 && parts[0] == "attachments" && parts[2] == "download"
+}
+
+// isWorkspacePath reports whether path matches /api/workspaces/{id}{suffix}.
+func isWorkspacePath(path, suffix string) bool {
+	p := strings.TrimPrefix(path, "/api/workspaces/")
+	if p == path {
+		return false
+	}
+	parts := strings.SplitN(p, "/", 2)
+	if len(parts) == 1 {
+		return suffix == ""
+	}
+	return "/"+parts[1] == suffix
+}
+
+// isWorkspaceMemberPath matches /api/workspaces/{id}/members/{userID}.
+func isWorkspaceMemberPath(path string) bool {
+	p := strings.TrimPrefix(path, "/api/workspaces/")
+	if p == path {
+		return false
+	}
+	parts := strings.Split(p, "/")
+	return len(parts) == 3 && parts[1] == "members"
+}
+
+// isWorkspaceAttachmentPath matches /api/workspaces/{id}/attachments/{attachmentID}.
+func isWorkspaceAttachmentPath(path string) bool {
+	p := strings.TrimPrefix(path, "/api/workspaces/")
+	if p == path {
+		return false
+	}
+	parts := strings.Split(p, "/")
+	return len(parts) == 3 && parts[1] == "attachments"
+}
+
+// isWorkspaceAttachmentDownloadPath matches /api/workspace-attachments/{id}/download.
+func isWorkspaceAttachmentDownloadPath(path string) bool {
+	p := strings.TrimPrefix(path, "/api/")
+	if p == path {
+		return false
+	}
+	parts := strings.Split(p, "/")
+	return len(parts) == 3 && parts[0] == "workspace-attachments" && parts[2] == "download"
 }

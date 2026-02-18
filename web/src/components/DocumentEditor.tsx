@@ -69,7 +69,9 @@ export function DocumentEditor() {
 
     const isImage = attachment.file_type?.startsWith('image/');
     const label = attachment.filename || 'attachment';
-    const downloadUrl = `/api/attachments/${attachment.id}/download`;
+    const downloadUrl = attachment.document_id
+      ? `/api/attachments/${attachment.id}/download`
+      : `/api/workspace-attachments/${attachment.id}/download`;
     const markdown = isImage
       ? `![${label}](${attachment.file_path})`
       : `[${label}](${downloadUrl})`;
@@ -201,6 +203,7 @@ export function DocumentEditor() {
           {activePanel === 'attachments' && (
             <AttachmentPanel
               documentId={document.id}
+              workspaceId={document.workspace_id}
               onInsert={handleInsertAttachment}
             />
           )}

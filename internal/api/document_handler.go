@@ -26,14 +26,15 @@ func (h *DocumentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Title   string `json:"title"`
-		Content string `json:"content"`
+		Title       string `json:"title"`
+		Content     string `json:"content"`
+		WorkspaceID string `json:"workspace_id"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
 		return
 	}
-	doc, err := h.docService.CreateDocument(r.Context(), userID, body.Title, body.Content)
+	doc, err := h.docService.CreateDocument(r.Context(), userID, body.WorkspaceID, body.Title, body.Content)
 	if err != nil {
 		writeError(w, errStatus(err), err.Error())
 		return

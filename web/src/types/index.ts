@@ -4,12 +4,14 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  default_workspace_id: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface Document {
   id: string;
+  workspace_id: string;
   owner_id: string;
   title: string;
   content: string;
@@ -19,6 +21,7 @@ export interface Document {
 
 export interface DocumentListItem {
   id: string;
+  workspace_id: string;
   owner_id: string;
   title: string;
   content: string;
@@ -64,13 +67,31 @@ export interface HeadingSection {
 
 export interface Attachment {
   id: string;
-  document_id: string;
+  workspace_id: string;
+  document_id?: string;
   upload_by: string;
   filename: string;
   file_type: string;
   file_size: number;
   file_path: string;
   created_at: string;
+}
+
+export interface Workspace {
+  id: string;
+  owner_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  level: PermissionLevel;
+  created_at: string;
+  username?: string;
 }
 
 export interface DiffLine {

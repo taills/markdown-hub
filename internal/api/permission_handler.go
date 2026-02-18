@@ -22,7 +22,16 @@ func NewPermissionHandler(permService *core.PermissionService, docService *core.
 // List godoc
 // GET /api/documents/{id}/permissions
 func (h *PermissionHandler) List(w http.ResponseWriter, r *http.Request) {
+	callerID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
 	docID := pathParam(r, "id")
+	if _, err := h.docService.GetDocument(r.Context(), docID, callerID); err != nil {
+		writeError(w, errStatus(err), err.Error())
+		return
+	}
 	perms, err := h.permService.ListPermissions(r.Context(), docID)
 	if err != nil {
 		writeError(w, errStatus(err), err.Error())
@@ -68,7 +77,7 @@ func (h *PermissionHandler) Set(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	perm, err := h.permService.SetDocumentPermissionByUsername(r.Context(), docID, callerID, doc.OwnerID, body.Username, level)
+	perm, err := h.permService.SetDocumentPermissionByUsername(r.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, body.Username, level)
 	if err != nil {
 		writeError(w, errStatus(err), err.Error())
 		return
@@ -92,7 +101,7 @@ func (h *PermissionHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, errStatus(err), err.Error())
 		return
 	}
-	if err := h.permService.RemoveDocumentPermission(r.Context(), docID, callerID, doc.OwnerID, targetUserID); err != nil {
+	if err := h.permService.RemoveDocumentPermission(r.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID); err != nil {
 		writeError(w, errStatus(err), err.Error())
 		return
 	}
@@ -125,7 +134,7 @@ func (h *PermissionHandler) SetHeading(w http.ResponseWriter, r *http.Request) {
 		writeError(w, errStatus(err), err.Error())
 		return
 	}
-	perm, err := h.permService.SetHeadingPermission(r.Context(), docID, callerID, doc.OwnerID, targetUserID, headingAnchor, level)
+	perm, err := h.permService.SetHeadingPermission(r.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID, headingAnchor, level)
 	if err != nil {
 		writeError(w, errStatus(err), err.Error())
 		return

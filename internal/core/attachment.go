@@ -24,18 +24,11 @@ func NewAttachmentService(db *store.DB, permService *PermissionService) *Attachm
 // The uploader must have edit permission on the document.
 func (s *AttachmentService) UploadAttachment(
 	ctx context.Context,
-	documentID, uploaderID, ownerID, filename, fileType string,
+	workspaceID, documentID, uploaderID, ownerID, filename, fileType string,
 	fileSize int64,
 	filePath string,
 ) (*models.Attachment, error) {
-	// Check permission
-	if err := s.permService.RequireDocumentPermission(
-		ctx,
-		documentID,
-		uploaderID,
-		ownerID,
-		models.PermissionEdit,
-	); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, workspaceID, documentID, uploaderID, ownerID, models.PermissionEdit); err != nil {
 		return nil, err
 	}
 
@@ -48,7 +41,30 @@ func (s *AttachmentService) UploadAttachment(
 	}
 
 	// Create attachment record
-	attachment, err := s.db.CreateAttachment(ctx, documentID, uploaderID, filename, fileType, fileSize, filePath)
+	attachment, err := s.db.CreateAttachment(ctx, workspaceID, &documentID, uploaderID, filename, fileType, fileSize, filePath)
+	if err != nil {
+		return nil, fmt.Errorf("create attachment: %w", err)
+	}
+	return attachment, nil
+}
+
+// UploadWorkspaceAttachment uploads an attachment directly to a workspace.
+func (s *AttachmentService) UploadWorkspaceAttachment(
+	ctx context.Context,
+	workspaceID, uploaderID, filename, fileType string,
+	fileSize int64,
+	filePath string,
+) (*models.Attachment, error) {
+	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, uploaderID, models.PermissionEdit); err != nil {
+		return nil, err
+	}
+	if filename == "" {
+		return nil, fmt.Errorf("%w: filename is required", ErrInvalidInput)
+	}
+	if fileSize <= 0 {
+		return nil, fmt.Errorf("%w: invalid file size", ErrInvalidInput)
+	}
+	attachment, err := s.db.CreateAttachment(ctx, workspaceID, nil, uploaderID, filename, fileType, fileSize, filePath)
 	if err != nil {
 		return nil, fmt.Errorf("create attachment: %w", err)
 	}
@@ -61,16 +77,14 @@ func (s *AttachmentService) GetAttachment(
 	attachmentID, userID, ownerID string,
 	documentID string,
 ) (*models.Attachment, error) {
-	if err := s.permService.RequireDocumentPermission(
-		ctx,
-		documentID,
-		userID,
-		ownerID,
-		models.PermissionRead,
-	); err != nil {
+	attachment, err := s.db.GetAttachmentByID(ctx, attachmentID)
+	if err != nil {
 		return nil, err
 	}
-	return s.db.GetAttachmentByID(ctx, attachmentID)
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID, documentID, userID, ownerID, models.PermissionRead); err != nil {
+		return nil, err
+	}
+	return attachment, nil
 }
 
 // GetAttachmentForDownload retrieves an attachment after validating read permission.
@@ -82,19 +96,18 @@ func (s *AttachmentService) GetAttachmentForDownload(
 	if err != nil {
 		return nil, err
 	}
-	// Load document to validate permissions and owner
-	doc, err := s.db.GetDocumentByID(ctx, attachment.DocumentID)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.permService.RequireDocumentPermission(
-		ctx,
-		attachment.DocumentID,
-		userID,
-		doc.OwnerID,
-		models.PermissionRead,
-	); err != nil {
-		return nil, err
+	if attachment.DocumentID != nil {
+		doc, err := s.db.GetDocumentByID(ctx, *attachment.DocumentID)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID, *attachment.DocumentID, userID, doc.OwnerID, models.PermissionRead); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := s.permService.RequireWorkspacePermission(ctx, attachment.WorkspaceID, userID, models.PermissionRead); err != nil {
+			return nil, err
+		}
 	}
 	return attachment, nil
 }
@@ -102,18 +115,23 @@ func (s *AttachmentService) GetAttachmentForDownload(
 // ListAttachments returns all attachments for a document.
 func (s *AttachmentService) ListAttachments(
 	ctx context.Context,
-	documentID, userID, ownerID string,
+	workspaceID, documentID, userID, ownerID string,
 ) ([]*models.Attachment, error) {
-	if err := s.permService.RequireDocumentPermission(
-		ctx,
-		documentID,
-		userID,
-		ownerID,
-		models.PermissionRead,
-	); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, workspaceID, documentID, userID, ownerID, models.PermissionRead); err != nil {
 		return nil, err
 	}
 	return s.db.ListDocumentAttachments(ctx, documentID)
+}
+
+// ListWorkspaceAttachments returns workspace-level attachments (not tied to a document).
+func (s *AttachmentService) ListWorkspaceAttachments(
+	ctx context.Context,
+	workspaceID, userID string,
+) ([]*models.Attachment, error) {
+	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionRead); err != nil {
+		return nil, err
+	}
+	return s.db.ListWorkspaceAttachments(ctx, workspaceID)
 }
 
 // DeleteAttachment removes an attachment. The caller must have manage permission.
@@ -121,14 +139,18 @@ func (s *AttachmentService) DeleteAttachment(
 	ctx context.Context,
 	attachmentID, userID, ownerID, documentID string,
 ) error {
-	if err := s.permService.RequireDocumentPermission(
-		ctx,
-		documentID,
-		userID,
-		ownerID,
-		models.PermissionManage,
-	); err != nil {
+	attachment, err := s.db.GetAttachmentByID(ctx, attachmentID)
+	if err != nil {
 		return err
+	}
+	if attachment.DocumentID != nil {
+		if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID, *attachment.DocumentID, userID, ownerID, models.PermissionManage); err != nil {
+			return err
+		}
+	} else {
+		if err := s.permService.RequireWorkspacePermission(ctx, attachment.WorkspaceID, userID, models.PermissionManage); err != nil {
+			return err
+		}
 	}
 	return s.db.DeleteAttachment(ctx, attachmentID)
 }
@@ -136,15 +158,9 @@ func (s *AttachmentService) DeleteAttachment(
 // GetUnreferencedAttachments returns attachments in a document that are not referenced in the content.
 func (s *AttachmentService) GetUnreferencedAttachments(
 	ctx context.Context,
-	documentID, userID, ownerID string,
+	workspaceID, documentID, userID, ownerID string,
 ) ([]*models.Attachment, error) {
-	if err := s.permService.RequireDocumentPermission(
-		ctx,
-		documentID,
-		userID,
-		ownerID,
-		models.PermissionRead,
-	); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, workspaceID, documentID, userID, ownerID, models.PermissionRead); err != nil {
 		return nil, err
 	}
 
@@ -181,6 +197,19 @@ func (s *AttachmentService) CreateReference(
 	referencedAt int,
 ) (*models.AttachmentReference, error) {
 	return s.db.CreateAttachmentReference(ctx, attachmentID, documentID, referencedAt)
+}
+
+func (s *AttachmentService) requireWorkspaceOrDocumentPermission(
+	ctx context.Context,
+	workspaceID, documentID, userID, ownerID string,
+	required models.PermissionLevel,
+) error {
+	if workspaceID != "" {
+		if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, userID, required); err == nil {
+			return nil
+		}
+	}
+	return s.permService.RequireDocumentPermission(ctx, documentID, userID, ownerID, required)
 }
 
 // GetFileExtension extracts the file extension from a filename.

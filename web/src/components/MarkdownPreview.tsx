@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/atom-one-dark.css';
 import type { DiffLine } from '@/types';
 
 interface MarkdownPreviewProps {
@@ -21,7 +23,27 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
  * For production, replace with a proper library like marked or remark.
  */
 function renderMarkdown(md: string): string {
-  let html = escapeHtml(md);
+  let html = md;
+
+  // Code blocks with syntax highlighting (process BEFORE escapeHtml to preserve content)
+  const codeBlocks: string[] = [];
+  html = html.replace(/```([\w]*)\n([\s\S]*?)```/g, (_match, lang, code) => {
+    const language = lang || 'plaintext';
+    try {
+      const highlighted = hljs.highlight(code.trim(), { language, ignoreIllegals: true }).value;
+      const blockHtml = `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
+      codeBlocks.push(blockHtml);
+      return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+    } catch (e) {
+      // Fallback if language not supported
+      const blockHtml = `<pre><code class="hljs">${escapeHtml(code)}</code></pre>`;
+      codeBlocks.push(blockHtml);
+      return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+    }
+  });
+
+  // Now escape HTML for remaining content
+  html = escapeHtml(html);
 
   // Headings
   html = html.replace(/^#{6}\s+(.+)$/gm, '<h6>$1</h6>');
@@ -38,9 +60,6 @@ function renderMarkdown(md: string): string {
 
   // Inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Code blocks
-  html = html.replace(/```[\w]*\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
 
   // Blockquotes
   html = html.replace(/^&gt;\s+(.+)$/gm, '<blockquote>$1</blockquote>');
@@ -69,6 +88,11 @@ function renderMarkdown(md: string): string {
       return `<p>${block.replace(/\n/g, '<br />')}</p>`;
     })
     .join('\n');
+
+  // Restore code blocks from placeholders
+  codeBlocks.forEach((codeBlock, i) => {
+    html = html.replace(`__CODE_BLOCK_${i}__`, codeBlock);
+  });
 
   return html;
 }

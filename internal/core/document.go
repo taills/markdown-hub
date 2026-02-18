@@ -32,12 +32,22 @@ func NewDocumentService(db *store.DB, permService *PermissionService) *DocumentS
 	}
 }
 
-// CreateDocument creates a new document owned by ownerID.
-func (s *DocumentService) CreateDocument(ctx context.Context, ownerID, title, content string) (*models.Document, error) {
+// CreateDocument creates a new document in a workspace owned by ownerID.
+func (s *DocumentService) CreateDocument(ctx context.Context, ownerID, workspaceID, title, content string) (*models.Document, error) {
 	if title == "" {
 		return nil, fmt.Errorf("%w: title is required", ErrInvalidInput)
 	}
-	doc, err := s.db.CreateDocument(ctx, ownerID, title, content)
+	if workspaceID == "" {
+		user, err := s.db.GetUserByID(ctx, ownerID)
+		if err != nil {
+			return nil, fmt.Errorf("get user: %w", err)
+		}
+		workspaceID = user.DefaultWorkspaceID
+	}
+	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, ownerID, models.PermissionEdit); err != nil {
+		return nil, err
+	}
+	doc, err := s.db.CreateDocument(ctx, workspaceID, ownerID, title, content)
 	if err != nil {
 		return nil, fmt.Errorf("create document: %w", err)
 	}
@@ -50,7 +60,7 @@ func (s *DocumentService) GetDocument(ctx context.Context, documentID, userID st
 	if err != nil {
 		return nil, err
 	}
-	if err := s.permService.RequireDocumentPermission(ctx, documentID, userID, doc.OwnerID, models.PermissionRead); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionRead); err != nil {
 		return nil, err
 	}
 	return doc, nil
@@ -64,21 +74,27 @@ func (s *DocumentService) ListDocuments(ctx context.Context, ownerID string) ([]
 // ListAllAccessibleDocuments returns all documents that a user can access,
 // including owned documents and documents with granted permissions.
 func (s *DocumentService) ListAllAccessibleDocuments(ctx context.Context, userID string) ([]*models.Document, error) {
-	// Get user's own documents
-	ownDocs, err := s.db.ListDocumentsByOwner(ctx, userID)
+	workspaces, err := s.db.ListWorkspacesByUser(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("list owned documents: %w", err)
+		return nil, fmt.Errorf("list workspaces: %w", err)
+	}
+	workspaceIDs := make([]string, 0, len(workspaces))
+	for _, ws := range workspaces {
+		workspaceIDs = append(workspaceIDs, ws.ID)
 	}
 
-	// Get documents with granted permissions
+	workspaceDocs, err := s.db.ListDocumentsByWorkspaceIDs(ctx, workspaceIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list workspace documents: %w", err)
+	}
+
 	permDocs, err := s.db.ListDocumentsWithPermission(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list documents with permission: %w", err)
 	}
 
-	// Merge, avoiding duplicates (if user owns and has permission, show once)
 	docMap := make(map[string]*models.Document)
-	for _, doc := range ownDocs {
+	for _, doc := range workspaceDocs {
 		docMap[doc.ID] = doc
 	}
 	for _, doc := range permDocs {
@@ -109,6 +125,11 @@ func (s *DocumentService) ListAllAccessibleDocumentsWithPermission(ctx context.C
 
 		// Add permission level if not owner
 		if doc.OwnerID != userID {
+			member, err := s.db.GetWorkspaceMember(ctx, doc.WorkspaceID, userID)
+			if err == nil && member != nil {
+				items[i].Permission = &member.Level
+				continue
+			}
 			perm, err := s.db.GetDocumentPermission(ctx, doc.ID, userID)
 			if err == nil && perm != nil {
 				items[i].Permission = &perm.Level
@@ -125,7 +146,7 @@ func (s *DocumentService) UpdateContent(ctx context.Context, documentID, userID,
 	if err != nil {
 		return nil, err
 	}
-	if err := s.permService.RequireDocumentPermission(ctx, documentID, userID, doc.OwnerID, models.PermissionEdit); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionEdit); err != nil {
 		return nil, err
 	}
 
@@ -154,7 +175,7 @@ func (s *DocumentService) UpdateTitle(ctx context.Context, documentID, userID, t
 	if err != nil {
 		return nil, err
 	}
-	if err := s.permService.RequireDocumentPermission(ctx, documentID, userID, doc.OwnerID, models.PermissionEdit); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionEdit); err != nil {
 		return nil, err
 	}
 	return s.db.UpdateDocumentTitle(ctx, documentID, title)
@@ -166,10 +187,22 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, documentID, userID
 	if err != nil {
 		return err
 	}
-	if doc.OwnerID != userID {
-		return fmt.Errorf("%w: only the owner can delete a document", ErrUnauthorized)
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionManage); err != nil {
+		return err
 	}
 	return s.db.DeleteDocument(ctx, documentID)
+}
+
+func (s *DocumentService) requireWorkspaceOrDocumentPermission(
+	ctx context.Context,
+	doc *models.Document,
+	userID string,
+	required models.PermissionLevel,
+) error {
+	if err := s.permService.RequireWorkspacePermission(ctx, doc.WorkspaceID, userID, required); err == nil {
+		return nil
+	}
+	return s.permService.RequireDocumentPermission(ctx, doc.ID, userID, doc.OwnerID, required)
 }
 
 // shouldSnapshot returns true when the diff crosses heuristic thresholds.

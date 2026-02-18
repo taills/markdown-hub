@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Document } from '@/types';
+import type { Document, DocumentListItem } from '@/types';
 import { documentService } from '@/services/api';
 
 export function useDocument(id: string) {
@@ -20,7 +20,7 @@ export function useDocument(id: string) {
 }
 
 export function useDocumentList() {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

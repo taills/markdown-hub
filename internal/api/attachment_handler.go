@@ -87,6 +87,7 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	// Create attachment record in database
 	attachment, err := h.attachSvc.UploadAttachment(
 		r.Context(),
+		doc.WorkspaceID,
 		docID,
 		userID,
 		doc.OwnerID,
@@ -121,7 +122,7 @@ func (h *AttachmentHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	attachments, err := h.attachSvc.ListAttachments(r.Context(), docID, userID, doc.OwnerID)
+	attachments, err := h.attachSvc.ListAttachments(r.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
 	if err != nil {
 		writeError(w, errStatus(err), err.Error())
 		return
@@ -186,7 +187,7 @@ func (h *AttachmentHandler) GetUnreferenced(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	attachments, err := h.attachSvc.GetUnreferencedAttachments(r.Context(), docID, userID, doc.OwnerID)
+	attachments, err := h.attachSvc.GetUnreferencedAttachments(r.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
 	if err != nil {
 		writeError(w, errStatus(err), err.Error())
 		return

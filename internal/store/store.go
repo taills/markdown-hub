@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 
 	"markdownhub/internal/models"
 )
@@ -43,20 +43,68 @@ func New(dataSourceName string) (*DB, error) {
 func (s *DB) Close() error { return s.db.Close() }
 
 // -------------------------------------------------------------------------
+// Transaction Support
+// -------------------------------------------------------------------------
+
+// execer is an interface for both *sql.DB and *sql.Tx
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+}
+
+// BeginTx starts a new transaction.
+func (s *DB) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	return s.db.BeginTx(ctx, nil)
+}
+
+// WithTransaction executes a function within a database transaction.
+// If the function returns an error, the transaction is rolled back.
+// Otherwise, the transaction is committed.
+func (s *DB) WithTransaction(ctx context.Context, fn func(*sql.Tx) error) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback()
+			panic(p)
+		}
+	}()
+
+	if err := fn(tx); err != nil {
+		if rbErr := tx.Rollback(); rbErr != nil {
+			return fmt.Errorf("tx error: %w, rollback error: %v", err, rbErr)
+		}
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+	return nil
+}
+
+// -------------------------------------------------------------------------
 // Users
 // -------------------------------------------------------------------------
 
 func (s *DB) CreateUser(ctx context.Context, username, email, passwordHash string) (*models.User, error) {
+	return s.CreateUserTx(ctx, s.db, username, email, passwordHash)
+}
+
+func (s *DB) CreateUserTx(ctx context.Context, ex execer, username, email, passwordHash string) (*models.User, error) {
 	u := &models.User{
 		ID:           uuid.New().String(),
 		Username:     username,
 		Email:        email,
 		PasswordHash: passwordHash,
 	}
-	row := s.db.QueryRowContext(ctx,
+	row := ex.QueryRowContext(ctx,
 		`INSERT INTO users (id, username, email, password_hash)
 		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, username, email, password_hash, created_at, updated_at`,
+		 RETURNING id, username, email, password_hash, default_workspace_id, created_at, updated_at`,
 		u.ID, u.Username, u.Email, u.PasswordHash,
 	)
 	return scanUser(row)
@@ -64,58 +112,207 @@ func (s *DB) CreateUser(ctx context.Context, username, email, passwordHash strin
 
 func (s *DB) GetUserByID(ctx context.Context, id string) (*models.User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, username, email, password_hash, created_at, updated_at FROM users WHERE id = $1`, id)
+		`SELECT id, username, email, password_hash, default_workspace_id, created_at, updated_at FROM users WHERE id = $1`, id)
 	return scanUser(row)
 }
 
 func (s *DB) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, username, email, password_hash, created_at, updated_at FROM users WHERE email = $1`, email)
+		`SELECT id, username, email, password_hash, default_workspace_id, created_at, updated_at FROM users WHERE email = $1`, email)
 	return scanUser(row)
 }
 
 func (s *DB) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, username, email, password_hash, created_at, updated_at FROM users WHERE username = $1`, username)
+		`SELECT id, username, email, password_hash, default_workspace_id, created_at, updated_at FROM users WHERE username = $1`, username)
 	return scanUser(row)
 }
 
 func scanUser(row *sql.Row) (*models.User, error) {
 	u := &models.User{}
-	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
+	var defaultWorkspaceID sql.NullString
+	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &defaultWorkspaceID, &u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("scan user: %w", err)
 	}
+	if defaultWorkspaceID.Valid {
+		u.DefaultWorkspaceID = defaultWorkspaceID.String
+	}
 	return u, nil
+}
+
+func (s *DB) UpdateUserDefaultWorkspace(ctx context.Context, userID, workspaceID string) (*models.User, error) {
+	return s.UpdateUserDefaultWorkspaceTx(ctx, s.db, userID, workspaceID)
+}
+
+func (s *DB) UpdateUserDefaultWorkspaceTx(ctx context.Context, ex execer, userID, workspaceID string) (*models.User, error) {
+	row := ex.QueryRowContext(ctx,
+		`UPDATE users SET default_workspace_id = $2, updated_at = NOW()
+		 WHERE id = $1
+		 RETURNING id, username, email, password_hash, default_workspace_id, created_at, updated_at`,
+		userID, workspaceID,
+	)
+	return scanUser(row)
+}
+
+// -------------------------------------------------------------------------
+// Workspaces
+// -------------------------------------------------------------------------
+
+func (s *DB) CreateWorkspace(ctx context.Context, ownerID, name string) (*models.Workspace, error) {
+	return s.CreateWorkspaceTx(ctx, s.db, ownerID, name)
+}
+
+func (s *DB) CreateWorkspaceTx(ctx context.Context, ex execer, ownerID, name string) (*models.Workspace, error) {
+	id := uuid.New().String()
+	row := ex.QueryRowContext(ctx,
+		`INSERT INTO workspaces (id, owner_id, name)
+		 VALUES ($1, $2, $3)
+		 RETURNING id, owner_id, name, created_at, updated_at`,
+		id, ownerID, name,
+	)
+	ws := &models.Workspace{}
+	if err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
+		return nil, fmt.Errorf("create workspace: %w", err)
+	}
+	return ws, nil
+}
+
+func (s *DB) GetWorkspaceByID(ctx context.Context, id string) (*models.Workspace, error) {
+	row := s.db.QueryRowContext(ctx,
+		`SELECT id, owner_id, name, created_at, updated_at FROM workspaces WHERE id = $1`, id)
+	ws := &models.Workspace{}
+	err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.CreatedAt, &ws.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get workspace: %w", err)
+	}
+	return ws, nil
+}
+
+func (s *DB) ListWorkspacesByUser(ctx context.Context, userID string) ([]*models.Workspace, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT w.id, w.owner_id, w.name, w.created_at, w.updated_at
+		 FROM workspaces w
+		 JOIN workspace_members wm ON wm.workspace_id = w.id
+		 WHERE wm.user_id = $1
+		 ORDER BY w.updated_at DESC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list workspaces: %w", err)
+	}
+	defer rows.Close()
+	var workspaces []*models.Workspace
+	for rows.Next() {
+		ws := &models.Workspace{}
+		if err := rows.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan workspace: %w", err)
+		}
+		workspaces = append(workspaces, ws)
+	}
+	return workspaces, rows.Err()
+}
+
+func (s *DB) UpsertWorkspaceMember(ctx context.Context, workspaceID, userID string, level models.PermissionLevel) (*models.WorkspaceMember, error) {
+	return s.UpsertWorkspaceMemberTx(ctx, s.db, workspaceID, userID, level)
+}
+
+func (s *DB) UpsertWorkspaceMemberTx(ctx context.Context, ex execer, workspaceID, userID string, level models.PermissionLevel) (*models.WorkspaceMember, error) {
+	id := uuid.New().String()
+	row := ex.QueryRowContext(ctx,
+		`INSERT INTO workspace_members (id, workspace_id, user_id, level)
+		 VALUES ($1, $2, $3, $4)
+		 ON CONFLICT (workspace_id, user_id) DO UPDATE SET level = EXCLUDED.level
+		 RETURNING id, workspace_id, user_id, level, created_at`,
+		id, workspaceID, userID, string(level),
+	)
+	wm := &models.WorkspaceMember{}
+	var lvl string
+	err := row.Scan(&wm.ID, &wm.WorkspaceID, &wm.UserID, &lvl, &wm.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("upsert workspace member: %w", err)
+	}
+	wm.Level = models.PermissionLevel(lvl)
+	return wm, nil
+}
+
+func (s *DB) GetWorkspaceMember(ctx context.Context, workspaceID, userID string) (*models.WorkspaceMember, error) {
+	row := s.db.QueryRowContext(ctx,
+		`SELECT id, workspace_id, user_id, level, created_at
+		 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+		workspaceID, userID,
+	)
+	wm := &models.WorkspaceMember{}
+	var lvl string
+	err := row.Scan(&wm.ID, &wm.WorkspaceID, &wm.UserID, &lvl, &wm.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get workspace member: %w", err)
+	}
+	wm.Level = models.PermissionLevel(lvl)
+	return wm, nil
+}
+
+func (s *DB) ListWorkspaceMembersWithUsername(ctx context.Context, workspaceID string) ([]*models.WorkspaceMember, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT wm.id, wm.workspace_id, wm.user_id, wm.level, wm.created_at, u.username
+		 FROM workspace_members wm
+		 JOIN users u ON wm.user_id = u.id
+		 WHERE wm.workspace_id = $1`, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list workspace members: %w", err)
+	}
+	defer rows.Close()
+	var members []*models.WorkspaceMember
+	for rows.Next() {
+		wm := &models.WorkspaceMember{}
+		var lvl string
+		if err := rows.Scan(&wm.ID, &wm.WorkspaceID, &wm.UserID, &lvl, &wm.CreatedAt, &wm.Username); err != nil {
+			return nil, fmt.Errorf("scan workspace member: %w", err)
+		}
+		wm.Level = models.PermissionLevel(lvl)
+		members = append(members, wm)
+	}
+	return members, rows.Err()
+}
+
+func (s *DB) DeleteWorkspaceMember(ctx context.Context, workspaceID, userID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+		workspaceID, userID)
+	return err
 }
 
 // -------------------------------------------------------------------------
 // Documents
 // -------------------------------------------------------------------------
 
-func (s *DB) CreateDocument(ctx context.Context, ownerID, title, content string) (*models.Document, error) {
+func (s *DB) CreateDocument(ctx context.Context, workspaceID, ownerID, title, content string) (*models.Document, error) {
 	id := uuid.New().String()
 	row := s.db.QueryRowContext(ctx,
-		`INSERT INTO documents (id, owner_id, title, content)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, owner_id, title, content, created_at, updated_at`,
-		id, ownerID, title, content,
+		`INSERT INTO documents (id, workspace_id, owner_id, title, content)
+		 VALUES ($1, $2, $3, $4, $5)
+		 RETURNING id, workspace_id, owner_id, title, content, created_at, updated_at`,
+		id, workspaceID, ownerID, title, content,
 	)
 	return scanDocument(row)
 }
 
 func (s *DB) GetDocumentByID(ctx context.Context, id string) (*models.Document, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, owner_id, title, content, created_at, updated_at FROM documents WHERE id = $1`, id)
+		`SELECT id, workspace_id, owner_id, title, content, created_at, updated_at FROM documents WHERE id = $1`, id)
 	return scanDocument(row)
 }
 
 func (s *DB) ListDocumentsByOwner(ctx context.Context, ownerID string) ([]*models.Document, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, owner_id, title, content, created_at, updated_at
+		`SELECT id, workspace_id, owner_id, title, content, created_at, updated_at
 		 FROM documents WHERE owner_id = $1 ORDER BY updated_at DESC`, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("list documents: %w", err)
@@ -124,11 +321,29 @@ func (s *DB) ListDocumentsByOwner(ctx context.Context, ownerID string) ([]*model
 	return scanDocuments(rows)
 }
 
+func (s *DB) ListDocumentsByWorkspaceIDs(ctx context.Context, workspaceIDs []string) ([]*models.Document, error) {
+	if len(workspaceIDs) == 0 {
+		return []*models.Document{}, nil
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, workspace_id, owner_id, title, content, created_at, updated_at
+		 FROM documents WHERE workspace_id = ANY($1) ORDER BY updated_at DESC`, pq.Array(workspaceIDs))
+	if err != nil {
+		return nil, fmt.Errorf("list documents by workspace: %w", err)
+	}
+	defer rows.Close()
+	return scanDocuments(rows)
+}
+
 func (s *DB) UpdateDocumentContent(ctx context.Context, id, content string) (*models.Document, error) {
-	row := s.db.QueryRowContext(ctx,
+	return s.UpdateDocumentContentTx(ctx, s.db, id, content)
+}
+
+func (s *DB) UpdateDocumentContentTx(ctx context.Context, ex execer, id, content string) (*models.Document, error) {
+	row := ex.QueryRowContext(ctx,
 		`UPDATE documents SET content = $2, updated_at = NOW()
 		 WHERE id = $1
-		 RETURNING id, owner_id, title, content, created_at, updated_at`,
+		 RETURNING id, workspace_id, owner_id, title, content, created_at, updated_at`,
 		id, content,
 	)
 	return scanDocument(row)
@@ -138,7 +353,7 @@ func (s *DB) UpdateDocumentTitle(ctx context.Context, id, title string) (*models
 	row := s.db.QueryRowContext(ctx,
 		`UPDATE documents SET title = $2, updated_at = NOW()
 		 WHERE id = $1
-		 RETURNING id, owner_id, title, content, created_at, updated_at`,
+		 RETURNING id, workspace_id, owner_id, title, content, created_at, updated_at`,
 		id, title,
 	)
 	return scanDocument(row)
@@ -151,7 +366,7 @@ func (s *DB) DeleteDocument(ctx context.Context, id string) error {
 
 func scanDocument(row *sql.Row) (*models.Document, error) {
 	d := &models.Document{}
-	err := row.Scan(&d.ID, &d.OwnerID, &d.Title, &d.Content, &d.CreatedAt, &d.UpdatedAt)
+	err := row.Scan(&d.ID, &d.WorkspaceID, &d.OwnerID, &d.Title, &d.Content, &d.CreatedAt, &d.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -165,7 +380,7 @@ func scanDocuments(rows *sql.Rows) ([]*models.Document, error) {
 	var docs []*models.Document
 	for rows.Next() {
 		d := &models.Document{}
-		if err := rows.Scan(&d.ID, &d.OwnerID, &d.Title, &d.Content, &d.CreatedAt, &d.UpdatedAt); err != nil {
+		if err := rows.Scan(&d.ID, &d.WorkspaceID, &d.OwnerID, &d.Title, &d.Content, &d.CreatedAt, &d.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan document row: %w", err)
 		}
 		docs = append(docs, d)
@@ -178,8 +393,12 @@ func scanDocuments(rows *sql.Rows) ([]*models.Document, error) {
 // -------------------------------------------------------------------------
 
 func (s *DB) CreateSnapshot(ctx context.Context, documentID, authorID, content, message string) (*models.Snapshot, error) {
+	return s.CreateSnapshotTx(ctx, s.db, documentID, authorID, content, message)
+}
+
+func (s *DB) CreateSnapshotTx(ctx context.Context, ex execer, documentID, authorID, content, message string) (*models.Snapshot, error) {
 	id := uuid.New().String()
-	row := s.db.QueryRowContext(ctx,
+	row := ex.QueryRowContext(ctx,
 		`INSERT INTO snapshots (id, document_id, author_id, content, message)
 		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING id, document_id, author_id, content, message, created_at`,
@@ -411,7 +630,7 @@ func (s *DB) ListDocumentPermissionsWithUsername(ctx context.Context, documentID
 
 func (s *DB) ListDocumentsWithPermission(ctx context.Context, userID string) ([]*models.Document, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT DISTINCT d.id, d.owner_id, d.title, d.content, d.created_at, d.updated_at
+		`SELECT DISTINCT d.id, d.workspace_id, d.owner_id, d.title, d.content, d.created_at, d.updated_at
 		 FROM documents d
 		 JOIN document_permissions dp ON d.id = dp.document_id
 		 WHERE dp.user_id = $1
@@ -447,38 +666,46 @@ func (s *DB) GetDocumentPermissionByUsername(ctx context.Context, documentID, us
 // Attachments
 // -------------------------------------------------------------------------
 
-func (s *DB) CreateAttachment(ctx context.Context, documentID, uploadBy, filename, fileType string, fileSize int64, filePath string) (*models.Attachment, error) {
+func (s *DB) CreateAttachment(ctx context.Context, workspaceID string, documentID *string, uploadBy, filename, fileType string, fileSize int64, filePath string) (*models.Attachment, error) {
 	id := uuid.New().String()
 	row := s.db.QueryRowContext(ctx,
-		`INSERT INTO attachments (id, document_id, upload_by, filename, file_type, file_size, file_path)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)
-		 RETURNING id, document_id, upload_by, filename, file_type, file_size, file_path, created_at`,
-		id, documentID, uploadBy, filename, fileType, fileSize, filePath)
+		`INSERT INTO attachments (id, workspace_id, document_id, upload_by, filename, file_type, file_size, file_path)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		 RETURNING id, workspace_id, document_id, upload_by, filename, file_type, file_size, file_path, created_at`,
+		id, workspaceID, documentID, uploadBy, filename, fileType, fileSize, filePath)
 	a := &models.Attachment{}
-	err := row.Scan(&a.ID, &a.DocumentID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt)
+	var docID sql.NullString
+	err := row.Scan(&a.ID, &a.WorkspaceID, &docID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("create attachment: %w", err)
+	}
+	if docID.Valid {
+		a.DocumentID = &docID.String
 	}
 	return a, nil
 }
 
 func (s *DB) GetAttachmentByID(ctx context.Context, id string) (*models.Attachment, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, document_id, upload_by, filename, file_type, file_size, file_path, created_at FROM attachments WHERE id = $1`, id)
+		`SELECT id, workspace_id, document_id, upload_by, filename, file_type, file_size, file_path, created_at FROM attachments WHERE id = $1`, id)
 	a := &models.Attachment{}
-	err := row.Scan(&a.ID, &a.DocumentID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt)
+	var docID sql.NullString
+	err := row.Scan(&a.ID, &a.WorkspaceID, &docID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get attachment: %w", err)
 	}
+	if docID.Valid {
+		a.DocumentID = &docID.String
+	}
 	return a, nil
 }
 
 func (s *DB) ListDocumentAttachments(ctx context.Context, documentID string) ([]*models.Attachment, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, document_id, upload_by, filename, file_type, file_size, file_path, created_at
+		`SELECT id, workspace_id, document_id, upload_by, filename, file_type, file_size, file_path, created_at
 		 FROM attachments WHERE document_id = $1 ORDER BY created_at DESC`, documentID)
 	if err != nil {
 		return nil, fmt.Errorf("list attachments: %w", err)
@@ -487,8 +714,35 @@ func (s *DB) ListDocumentAttachments(ctx context.Context, documentID string) ([]
 	var attachments []*models.Attachment
 	for rows.Next() {
 		a := &models.Attachment{}
-		if err := rows.Scan(&a.ID, &a.DocumentID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt); err != nil {
+		var docID sql.NullString
+		if err := rows.Scan(&a.ID, &a.WorkspaceID, &docID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan attachment: %w", err)
+		}
+		if docID.Valid {
+			a.DocumentID = &docID.String
+		}
+		attachments = append(attachments, a)
+	}
+	return attachments, rows.Err()
+}
+
+func (s *DB) ListWorkspaceAttachments(ctx context.Context, workspaceID string) ([]*models.Attachment, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, workspace_id, document_id, upload_by, filename, file_type, file_size, file_path, created_at
+		 FROM attachments WHERE workspace_id = $1 AND document_id IS NULL ORDER BY created_at DESC`, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list workspace attachments: %w", err)
+	}
+	defer rows.Close()
+	var attachments []*models.Attachment
+	for rows.Next() {
+		a := &models.Attachment{}
+		var docID sql.NullString
+		if err := rows.Scan(&a.ID, &a.WorkspaceID, &docID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan workspace attachment: %w", err)
+		}
+		if docID.Valid {
+			a.DocumentID = &docID.String
 		}
 		attachments = append(attachments, a)
 	}
@@ -535,7 +789,7 @@ func (s *DB) ListAttachmentReferences(ctx context.Context, attachmentID string) 
 
 func (s *DB) GetUnreferencedAttachments(ctx context.Context, documentID string) ([]*models.Attachment, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT a.id, a.document_id, a.upload_by, a.filename, a.file_type, a.file_size, a.file_path, a.created_at
+		`SELECT a.id, a.workspace_id, a.document_id, a.upload_by, a.filename, a.file_type, a.file_size, a.file_path, a.created_at
 		 FROM attachments a
 		 LEFT JOIN attachment_references ar ON a.id = ar.attachment_id
 		 WHERE a.document_id = $1 AND ar.id IS NULL`, documentID)
@@ -546,8 +800,12 @@ func (s *DB) GetUnreferencedAttachments(ctx context.Context, documentID string) 
 	var attachments []*models.Attachment
 	for rows.Next() {
 		a := &models.Attachment{}
-		if err := rows.Scan(&a.ID, &a.DocumentID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt); err != nil {
+		var docID sql.NullString
+		if err := rows.Scan(&a.ID, &a.WorkspaceID, &docID, &a.UploadBy, &a.Filename, &a.FileType, &a.FileSize, &a.FilePath, &a.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan attachment: %w", err)
+		}
+		if docID.Valid {
+			a.DocumentID = &docID.String
 		}
 		attachments = append(attachments, a)
 	}

@@ -3,6 +3,7 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"regexp"
@@ -44,10 +45,39 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
-	user, err := s.db.CreateUser(ctx, username, email, string(hash))
+
+	var user *models.User
+	err = s.db.WithTransaction(ctx, func(tx *sql.Tx) error {
+		// Create user
+		u, err := s.db.CreateUserTx(ctx, tx, username, email, string(hash))
+		if err != nil {
+			return fmt.Errorf("create user: %w", err)
+		}
+
+		// Create default workspace
+		ws, err := s.db.CreateWorkspaceTx(ctx, tx, u.ID, u.Username)
+		if err != nil {
+			return fmt.Errorf("create workspace: %w", err)
+		}
+
+		// Add user as workspace owner
+		if _, err := s.db.UpsertWorkspaceMemberTx(ctx, tx, ws.ID, u.ID, models.PermissionManage); err != nil {
+			return fmt.Errorf("add workspace owner: %w", err)
+		}
+
+		// Set default workspace
+		u, err = s.db.UpdateUserDefaultWorkspaceTx(ctx, tx, u.ID, ws.ID)
+		if err != nil {
+			return fmt.Errorf("set default workspace: %w", err)
+		}
+
+		user = u
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("create user: %w", err)
+		return nil, err
 	}
+
 	return user, nil
 }
 
@@ -63,6 +93,34 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 	if err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		return nil, fmt.Errorf("%w: invalid credentials", ErrUnauthorized)
 	}
+
+	// If user doesn't have a default workspace, create one in a transaction
+	if user.DefaultWorkspaceID == "" {
+		err = s.db.WithTransaction(ctx, func(tx *sql.Tx) error {
+			// Create workspace
+			ws, err := s.db.CreateWorkspaceTx(ctx, tx, user.ID, user.Username)
+			if err != nil {
+				return fmt.Errorf("create workspace: %w", err)
+			}
+
+			// Add user as workspace owner
+			if _, err := s.db.UpsertWorkspaceMemberTx(ctx, tx, ws.ID, user.ID, models.PermissionManage); err != nil {
+				return fmt.Errorf("add workspace owner: %w", err)
+			}
+
+			// Set default workspace
+			user, err = s.db.UpdateUserDefaultWorkspaceTx(ctx, tx, user.ID, ws.ID)
+			if err != nil {
+				return fmt.Errorf("set default workspace: %w", err)
+			}
+
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return user, nil
 }
 

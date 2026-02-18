@@ -1,4 +1,4 @@
-import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment } from '@/types';
+import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember } from '@/types';
 
 const API_BASE_URL = '/api';
 
@@ -40,10 +40,10 @@ export const authService = {
 export const documentService = {
   list: () => request<DocumentListItem[]>('/documents'),
   get: (id: string) => request<Document>(`/documents/${id}`),
-  create: (title: string, content = '') =>
+  create: (title: string, content = '', workspaceId?: string) =>
     request<Document>('/documents', {
       method: 'POST',
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify({ title, content, workspace_id: workspaceId }),
     }),
   updateContent: (id: string, content: string) =>
     request<Document>(`/documents/${id}/content`, {
@@ -58,6 +58,29 @@ export const documentService = {
   delete: (id: string) =>
     request<void>(`/documents/${id}`, { method: 'DELETE' }),
   headings: (id: string) => request<HeadingSection[]>(`/documents/${id}/headings`),
+};
+
+// ---- Workspaces ----
+
+export const workspaceService = {
+  list: () => request<Workspace[]>('/workspaces'),
+  get: (id: string) => request<Workspace>(`/workspaces/${id}`),
+  create: (name: string) =>
+    request<Workspace>('/workspaces', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  setDefault: (id: string) =>
+    request<AuthResponse['user']>(`/workspaces/${id}/default`, { method: 'PUT' }),
+  listMembers: (workspaceId: string) =>
+    request<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`),
+  setMember: (workspaceId: string, username: string, level: PermissionLevel) =>
+    request<WorkspaceMember>(`/workspaces/${workspaceId}/members`, {
+      method: 'PUT',
+      body: JSON.stringify({ username, level }),
+    }),
+  removeMember: (workspaceId: string, userId: string) =>
+    request<void>(`/workspaces/${workspaceId}/members/${userId}`, { method: 'DELETE' }),
 };
 
 // ---- Snapshots ----
@@ -131,6 +154,48 @@ export const attachmentService = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
     const url = `${API_BASE_URL}/attachments/${attachmentId}/download`;
+    return fetch(url, { headers }).then(async (res) => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      return res.blob();
+    });
+  },
+};
+
+// ---- Workspace Attachments ----
+
+export const workspaceAttachmentService = {
+  list: (workspaceId: string) =>
+    request<Attachment[]>(`/workspaces/${workspaceId}/attachments`),
+  upload: async (workspaceId: string, file: File): Promise<Attachment> => {
+    const token = localStorage.getItem('mh_token');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/attachments`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<Attachment>;
+  },
+  delete: (workspaceId: string, attachmentId: string) =>
+    request<void>(`/workspaces/${workspaceId}/attachments/${attachmentId}`, { method: 'DELETE' }),
+  download: (attachmentId: string) => {
+    const token = localStorage.getItem('mh_token');
+    const headers: HeadersInit = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const url = `${API_BASE_URL}/workspace-attachments/${attachmentId}/download`;
     return fetch(url, { headers }).then(async (res) => {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

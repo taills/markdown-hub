@@ -107,6 +107,12 @@ export interface DiffLine {
   content: string;
 }
 
+export interface LinePatch {
+  start_line: number;
+  delete_count: number;
+  insert_lines: string[];
+}
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -118,12 +124,13 @@ export interface AuthResponse {
 }
 
 // WebSocket message types
-export type WSMessageType = 'init' | 'update' | 'cursor' | 'error' | 'close';
+export type WSMessageType = 'init' | 'update' | 'patch' | 'cursor' | 'error' | 'close';
 
 export interface WSMessage {
   type: WSMessageType;
   document_id?: string;
   user_id?: string;
   content?: string;
+  payload?: LinePatch;
   timestamp: number;
 }

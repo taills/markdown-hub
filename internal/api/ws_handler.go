@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +37,36 @@ type WSMessage struct {
 	Content    string          `json:"content,omitempty"`
 	Payload    json.RawMessage `json:"payload,omitempty"`
 	Timestamp  int64           `json:"timestamp"`
+}
+
+// LinePatch represents a line-based diff patch.
+type LinePatch struct {
+	StartLine   int      `json:"start_line"`
+	DeleteCount int      `json:"delete_count"`
+	InsertLines []string `json:"insert_lines"`
+}
+
+func splitLines(content string) []string {
+	return strings.Split(content, "\n")
+}
+
+func applyLinePatch(content string, patch LinePatch) (string, error) {
+	lines := splitLines(content)
+	if patch.StartLine < 0 || patch.StartLine > len(lines) {
+		return "", errors.New("invalid patch start_line")
+	}
+	if patch.DeleteCount < 0 {
+		return "", errors.New("invalid patch delete_count")
+	}
+	end := patch.StartLine + patch.DeleteCount
+	if end > len(lines) {
+		return "", errors.New("invalid patch range")
+	}
+	updated := make([]string, 0, len(lines)-patch.DeleteCount+len(patch.InsertLines))
+	updated = append(updated, lines[:patch.StartLine]...)
+	updated = append(updated, patch.InsertLines...)
+	updated = append(updated, lines[end:]...)
+	return strings.Join(updated, "\n"), nil
 }
 
 // client represents a single WebSocket connection.
@@ -201,6 +232,64 @@ func (c *client) readPump(h *Hub) {
 				continue
 			}
 			msg.Content = doc.Content
+			h.broadcast(c, msg)
+		case "patch":
+			if len(msg.Payload) == 0 {
+				_ = c.writeMessage(WSMessage{
+					Type:      "error",
+					Content:   "missing patch payload",
+					Timestamp: time.Now().UnixMilli(),
+				})
+				continue
+			}
+			var patch LinePatch
+			if err := json.Unmarshal(msg.Payload, &patch); err != nil {
+				_ = c.writeMessage(WSMessage{
+					Type:      "error",
+					Content:   "invalid patch payload",
+					Timestamp: time.Now().UnixMilli(),
+				})
+				continue
+			}
+			ctx := context.Background()
+			doc, err := h.docSvc.GetDocument(ctx, c.documentID, c.userID)
+			if err != nil {
+				_ = c.writeMessage(WSMessage{
+					Type:      "error",
+					Content:   err.Error(),
+					Timestamp: time.Now().UnixMilli(),
+				})
+				continue
+			}
+			updatedContent, err := applyLinePatch(doc.Content, patch)
+			if err != nil {
+				_ = c.writeMessage(WSMessage{
+					Type:      "error",
+					Content:   err.Error(),
+					Timestamp: time.Now().UnixMilli(),
+				})
+				continue
+			}
+			_, err = h.docSvc.UpdateContent(ctx, c.documentID, c.userID, updatedContent)
+			if err != nil {
+				_ = c.writeMessage(WSMessage{
+					Type:      "error",
+					Content:   err.Error(),
+					Timestamp: time.Now().UnixMilli(),
+				})
+				continue
+			}
+			patchPayload, err := json.Marshal(patch)
+			if err != nil {
+				_ = c.writeMessage(WSMessage{
+					Type:      "error",
+					Content:   "failed to encode patch",
+					Timestamp: time.Now().UnixMilli(),
+				})
+				continue
+			}
+			msg.Payload = patchPayload
+			msg.Content = ""
 			h.broadcast(c, msg)
 		default:
 			h.broadcast(c, msg)

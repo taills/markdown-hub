@@ -9,6 +9,7 @@ import { SnapshotPanel } from '@/components/SnapshotPanel';
 import { PermissionsPanel } from '@/components/PermissionsPanel';
 import { AttachmentPanel } from '@/components/AttachmentPanel';
 import { attachmentService } from '@/services/api';
+import { applyLinePatch, createLinePatch } from '@/utils/linePatch';
 import type { Attachment, WSMessage } from '@/types';
 
 type Panel = 'preview' | 'history' | 'permissions' | 'attachments';
@@ -25,21 +26,38 @@ export function DocumentEditor() {
   const [connectionState, setConnectionState] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentRef = useRef('');
+  const lastSyncedContentRef = useRef('');
+
+  const setContentFromServer = useCallback((nextContent: string) => {
+    setContent(nextContent);
+    contentRef.current = nextContent;
+    lastSyncedContentRef.current = nextContent;
+  }, []);
+
+  const setContentLocal = useCallback((nextContent: string) => {
+    setContent(nextContent);
+    contentRef.current = nextContent;
+  }, []);
 
   useEffect(() => {
-    if (document) setContent(document.content);
-  }, [document]);
+    if (document) setContentFromServer(document.content);
+  }, [document, setContentFromServer]);
 
   const handleWSMessage = useCallback((msg: WSMessage) => {
     if (msg.type === 'init' || msg.type === 'update') {
-      if (msg.content !== undefined) setContent(msg.content);
+      if (msg.content !== undefined) setContentFromServer(msg.content);
     }
-    if (msg.type === 'update' && msg.user_id && msg.user_id !== user?.id) {
+    if (msg.type === 'patch' && msg.payload) {
+      const nextContent = applyLinePatch(contentRef.current, msg.payload);
+      setContentFromServer(nextContent);
+    }
+    if ((msg.type === 'update' || msg.type === 'patch') && msg.user_id && msg.user_id !== user?.id) {
       setCollaborators((prev) =>
         prev.includes(msg.user_id!) ? prev : [...prev, msg.user_id!]
       );
     }
-  }, [user?.id]);
+  }, [setContentFromServer, user?.id]);
 
   const { send, connectionState: wsState } = useWebSocket({
     documentId: id ?? '',
@@ -51,16 +69,22 @@ export function DocumentEditor() {
     setConnectionState(wsState);
   }, [wsState]);
 
+  const sendPendingPatch = useCallback(() => {
+    if (!id) return;
+    const patch = createLinePatch(lastSyncedContentRef.current, contentRef.current);
+    if (!patch) return;
+    send({ type: 'patch', payload: patch });
+    lastSyncedContentRef.current = contentRef.current;
+  }, [id, send]);
+
   const handleContentChange = useCallback(
     (newContent: string) => {
-      setContent(newContent);
-      // Debounce: send WebSocket update 500ms after last keystroke.
+      setContentLocal(newContent);
+      // Debounce: send WebSocket patch 500ms after last keystroke.
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        send({ type: 'update', content: newContent });
-      }, 500);
+      saveTimerRef.current = setTimeout(sendPendingPatch, 500);
     },
-    [send]
+    [sendPendingPatch, setContentLocal]
   );
 
   const handleInsertAttachment = useCallback(async (attachment: Attachment) => {
@@ -82,8 +106,8 @@ export function DocumentEditor() {
       content.substring(0, start) + markdown + content.substring(end);
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    setContent(newContent);
-    send({ type: 'update', content: newContent });
+    setContentLocal(newContent);
+    sendPendingPatch();
 
     requestAnimationFrame(() => {
       textarea.focus();
@@ -131,12 +155,12 @@ export function DocumentEditor() {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        send({ type: 'update', content });
+        sendPendingPatch();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [content, send]);
+  }, [sendPendingPatch]);
 
   if (isLoading) return <div className="loading">Loading document…</div>;
   if (error) return <div className="error">{error}</div>;

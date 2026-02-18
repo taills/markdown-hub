@@ -11,6 +11,7 @@ import { SnapshotPanel } from '@/components/SnapshotPanel';
 import { PermissionsPanel } from '@/components/PermissionsPanel';
 import { AttachmentPanel } from '@/components/AttachmentPanel';
 import { WorkspaceSettingsPanel } from '@/components/WorkspaceSettingsPanel';
+import { applyLinePatch, createLinePatch } from '@/utils/linePatch';
 import type { Attachment, DocumentListItem, Workspace, WSMessage } from '@/types';
 
 type Panel = 'preview' | 'history' | 'permissions' | 'attachments';
@@ -53,6 +54,8 @@ export function NotesLayout() {
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentRef = useRef('');
+  const lastSyncedContentRef = useRef('');
   const resizeRef = useRef<{
     type: ResizableColumn;
     startX: number;
@@ -92,10 +95,21 @@ export function NotesLayout() {
     };
   }, []);
 
+  const setContentFromServer = useCallback((nextContent: string) => {
+    setContent(nextContent);
+    contentRef.current = nextContent;
+    lastSyncedContentRef.current = nextContent;
+  }, []);
+
+  const setContentLocal = useCallback((nextContent: string) => {
+    setContent(nextContent);
+    contentRef.current = nextContent;
+  }, []);
+
   useEffect(() => {
-    if (document) setContent(document.content);
-    if (!document) setContent('');
-  }, [document]);
+    if (document) setContentFromServer(document.content);
+    if (!document) setContentFromServer('');
+  }, [document, setContentFromServer]);
 
   useEffect(() => {
     if (!document) {
@@ -111,14 +125,18 @@ export function NotesLayout() {
 
   const handleWSMessage = useCallback((msg: WSMessage) => {
     if (msg.type === 'init' || msg.type === 'update') {
-      if (msg.content !== undefined) setContent(msg.content);
+      if (msg.content !== undefined) setContentFromServer(msg.content);
     }
-    if (msg.type === 'update' && msg.user_id && msg.user_id !== user?.id) {
+    if (msg.type === 'patch' && msg.payload) {
+      const nextContent = applyLinePatch(contentRef.current, msg.payload);
+      setContentFromServer(nextContent);
+    }
+    if ((msg.type === 'update' || msg.type === 'patch') && msg.user_id && msg.user_id !== user?.id) {
       setCollaborators((prev) =>
         prev.includes(msg.user_id!) ? prev : [...prev, msg.user_id!]
       );
     }
-  }, [user?.id]);
+  }, [setContentFromServer, user?.id]);
 
   const { send, connectionState: wsState } = useWebSocket({
     documentId: id ?? '',
@@ -130,16 +148,22 @@ export function NotesLayout() {
     setConnectionState(wsState);
   }, [wsState]);
 
+  const sendPendingPatch = useCallback(() => {
+    if (!id) return;
+    const patch = createLinePatch(lastSyncedContentRef.current, contentRef.current);
+    if (!patch) return;
+    send({ type: 'patch', payload: patch });
+    lastSyncedContentRef.current = contentRef.current;
+  }, [id, send]);
+
   const handleContentChange = useCallback(
     (newContent: string) => {
-      setContent(newContent);
+      setContentLocal(newContent);
       if (!id) return;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        send({ type: 'update', content: newContent });
-      }, 500);
+      saveTimerRef.current = setTimeout(sendPendingPatch, 500);
     },
-    [id, send]
+    [id, sendPendingPatch, setContentLocal]
   );
 
   const handleInsertAttachment = useCallback(async (attachment: Attachment) => {
@@ -161,8 +185,8 @@ export function NotesLayout() {
       content.substring(0, start) + markdown + content.substring(end);
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    setContent(newContent);
-    if (id) send({ type: 'update', content: newContent });
+    setContentLocal(newContent);
+    sendPendingPatch();
 
     requestAnimationFrame(() => {
       textarea.focus();
@@ -203,12 +227,12 @@ export function NotesLayout() {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         if (!id) return;
-        send({ type: 'update', content });
+        sendPendingPatch();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [content, id, send]);
+  }, [id, sendPendingPatch]);
 
   const workspaceMap = useMemo(() => {
     const map = new Map<string, Workspace>();

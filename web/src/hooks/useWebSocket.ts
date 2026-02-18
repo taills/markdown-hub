@@ -21,6 +21,10 @@ export function useWebSocket({ documentId, token, onMessage }: UseWebSocketOptio
   onMessageRef.current = onMessage;
 
   const connect = useCallback(() => {
+    if (!documentId || !token) {
+      setConnectionState('disconnected');
+      return;
+    }
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     setConnectionState('connecting');

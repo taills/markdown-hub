@@ -8,6 +8,12 @@ export function useDocument(id: string) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!id) {
+      setDocument(null);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     setIsLoading(true);
     documentService
       .get(id)

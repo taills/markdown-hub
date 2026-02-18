@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { LoginPage } from '@/components/LoginPage';
-import { DocumentList } from '@/components/DocumentList';
-import { DocumentEditor } from '@/components/DocumentEditor';
+import { NotesLayout } from '@/components/NotesLayout';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -26,7 +25,7 @@ function AppRoutes() {
         path="/"
         element={
           <RequireAuth>
-            <DocumentList />
+            <NotesLayout />
           </RequireAuth>
         }
       />
@@ -34,7 +33,7 @@ function AppRoutes() {
         path="/documents/:id"
         element={
           <RequireAuth>
-            <DocumentEditor />
+            <NotesLayout />
           </RequireAuth>
         }
       />

@@ -18,6 +18,7 @@ DROP INDEX IF EXISTS idx_attachments_document;
 
 DROP INDEX IF EXISTS idx_documents_workspace_id;
 DROP INDEX IF EXISTS idx_documents_owner_id;
+DROP INDEX IF EXISTS idx_documents_workspace_updated_at;
 
 DROP TABLE IF EXISTS heading_permissions;
 DROP TABLE IF EXISTS document_permissions;

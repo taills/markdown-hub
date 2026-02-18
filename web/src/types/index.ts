@@ -4,7 +4,6 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  default_workspace_id: string;
   preferred_language: string;
   created_at: string;
   updated_at: string;

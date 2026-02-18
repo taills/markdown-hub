@@ -7,7 +7,6 @@ CREATE TABLE users (
     username    TEXT NOT NULL UNIQUE,
     email       TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    default_workspace_id UUID,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -29,10 +28,6 @@ CREATE TABLE workspace_members (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (workspace_id, user_id)
 );
-
-ALTER TABLE users
-    ADD CONSTRAINT fk_users_default_workspace
-    FOREIGN KEY (default_workspace_id) REFERENCES workspaces(id) ON DELETE RESTRICT;
 
 CREATE TABLE documents (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -95,6 +90,7 @@ CREATE TABLE heading_permissions (
 
 CREATE INDEX idx_documents_owner_id ON documents(owner_id);
 CREATE INDEX idx_documents_workspace_id ON documents(workspace_id);
+CREATE INDEX idx_documents_workspace_updated_at ON documents(workspace_id, updated_at DESC);
 
 CREATE INDEX idx_attachments_document ON attachments(document_id);
 CREATE INDEX idx_attachments_workspace_id ON attachments(workspace_id);

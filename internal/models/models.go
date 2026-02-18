@@ -15,14 +15,13 @@ const (
 
 // User represents a registered account.
 type User struct {
-	ID                 string    `json:"id"`
-	Username           string    `json:"username"`
-	Email              string    `json:"email"`
-	PasswordHash       string    `json:"-"`
-	DefaultWorkspaceID string    `json:"default_workspace_id"`
-	PreferredLanguage  string    `json:"preferred_language"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                string    `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"-"`
+	PreferredLanguage string    `json:"preferred_language"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // UserStats aggregates account-level metrics.

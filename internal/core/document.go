@@ -38,11 +38,7 @@ func (s *DocumentService) CreateDocument(ctx context.Context, ownerID, workspace
 		return nil, fmt.Errorf("%w: title is required", ErrInvalidInput)
 	}
 	if workspaceID == "" {
-		user, err := s.db.GetUserByID(ctx, ownerID)
-		if err != nil {
-			return nil, fmt.Errorf("get user: %w", err)
-		}
-		workspaceID = user.DefaultWorkspaceID
+		return nil, fmt.Errorf("%w: workspace is required", ErrInvalidInput)
 	}
 	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, ownerID, models.PermissionEdit); err != nil {
 		return nil, err

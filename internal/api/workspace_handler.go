@@ -164,20 +164,3 @@ func (h *WorkspaceHandler) DeleteMember(w http.ResponseWriter, r *http.Request) 
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
-
-// SetDefault godoc
-// PUT /api/workspaces/{id}/default
-func (h *WorkspaceHandler) SetDefault(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
-	workspaceID := pathParamAt(r.URL.Path, 2)
-	user, err := h.workspaceSvc.SetDefaultWorkspace(r.Context(), userID, workspaceID)
-	if err != nil {
-		writeError(w, errStatus(err), err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, user)
-}

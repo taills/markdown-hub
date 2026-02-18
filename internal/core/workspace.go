@@ -98,14 +98,6 @@ func (s *WorkspaceService) ListWorkspaceMembers(ctx context.Context, workspaceID
 	return s.db.ListWorkspaceMembersWithUsername(ctx, workspaceID)
 }
 
-// SetDefaultWorkspace updates a user's default workspace.
-func (s *WorkspaceService) SetDefaultWorkspace(ctx context.Context, userID, workspaceID string) (*models.User, error) {
-	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionRead); err != nil {
-		return nil, err
-	}
-	return s.db.UpdateUserDefaultWorkspace(ctx, userID, workspaceID)
-}
-
 // UpdateWorkspaceName updates workspace name (requires manage permission).
 func (s *WorkspaceService) UpdateWorkspaceName(ctx context.Context, workspaceID, userID, name string) (*models.Workspace, error) {
 	if name == "" {

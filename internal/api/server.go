@@ -125,8 +125,6 @@ func NewServer(
 			workspaceH.SetMember(w, r)
 		case r.Method == http.MethodDelete && isWorkspaceMemberPath(r.URL.Path):
 			workspaceH.DeleteMember(w, r)
-		case r.Method == http.MethodPut && isWorkspacePath(r.URL.Path, "/default"):
-			workspaceH.SetDefault(w, r)
 
 		// Workspace attachments
 		case r.Method == http.MethodPost && isWorkspacePath(r.URL.Path, "/attachments"):

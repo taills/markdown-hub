@@ -62,7 +62,6 @@ export function NotesLayout() {
   const [newTitle, setNewTitle] = useState('');
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
-  const [defaultWorkspaceId, setDefaultWorkspaceId] = useState('');
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceError, setWorkspaceError] = useState('');
@@ -76,10 +75,6 @@ export function NotesLayout() {
   const [titleError, setTitleError] = useState('');
 
   useEffect(() => {
-    setDefaultWorkspaceId(user?.default_workspace_id ?? '');
-  }, [user?.default_workspace_id]);
-
-  useEffect(() => {
     let isMounted = true;
     setWorkspaceLoading(true);
     workspaceService
@@ -87,7 +82,7 @@ export function NotesLayout() {
       .then((data) => {
         if (!isMounted) return;
         setWorkspaces(data ?? []);
-        const initialId = user?.default_workspace_id || data?.[0]?.id || '';
+        const initialId = data?.[0]?.id || '';
         setSelectedWorkspaceId((prev) => prev || initialId);
       })
       .catch((e: Error) => setWorkspaceError(e.message))
@@ -95,7 +90,7 @@ export function NotesLayout() {
     return () => {
       isMounted = false;
     };
-  }, [user?.default_workspace_id]);
+  }, []);
 
   useEffect(() => {
     if (document) setContent(document.content);
@@ -249,13 +244,14 @@ export function NotesLayout() {
 
   const handleCreateDocument = async () => {
     if (!newTitle.trim()) return;
+    if (!selectedWorkspaceId) {
+      setCreateDocError(t('workspace.none'));
+      return;
+    }
     setCreatingDocument(true);
     setCreateDocError('');
     try {
-      const workspaceId = showAllWorkspaces
-        ? (defaultWorkspaceId || selectedWorkspaceId)
-        : selectedWorkspaceId;
-      const doc = await documentService.create(newTitle.trim(), '', workspaceId || undefined);
+      const doc = await documentService.create(newTitle.trim(), '', selectedWorkspaceId);
       setNewTitle('');
       reload();
       navigate(`/documents/${doc.id}`);
@@ -286,17 +282,6 @@ export function NotesLayout() {
       setWorkspaceError(e instanceof Error ? e.message : 'Error');
     } finally {
       setCreatingWorkspace(false);
-    }
-  };
-
-  const handleSetDefaultWorkspace = async () => {
-    if (!selectedWorkspaceId) return;
-    setWorkspaceError('');
-    try {
-      await workspaceService.setDefault(selectedWorkspaceId);
-      setDefaultWorkspaceId(selectedWorkspaceId);
-    } catch (e: unknown) {
-      setWorkspaceError(e instanceof Error ? e.message : 'Error');
     }
   };
 
@@ -582,13 +567,6 @@ export function NotesLayout() {
                 <h3>{t('workspace.title')}</h3>
                 <p className="muted">{t('workspace.folders')}</p>
               </div>
-              <button
-                className="secondary"
-                onClick={handleSetDefaultWorkspace}
-                disabled={!selectedWorkspaceId || selectedWorkspaceId === defaultWorkspaceId}
-              >
-                {selectedWorkspaceId === defaultWorkspaceId ? t('workspace.default') : t('workspace.setDefault')}
-              </button>
             </div>
             {workspaceError && <p className="error">{workspaceError}</p>}
             <div className="workspace-list">
@@ -612,7 +590,6 @@ export function NotesLayout() {
                     }}
                   >
                     <span>{ws.name}</span>
-                    {ws.id === defaultWorkspaceId && <span className="workspace-badge">{t('workspace.default')}</span>}
                   </button>
                   <button
                     className="workspace-settings-btn"
@@ -674,7 +651,7 @@ export function NotesLayout() {
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateDocument()}
               />
-              <button onClick={handleCreateDocument} disabled={creatingDocument || !newTitle.trim()}>
+              <button onClick={handleCreateDocument} disabled={creatingDocument || !newTitle.trim() || !selectedWorkspaceId}>
                 {creatingDocument ? t('doc.creating') : t('doc.create')}
               </button>
             </div>

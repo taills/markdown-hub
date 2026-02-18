@@ -56,7 +56,7 @@ export const userService = {
 export const documentService = {
   list: () => request<DocumentListItem[]>('/documents'),
   get: (id: string) => request<Document>(`/documents/${id}`),
-  create: (title: string, content = '', workspaceId?: string) =>
+  create: (title: string, content = '', workspaceId: string) =>
     request<Document>('/documents', {
       method: 'POST',
       body: JSON.stringify({ title, content, workspace_id: workspaceId }),
@@ -91,8 +91,6 @@ export const workspaceService = {
       method: 'PATCH',
       body: JSON.stringify({ name }),
     }),
-  setDefault: (id: string) =>
-    request<AuthResponse['user']>(`/workspaces/${id}/default`, { method: 'PUT' }),
   listMembers: (workspaceId: string) =>
     request<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`),
   setMember: (workspaceId: string, username: string, level: PermissionLevel) =>

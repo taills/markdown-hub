@@ -12,7 +12,6 @@ export function DocumentList() {
   const [newTitle, setNewTitle] = useState('');
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
-  const [defaultWorkspaceId, setDefaultWorkspaceId] = useState<string>('');
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
   const [workspaceAttachments, setWorkspaceAttachments] = useState<Attachment[]>([]);
@@ -28,10 +27,6 @@ export function DocumentList() {
   const [showAllWorkspaces, setShowAllWorkspaces] = useState(false);
 
   useEffect(() => {
-    setDefaultWorkspaceId(user?.default_workspace_id ?? '');
-  }, [user?.default_workspace_id]);
-
-  useEffect(() => {
     let isMounted = true;
     setWorkspaceLoading(true);
     workspaceService
@@ -39,7 +34,7 @@ export function DocumentList() {
       .then((data) => {
         if (!isMounted) return;
         setWorkspaces(data ?? []);
-        const initialId = user?.default_workspace_id || data?.[0]?.id || '';
+        const initialId = data?.[0]?.id || '';
         setSelectedWorkspaceId((prev) => prev || initialId);
       })
       .catch((e: Error) => setWorkspaceError(e.message))
@@ -47,7 +42,7 @@ export function DocumentList() {
     return () => {
       isMounted = false;
     };
-  }, [user?.default_workspace_id]);
+  }, []);
 
   useEffect(() => {
     if (!selectedWorkspaceId) return;
@@ -64,11 +59,14 @@ export function DocumentList() {
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
+    if (!selectedWorkspaceId) {
+      setError('请先创建或加入工作空间。');
+      return;
+    }
     setCreating(true);
     setError('');
     try {
-      const workspaceId = showAllWorkspaces ? (defaultWorkspaceId || selectedWorkspaceId) : selectedWorkspaceId;
-      const doc = await documentService.create(newTitle.trim(), '', workspaceId || undefined);
+      const doc = await documentService.create(newTitle.trim(), '', selectedWorkspaceId);
       navigate(`/documents/${doc.id}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error');
@@ -90,17 +88,6 @@ export function DocumentList() {
       setWorkspaceError(e instanceof Error ? e.message : 'Error');
     } finally {
       setCreatingWorkspace(false);
-    }
-  };
-
-  const handleSetDefaultWorkspace = async () => {
-    if (!selectedWorkspaceId) return;
-    setWorkspaceError('');
-    try {
-      await workspaceService.setDefault(selectedWorkspaceId);
-      setDefaultWorkspaceId(selectedWorkspaceId);
-    } catch (e: unknown) {
-      setWorkspaceError(e instanceof Error ? e.message : 'Error');
     }
   };
 
@@ -231,7 +218,7 @@ export function DocumentList() {
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
         />
-        <button onClick={handleCreate} disabled={creating || !newTitle.trim()}>
+        <button onClick={handleCreate} disabled={creating || !newTitle.trim() || !selectedWorkspaceId}>
           {creating ? 'Creating…' : 'New Document'}
         </button>
         {error && <p className="error">{error}</p>}
@@ -243,13 +230,6 @@ export function DocumentList() {
             <h2>Workspace</h2>
             <p className="muted">管理工作空间权限与附件</p>
           </div>
-          <button
-            className="secondary"
-            onClick={handleSetDefaultWorkspace}
-            disabled={!selectedWorkspaceId || selectedWorkspaceId === defaultWorkspaceId}
-          >
-            {selectedWorkspaceId === defaultWorkspaceId ? 'Default Workspace' : 'Set Default'}
-          </button>
         </div>
 
         <div className="workspace-actions">

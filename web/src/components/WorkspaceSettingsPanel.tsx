@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { workspaceService, workspaceAttachmentService } from '@/services/api';
 import type { Attachment, PermissionLevel, WorkspaceMember } from '@/types';
 
@@ -15,6 +16,7 @@ export function WorkspaceSettingsPanel({
   workspaceName,
   onWorkspaceUpdated,
 }: WorkspaceSettingsPanelProps) {
+  const { t } = useTranslation();
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
   const [workspaceAttachments, setWorkspaceAttachments] = useState<Attachment[]>([]);
   const [memberUsername, setMemberUsername] = useState('');
@@ -51,7 +53,7 @@ export function WorkspaceSettingsPanel({
     if (!workspaceId || nameSaving) return;
     const nextName = nameDraft.trim();
     if (!nextName) {
-      setNameError('名称不能为空');
+      setNameError(t('workspace.nameEmpty'));
       return;
     }
     if (nextName === workspaceName) {
@@ -67,7 +69,7 @@ export function WorkspaceSettingsPanel({
       setNameEditing(false);
       onWorkspaceUpdated?.({ id: ws.id, name: ws.name });
     } catch (e: unknown) {
-      setNameError(e instanceof Error ? e.message : '更新失败');
+      setNameError(e instanceof Error ? e.message : t('workspace.nameUpdateFailed'));
     } finally {
       setNameSaving(false);
     }
@@ -96,7 +98,7 @@ export function WorkspaceSettingsPanel({
       setMemberUsername('');
       setMemberLevel('read');
     } catch (e: unknown) {
-      setWorkspaceError(e instanceof Error ? e.message : 'Error');
+      setWorkspaceError(e instanceof Error ? e.message : t('common.error'));
     } finally {
       setMemberSaving(false);
     }
@@ -116,7 +118,7 @@ export function WorkspaceSettingsPanel({
       const attachment = await workspaceAttachmentService.upload(workspaceId, file);
       setWorkspaceAttachments((prev) => [attachment, ...prev]);
     } catch (e: unknown) {
-      setWorkspaceError(e instanceof Error ? e.message : 'Error');
+      setWorkspaceError(e instanceof Error ? e.message : t('common.error'));
     } finally {
       setAttachmentsUploading(false);
     }
@@ -141,19 +143,19 @@ export function WorkspaceSettingsPanel({
   };
 
   if (!workspaceId) {
-    return <div className="empty-state">请选择一个工作空间以查看设置。</div>;
+    return <div className="empty-state">{t('workspace.selectToView')}</div>;
   }
 
   return (
     <div className="workspace-settings">
       <div className="workspace-settings-section">
         <div className="section-header">
-          <h3>工作空间名称</h3>
+          <h3>{t('workspace.name')}</h3>
         </div>
         <div className="inline-form">
           <input
             type="text"
-            placeholder="工作空间名称"
+            placeholder={t('workspace.name')}
             value={nameDraft}
             onChange={(e) => setNameDraft(e.target.value)}
             onFocus={() => setNameEditing(true)}
@@ -165,31 +167,31 @@ export function WorkspaceSettingsPanel({
             disabled={nameSaving}
           />
           <button onClick={handleSaveWorkspaceName} disabled={nameSaving || !nameDraft.trim()}>
-            {nameSaving ? '保存中…' : '保存'}
+            {nameSaving ? t('workspace.memberSaving') : t('doc.save')}
           </button>
           <button className="secondary" onClick={handleCancelWorkspaceName} disabled={nameSaving}>
-            取消
+            {t('doc.cancel')}
           </button>
         </div>
         {nameError && <p className="error">{nameError}</p>}
       </div>
 
       <div className="workspace-settings-section">
-        <h3>成员权限</h3>
+        <h3>{t('workspace.members')}</h3>
         <div className="inline-form">
           <input
             type="text"
-            placeholder="用户名"
+            placeholder={t('workspace.memberUsername')}
             value={memberUsername}
             onChange={(e) => setMemberUsername(e.target.value)}
           />
           <select value={memberLevel} onChange={(e) => setMemberLevel(e.target.value as PermissionLevel)}>
-            <option value="read">read</option>
-            <option value="edit">edit</option>
-            <option value="manage">manage</option>
+            <option value="read">{t('permissions.read')}</option>
+            <option value="edit">{t('permissions.edit')}</option>
+            <option value="manage">{t('permissions.manage')}</option>
           </select>
           <button onClick={handleAddMember} disabled={memberSaving || !memberUsername.trim()}>
-            {memberSaving ? '保存中…' : '添加'}
+            {memberSaving ? t('workspace.memberSaving') : t('workspace.memberAdd')}
           </button>
         </div>
         {workspaceError && <p className="error">{workspaceError}</p>}
@@ -200,29 +202,29 @@ export function WorkspaceSettingsPanel({
               <li key={member.id} className="member-item">
                 <span className="member-name">{member.username || member.user_id}</span>
                 {isOwner ? (
-                  <span className="perm-level perm-owner">Owner</span>
+                  <span className="perm-level perm-owner">{t('workspace.memberOwner')}</span>
                 ) : (
                   <span className={`perm-level perm-${member.level}`}>{member.level}</span>
                 )}
                 <button
                   onClick={() => handleRemoveMember(member.user_id)}
                   disabled={isOwner}
-                  title={isOwner ? 'Owner 不能被移除' : '移除成员'}
+                  title={isOwner ? t('workspace.memberRemoveBlocked') : t('workspace.memberRemove')}
                 >
-                  移除
+                  {t('workspace.memberRemove')}
                 </button>
               </li>
             );
           })}
-          {workspaceMembers.length === 0 && <li className="empty">暂无成员。</li>}
+          {workspaceMembers.length === 0 && <li className="empty">{t('workspace.noMembers')}</li>}
         </ul>
       </div>
 
       <div className="workspace-settings-section">
         <div className="section-header">
-          <h3>工作空间附件</h3>
+          <h3>{t('workspace.attachments')}</h3>
           <label className="upload-button compact">
-            {attachmentsUploading ? '上传中…' : '上传附件'}
+            {attachmentsUploading ? t('workspace.uploading') : t('workspace.upload')}
             <input
               type="file"
               hidden
@@ -238,9 +240,9 @@ export function WorkspaceSettingsPanel({
         <table className="attachment-table">
           <thead>
             <tr>
-              <th>名称</th>
-              <th>大小</th>
-              <th className="att-actions-header">操作</th>
+              <th>{t('workspace.nameLabel')}</th>
+              <th>{t('workspace.size')}</th>
+              <th className="att-actions-header">{t('workspace.operations')}</th>
             </tr>
           </thead>
           <tbody>
@@ -250,15 +252,15 @@ export function WorkspaceSettingsPanel({
                 <td className="att-size-cell">{(att.file_size / 1024).toFixed(1)} KB</td>
                 <td className="att-actions-cell">
                   <div className="att-actions">
-                    <button className="att-download" onClick={() => handleWorkspaceDownload(att)}>下载</button>
-                    <button className="att-delete" onClick={() => handleWorkspaceDelete(att.id)}>删除</button>
+                    <button className="att-download" onClick={() => handleWorkspaceDownload(att)}>{t('workspace.download')}</button>
+                    <button className="att-delete" onClick={() => handleWorkspaceDelete(att.id)}>{t('workspace.delete')}</button>
                   </div>
                 </td>
               </tr>
             ))}
             {workspaceAttachments.length === 0 && (
               <tr>
-                <td colSpan={3} className="empty">暂无附件。</td>
+                <td colSpan={3} className="empty">{t('workspace.noAttachments')}</td>
               </tr>
             )}
           </tbody>

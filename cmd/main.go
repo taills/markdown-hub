@@ -30,6 +30,7 @@ func main() {
 	// Wire services.
 	permSvc := core.NewPermissionService(db)
 	authSvc := core.NewAuthService(db)
+	userSvc := core.NewUserService(db)
 	docSvc := core.NewDocumentService(db, permSvc)
 	snapSvc := core.NewSnapshotService(db, permSvc)
 	workspaceSvc := core.NewWorkspaceService(db, permSvc)
@@ -42,7 +43,7 @@ func main() {
 		staticFS = embeddedFS
 	}
 
-	srv := api.NewServer(db, authSvc, docSvc, snapSvc, permSvc, workspaceSvc, attachSvc, jwtSecret, staticFS)
+	srv := api.NewServer(db, authSvc, userSvc, docSvc, snapSvc, permSvc, workspaceSvc, attachSvc, jwtSecret, staticFS)
 
 	httpServer := &http.Server{
 		Addr:         addr,

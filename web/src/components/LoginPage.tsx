@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { login, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
@@ -21,7 +23,7 @@ export function LoginPage() {
         await register(username, email, password);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : t('auth.unknownError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -29,28 +31,28 @@ export function LoginPage() {
 
   return (
     <div className="auth-page">
-      <h1>MarkdownHub</h1>
-      <p className="tagline">Write Markdown. Collaborate. Manage versions like Git.</p>
+      <h1>{t('app.title')}</h1>
+      <p className="tagline">{t('app.tagline')}</p>
       <div className="auth-form-container">
         <div className="auth-tabs">
           <button
             className={mode === 'login' ? 'active' : ''}
             onClick={() => setMode('login')}
           >
-            Sign In
+            {t('auth.signIn')}
           </button>
           <button
             className={mode === 'register' ? 'active' : ''}
             onClick={() => setMode('register')}
           >
-            Register
+            {t('auth.register')}
           </button>
         </div>
         <form onSubmit={handleSubmit} className="auth-form">
           {mode === 'register' && (
             <input
               type="text"
-              placeholder="Username"
+              placeholder={t('auth.username')}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -58,21 +60,21 @@ export function LoginPage() {
           )}
           <input
             type="email"
-            placeholder="Email"
+            placeholder={t('auth.email')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder={t('auth.password')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
           {error && <p className="error">{error}</p>}
           <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Loading…' : mode === 'login' ? 'Sign In' : 'Register'}
+            {isSubmitting ? t('auth.loading') : mode === 'login' ? t('auth.signIn') : t('auth.register')}
           </button>
         </form>
       </div>

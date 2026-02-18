@@ -20,8 +20,18 @@ type User struct {
 	Email              string    `json:"email"`
 	PasswordHash       string    `json:"-"`
 	DefaultWorkspaceID string    `json:"default_workspace_id"`
+	PreferredLanguage  string    `json:"preferred_language"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+// UserStats aggregates account-level metrics.
+type UserStats struct {
+	AccessibleDocuments int `json:"accessible_documents"`
+	OwnedDocuments      int `json:"owned_documents"`
+	Workspaces          int `json:"workspaces"`
+	AttachmentsUploaded int `json:"attachments_uploaded"`
+	SnapshotsAuthored   int `json:"snapshots_authored"`
 }
 
 // Document is the top-level writable unit.

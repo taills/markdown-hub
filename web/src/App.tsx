@@ -1,19 +1,23 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { LoginPage } from '@/components/LoginPage';
 import { NotesLayout } from '@/components/NotesLayout';
+import { PersonalCenter } from '@/components/PersonalCenter';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const { user, isLoading } = useAuth();
-  if (isLoading) return <div className="loading">Loading…</div>;
+  if (isLoading) return <div className="loading">{t('common.loading')}</div>;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function AppRoutes() {
+  const { t } = useTranslation();
   const { user, isLoading } = useAuth();
-  if (isLoading) return <div className="loading">Loading…</div>;
+  if (isLoading) return <div className="loading">{t('common.loading')}</div>;
 
   return (
     <Routes>
@@ -34,6 +38,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <NotesLayout />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/me"
+        element={
+          <RequireAuth>
+            <PersonalCenter />
           </RequireAuth>
         }
       />

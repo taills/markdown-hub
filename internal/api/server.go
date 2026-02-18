@@ -20,6 +20,7 @@ type Server struct {
 func NewServer(
 	db *store.DB,
 	authSvc *core.AuthService,
+	userSvc *core.UserService,
 	docSvc *core.DocumentService,
 	snapSvc *core.SnapshotService,
 	permSvc *core.PermissionService,
@@ -34,6 +35,7 @@ func NewServer(
 	mux := http.NewServeMux()
 
 	authH := NewAuthHandler(authSvc)
+	userH := NewUserHandler(userSvc)
 	docH := NewDocumentHandler(docSvc)
 	snapH := NewSnapshotHandler(snapSvc)
 	permH := NewPermissionHandler(permSvc, docSvc)
@@ -51,6 +53,14 @@ func NewServer(
 		// Auth
 		case r.Method == http.MethodGet && r.URL.Path == "/api/auth/me":
 			authH.Me(w, r)
+
+		// User profile
+		case r.Method == http.MethodGet && r.URL.Path == "/api/users/me/stats":
+			userH.Stats(w, r)
+		case r.Method == http.MethodPatch && r.URL.Path == "/api/users/me/password":
+			userH.UpdatePassword(w, r)
+		case r.Method == http.MethodPatch && r.URL.Path == "/api/users/me/preferences":
+			userH.UpdatePreferences(w, r)
 
 		// Documents
 		case r.Method == http.MethodPost && r.URL.Path == "/api/documents":
@@ -134,6 +144,8 @@ func NewServer(
 	}))
 
 	mux.Handle("/api/auth/me", protected)
+	mux.Handle("/api/users/me", protected)
+	mux.Handle("/api/users/me/", protected)
 	mux.Handle("/api/documents", protected)
 	mux.Handle("/api/documents/", protected)
 	mux.Handle("/api/snapshots/", protected)

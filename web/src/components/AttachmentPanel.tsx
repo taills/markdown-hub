@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { attachmentService, workspaceAttachmentService } from '@/services/api';
 import type { Attachment } from '@/types';
 
@@ -9,6 +10,7 @@ interface AttachmentPanelProps {
 }
 
 export function AttachmentPanel({ documentId, workspaceId, onInsert }: AttachmentPanelProps) {
+  const { t } = useTranslation();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [workspaceAttachments, setWorkspaceAttachments] = useState<Attachment[]>([]);
   const [unreferenced, setUnreferenced] = useState<Attachment[]>([]);
@@ -63,7 +65,7 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
   };
 
   const handleDelete = async (attachmentId: string) => {
-    if (!confirm('Delete this attachment?')) return;
+    if (!confirm(t('attachments.deleteConfirm'))) return;
     try {
       await attachmentService.delete(documentId, attachmentId);
       await load();
@@ -94,7 +96,7 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to download attachment:', err);
-      alert('Failed to download attachment');
+      alert(t('attachments.downloadFailed'));
     }
   };
 
@@ -110,23 +112,23 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
 
   return (
     <div className="attachment-panel">
-      <h3>Attachments</h3>
+      <h3>{t('attachments.title')}</h3>
 
       {isLoading ? (
-        <p>Loading…</p>
+        <p>{t('common.loading')}</p>
       ) : (
         <>
           <div className="attachment-list workspace-attachment-list">
-            <h4>Workspace Attachments ({workspaceAttachments.length})</h4>
+            <h4>{t('attachments.workspaceTitle')} ({workspaceAttachments.length})</h4>
             {workspaceAttachments.length === 0 ? (
-              <p className="empty">No workspace attachments yet.</p>
+              <p className="empty">{t('attachments.emptyWorkspace')}</p>
             ) : (
               <table className="attachment-table">
                 <thead>
                   <tr>
-                    <th>File</th>
-                    <th>Size</th>
-                    <th className="att-actions-header">Actions</th>
+                    <th>{t('attachments.file')}</th>
+                    <th>{t('attachments.size')}</th>
+                    <th className="att-actions-header">{t('attachments.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,13 +142,13 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
                             onClick={() => handleInsert(att)}
                             className="att-insert"
                           >
-                            Insert
+                            {t('attachments.insert')}
                           </button>
                           <button
                             onClick={() => handleDownload(att)}
                             className="att-download"
                           >
-                            Download
+                            {t('attachments.download')}
                           </button>
                         </div>
                       </td>
@@ -171,23 +173,23 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
               disabled={uploading}
               className="upload-button"
             >
-              {uploading ? 'Uploading…' : 'Upload Files'}
+              {uploading ? t('attachments.uploading') : t('attachments.uploadFiles')}
             </button>
             {error && <p className="error">{error}</p>}
           </div>
 
           <div className="attachment-list">
-            <h4>All Attachments ({attachments.length})</h4>
+            <h4>{t('attachments.allTitle')} ({attachments.length})</h4>
             {attachments.length === 0 ? (
-              <p className="empty">No attachments yet.</p>
+              <p className="empty">{t('attachments.empty')}</p>
             ) : (
               <table className="attachment-table">
                 <thead>
                   <tr>
-                    <th>File</th>
-                    <th>Size</th>
-                    <th>Status</th>
-                    <th className="att-actions-header">Actions</th>
+                    <th>{t('attachments.file')}</th>
+                    <th>{t('attachments.size')}</th>
+                    <th>{t('attachments.status')}</th>
+                    <th className="att-actions-header">{t('attachments.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -199,7 +201,7 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
                         <td className="att-size-cell">{formatFileSize(att.file_size)}</td>
                         <td className="att-status-cell">
                           <span className={`att-badge ${isUnreferenced ? 'att-badge-unused' : 'att-badge-used'}`}>
-                            {isUnreferenced ? 'Unused' : 'In use'}
+                            {isUnreferenced ? t('attachments.unused') : t('attachments.inUse')}
                           </span>
                         </td>
                         <td className="att-actions-cell">
@@ -208,19 +210,19 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
                               onClick={() => handleInsert(att)}
                               className="att-insert"
                             >
-                              Insert
+                              {t('attachments.insert')}
                             </button>
                             <button
                               onClick={() => handleDownload(att)}
                               className="att-download"
                             >
-                              Download
+                              {t('attachments.download')}
                             </button>
                             <button
                               onClick={() => handleDelete(att.id)}
                               className="att-delete"
                             >
-                              Delete
+                              {t('attachments.delete')}
                             </button>
                           </div>
                         </td>
@@ -238,16 +240,16 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
                 onClick={() => setShowUnreferenced(!showUnreferenced)}
                 className="toggle-button"
               >
-                {showUnreferenced ? '▼' : '▶'} Unreferenced Attachments ({unreferenced.length})
+                {showUnreferenced ? '▼' : '▶'} {t('attachments.unreferenced')} ({unreferenced.length})
               </button>
               {showUnreferenced && (
                 <table className="attachment-table">
                   <thead>
                     <tr>
-                      <th>File</th>
-                      <th>Size</th>
-                      <th>Status</th>
-                      <th className="att-actions-header">Actions</th>
+                      <th>{t('attachments.file')}</th>
+                      <th>{t('attachments.size')}</th>
+                      <th>{t('attachments.status')}</th>
+                      <th className="att-actions-header">{t('attachments.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -256,7 +258,7 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
                         <td className="att-name-cell">{att.filename}</td>
                         <td className="att-size-cell">{formatFileSize(att.file_size)}</td>
                         <td className="att-status-cell">
-                          <span className="att-badge att-badge-unused">Unused</span>
+                          <span className="att-badge att-badge-unused">{t('attachments.unused')}</span>
                         </td>
                         <td className="att-actions-cell">
                           <div className="att-actions">
@@ -264,19 +266,19 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
                               onClick={() => handleInsert(att)}
                               className="att-insert"
                             >
-                              Insert
+                              {t('attachments.insert')}
                             </button>
                             <button
                               onClick={() => handleDownload(att)}
                               className="att-download"
                             >
-                              Download
+                              {t('attachments.download')}
                             </button>
                             <button
                               onClick={() => handleDelete(att.id)}
                               className="att-delete"
                             >
-                              Delete
+                              {t('attachments.delete')}
                             </button>
                           </div>
                         </td>

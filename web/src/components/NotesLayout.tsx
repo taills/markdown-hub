@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { useDocument, useDocumentList } from '@/hooks/useDocument';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -27,6 +28,7 @@ const MIN_WIDTHS: Record<ResizableColumn, number> = {
 };
 
 export function NotesLayout() {
+  const { t, i18n } = useTranslation();
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { user, logout, token } = useAuth();
@@ -265,7 +267,7 @@ export function NotesLayout() {
   };
 
   const handleDeleteDocument = async (doc: DocumentListItem) => {
-    if (!confirm('Delete this document?')) return;
+    if (!confirm(t('doc.deleteConfirm'))) return;
     await documentService.delete(doc.id).catch(() => null);
     reload();
     if (id === doc.id) navigate('/');
@@ -302,7 +304,7 @@ export function NotesLayout() {
     if (!document || titleSaving) return;
     const nextTitle = titleDraft.trim();
     if (!nextTitle) {
-      setTitleError('标题不能为空');
+      setTitleError(t('doc.titleEmpty'));
       return;
     }
     if (nextTitle === document.title) {
@@ -319,7 +321,7 @@ export function NotesLayout() {
       setIsEditingTitle(false);
       reload();
     } catch (e: unknown) {
-      setTitleError(e instanceof Error ? e.message : '更新标题失败');
+      setTitleError(e instanceof Error ? e.message : t('doc.updateTitleFailed'));
     } finally {
       setTitleSaving(false);
     }
@@ -452,7 +454,7 @@ export function NotesLayout() {
         <div className="topbar-left">
           <span className="app-title">MarkdownHub</span>
           <div className="doc-title-wrap">
-            {!document && <span className="doc-title">未选择文档</span>}
+            {!document && <span className="doc-title">{t('doc.noneSelected')}</span>}
             {document && !isEditingTitle && (
               <span className="doc-title" title={document.title}>{document.title}</span>
             )}
@@ -469,7 +471,7 @@ export function NotesLayout() {
                   }}
                   onBlur={saveTitle}
                   disabled={titleSaving}
-                  aria-label="文档标题"
+                  aria-label={t('doc.titleLabel')}
                 />
                 <div className="doc-title-actions">
                   <button
@@ -477,14 +479,14 @@ export function NotesLayout() {
                     onClick={saveTitle}
                     disabled={titleSaving}
                   >
-                    保存
+                    {t('doc.save')}
                   </button>
                   <button
                     className="doc-title-btn ghost"
                     onClick={cancelTitleEdit}
                     disabled={titleSaving}
                   >
-                    取消
+                    {t('doc.cancel')}
                   </button>
                 </div>
               </div>
@@ -493,9 +495,9 @@ export function NotesLayout() {
               <button
                 className="doc-title-btn ghost"
                 onClick={() => setIsEditingTitle(true)}
-                title="编辑标题"
+                title={t('doc.editTitle')}
               >
-                编辑
+                {t('doc.editTitle')}
               </button>
             )}
           </div>
@@ -508,21 +510,21 @@ export function NotesLayout() {
               className={visibleColumns.workspace ? 'active' : ''}
               onClick={() => toggleColumn('workspace')}
             >
-              工作空间
+              {t('nav.workspace')}
             </button>
             <button
               className={visibleColumns.documents ? 'active' : ''}
               onClick={() => toggleColumn('documents')}
               disabled={mode === 'settings'}
             >
-              文档列表
+              {t('nav.documents')}
             </button>
             <button
               className={visibleColumns.preview ? 'active' : ''}
               onClick={() => toggleColumn('preview')}
               disabled={mode === 'settings'}
             >
-              预览/面板
+              {t('nav.previewPanel')}
             </button>
           </div>
           <div className="menu-group">
@@ -531,28 +533,28 @@ export function NotesLayout() {
               onClick={() => setActivePanel('preview')}
               disabled={mode === 'settings'}
             >
-              预览
+              {t('nav.preview')}
             </button>
             <button
               className={activePanel === 'history' ? 'active' : ''}
               onClick={() => setActivePanel('history')}
               disabled={mode === 'settings'}
             >
-              历史
+              {t('nav.history')}
             </button>
             <button
               className={activePanel === 'permissions' ? 'active' : ''}
               onClick={() => setActivePanel('permissions')}
               disabled={mode === 'settings'}
             >
-              权限
+              {t('nav.permissions')}
             </button>
             <button
               className={activePanel === 'attachments' ? 'active' : ''}
               onClick={() => setActivePanel('attachments')}
               disabled={mode === 'settings'}
             >
-              附件
+              {t('nav.attachments')}
             </button>
           </div>
         </div>
@@ -564,10 +566,11 @@ export function NotesLayout() {
             </span>
           )}
           {collaborators.length > 0 && (
-            <span className="collaborators">{collaborators.length} online</span>
+            <span className="collaborators">{collaborators.length} {t('common.online')}</span>
           )}
           <span className="user-chip">{user?.username}</span>
-          <button className="ghost" onClick={logout}>退出</button>
+          <button className="ghost" onClick={() => navigate('/me')}>{t('nav.profile')}</button>
+          <button className="ghost" onClick={logout}>{t('nav.logout')}</button>
         </div>
       </header>
 
@@ -576,15 +579,15 @@ export function NotesLayout() {
           <aside className="notes-column workspace-column">
             <div className="column-header">
               <div>
-                <h3>工作空间</h3>
-                <p className="muted">Folders</p>
+                <h3>{t('workspace.title')}</h3>
+                <p className="muted">{t('workspace.folders')}</p>
               </div>
               <button
                 className="secondary"
                 onClick={handleSetDefaultWorkspace}
                 disabled={!selectedWorkspaceId || selectedWorkspaceId === defaultWorkspaceId}
               >
-                {selectedWorkspaceId === defaultWorkspaceId ? '默认' : '设为默认'}
+                {selectedWorkspaceId === defaultWorkspaceId ? t('workspace.default') : t('workspace.setDefault')}
               </button>
             </div>
             {workspaceError && <p className="error">{workspaceError}</p>}
@@ -593,7 +596,7 @@ export function NotesLayout() {
                 className={`workspace-item ${showAllWorkspaces ? 'active' : ''}`}
                 onClick={() => setShowAllWorkspaces(true)}
               >
-                全部工作空间
+                {t('workspace.all')}
               </button>
               {workspaces.map((ws) => (
                 <div
@@ -609,11 +612,11 @@ export function NotesLayout() {
                     }}
                   >
                     <span>{ws.name}</span>
-                    {ws.id === defaultWorkspaceId && <span className="workspace-badge">默认</span>}
+                    {ws.id === defaultWorkspaceId && <span className="workspace-badge">{t('workspace.default')}</span>}
                   </button>
                   <button
                     className="workspace-settings-btn"
-                    title="工作空间设置"
+                    title={t('workspace.settings')}
                     onClick={() => {
                       setShowAllWorkspaces(false);
                       setSelectedWorkspaceId(ws.id);
@@ -625,19 +628,19 @@ export function NotesLayout() {
                 </div>
               ))}
               {workspaces.length === 0 && !workspaceLoading && (
-                <div className="empty">暂无工作空间。</div>
+                <div className="empty">{t('workspace.none')}</div>
               )}
             </div>
             <div className="inline-form">
               <input
                 type="text"
-                placeholder="新建工作空间"
+                placeholder={t('workspace.createPlaceholder')}
                 value={newWorkspaceName}
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateWorkspace()}
               />
               <button onClick={handleCreateWorkspace} disabled={creatingWorkspace || !newWorkspaceName.trim()}>
-                {creatingWorkspace ? '创建中…' : '创建'}
+                {creatingWorkspace ? t('workspace.creating') : t('workspace.create')}
               </button>
             </div>
           </aside>
@@ -656,23 +659,23 @@ export function NotesLayout() {
           <aside className="notes-column document-column">
             <div className="column-header">
               <div>
-                <h3>文档</h3>
+                <h3>{t('nav.documents')}</h3>
                 <p className="muted">Documents</p>
               </div>
               <button className="secondary" onClick={reload} disabled={docsLoading}>
-                刷新
+                {t('common.refresh')}
               </button>
             </div>
             <div className="inline-form">
               <input
                 type="text"
-                placeholder="新文档标题"
+                placeholder={t('doc.newTitlePlaceholder')}
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateDocument()}
               />
               <button onClick={handleCreateDocument} disabled={creatingDocument || !newTitle.trim()}>
-                {creatingDocument ? '创建中…' : '新建'}
+                {creatingDocument ? t('doc.creating') : t('doc.create')}
               </button>
             </div>
             {createDocError && <p className="error">{createDocError}</p>}
@@ -685,17 +688,17 @@ export function NotesLayout() {
                   <button className="doc-main" onClick={() => navigate(`/documents/${doc.id}`)}>
                     <span className="doc-title">{doc.title}</span>
                     <span className="doc-meta">
-                      {workspaceMap.get(doc.workspace_id)?.name ?? 'Workspace'} · {new Date(doc.updated_at).toLocaleDateString()}
+                      {workspaceMap.get(doc.workspace_id)?.name ?? t('nav.workspace')} · {new Date(doc.updated_at).toLocaleDateString(i18n.language)}
                     </span>
                   </button>
                   {doc.owner_id === user?.id && (
                     <button className="doc-delete" onClick={() => handleDeleteDocument(doc)}>
-                      删除
+                      {t('workspace.delete')}
                     </button>
                   )}
                 </div>
               ))}
-              {filteredDocuments?.length === 0 && <div className="empty">暂无文档。</div>}
+              {filteredDocuments?.length === 0 && <div className="empty">{t('doc.empty')}</div>}
             </div>
           </aside>
         )}
@@ -710,11 +713,11 @@ export function NotesLayout() {
         )}
         {mode === 'edit' && (
           <main className="notes-column editor-column">
-            {docLoading && <div className="loading-inline">加载中…</div>}
+            {docLoading && <div className="loading-inline">{t('common.loading')}</div>}
             {!docLoading && documentError && <div className="error">{documentError}</div>}
             {!docLoading && !document && (
               <div className="empty-state">
-                请选择左侧文档，开始写作。
+                {t('doc.pickPrompt')}
               </div>
             )}
             {!docLoading && document && (
@@ -743,7 +746,7 @@ export function NotesLayout() {
             {activePanel === 'preview' && (
               document
                 ? <MarkdownPreview content={content} />
-                : <div className="empty-state">暂无可预览内容。</div>
+                : <div className="empty-state">{t('doc.previewEmpty')}</div>
             )}
             {activePanel === 'history' && (
               document
@@ -751,12 +754,12 @@ export function NotesLayout() {
                   setDocument(doc);
                   setContent(doc.content);
                 }} />
-                : <div className="empty-state">请选择文档查看历史。</div>
+                : <div className="empty-state">{t('doc.historyEmpty')}</div>
             )}
             {activePanel === 'permissions' && (
               document
                 ? <PermissionsPanel documentId={document.id} />
-                : <div className="empty-state">请选择文档查看权限。</div>
+                : <div className="empty-state">{t('doc.permissionsEmpty')}</div>
             )}
             {activePanel === 'attachments' && (
               document
@@ -765,7 +768,7 @@ export function NotesLayout() {
                     workspaceId={document.workspace_id}
                     onInsert={handleInsertAttachment}
                   />
-                : <div className="empty-state">请选择文档查看附件。</div>
+                : <div className="empty-state">{t('doc.attachmentsEmpty')}</div>
             )}
           </aside>
         )}
@@ -774,11 +777,11 @@ export function NotesLayout() {
           <section className="notes-column settings-column">
             <div className="column-header">
               <div>
-                <h3>工作空间设置</h3>
-                <p className="muted">Settings</p>
+                <h3>{t('workspace.settings')}</h3>
+                <p className="muted">{t('nav.settings')}</p>
               </div>
               <button className="secondary" onClick={() => setMode('edit')}>
-                返回编辑
+                {t('nav.backToEdit')}
               </button>
             </div>
             <div className="settings-body">

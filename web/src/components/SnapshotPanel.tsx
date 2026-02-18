@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { snapshotService } from '@/services/api';
 import { DiffView } from '@/components/MarkdownPreview';
 import type { Snapshot, Document, DiffLine } from '@/types';
@@ -9,6 +10,7 @@ interface SnapshotPanelProps {
 }
 
 export function SnapshotPanel({ documentId, onRestore }: SnapshotPanelProps) {
+  const { t, i18n } = useTranslation();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -76,17 +78,17 @@ export function SnapshotPanel({ documentId, onRestore }: SnapshotPanelProps) {
       <div className="snapshot-create">
         <input
           type="text"
-          placeholder="Snapshot message"
+          placeholder={t('snapshots.messagePlaceholder')}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
         <button onClick={handleCreateSnapshot} disabled={creating || !message.trim()}>
-          {creating ? 'Saving…' : 'Save snapshot'}
+          {creating ? t('snapshots.saving') : t('snapshots.save')}
         </button>
       </div>
 
       {isLoading ? (
-        <p>Loading history…</p>
+        <p>{t('snapshots.loadingHistory')}</p>
       ) : (
         <ul className="snapshot-list">
           {snapshots.map((snap) => (
@@ -95,23 +97,23 @@ export function SnapshotPanel({ documentId, onRestore }: SnapshotPanelProps) {
               className={`snapshot-item ${selectedId === snap.id ? 'selected' : ''}`}
               onClick={() => handleSelect(snap)}
             >
-              <span className="snap-message">{snap.message || '(no message)'}</span>
-              <span className="snap-date">{new Date(snap.created_at).toLocaleString()}</span>
+              <span className="snap-message">{snap.message || t('snapshots.noMessage')}</span>
+              <span className="snap-date">{new Date(snap.created_at).toLocaleString(i18n.language)}</span>
             </li>
           ))}
-          {snapshots.length === 0 && <li className="empty">No snapshots yet.</li>}
+          {snapshots.length === 0 && <li className="empty">{t('snapshots.empty')}</li>}
         </ul>
       )}
 
       {selectedId && (
         <div className="snapshot-actions">
           <button onClick={handleRestore} disabled={restoring}>
-            {restoring ? 'Restoring…' : 'Restore this snapshot'}
+            {restoring ? t('snapshots.restoring') : t('snapshots.restore')}
           </button>
         </div>
       )}
 
-      {diffLoading && <p>Loading diff…</p>}
+      {diffLoading && <p>{t('snapshots.loadingDiff')}</p>}
       {diff && <DiffView lines={diff} />}
     </div>
   );

@@ -5,8 +5,17 @@ export interface User {
   username: string;
   email: string;
   default_workspace_id: string;
+  preferred_language: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserStats {
+  accessible_documents: number;
+  owned_documents: number;
+  workspaces: number;
+  attachments_uploaded: number;
+  snapshots_authored: number;
 }
 
 export interface Document {

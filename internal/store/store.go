@@ -104,7 +104,7 @@ func (s *DB) CreateUserTx(ctx context.Context, ex execer, username, email, passw
 	row := ex.QueryRowContext(ctx,
 		`INSERT INTO users (id, username, email, password_hash)
 		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, username, email, password_hash, default_workspace_id, created_at, updated_at`,
+		 RETURNING id, username, email, password_hash, default_workspace_id, preferred_language, created_at, updated_at`,
 		u.ID, u.Username, u.Email, u.PasswordHash,
 	)
 	return scanUser(row)
@@ -112,26 +112,26 @@ func (s *DB) CreateUserTx(ctx context.Context, ex execer, username, email, passw
 
 func (s *DB) GetUserByID(ctx context.Context, id string) (*models.User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, username, email, password_hash, default_workspace_id, created_at, updated_at FROM users WHERE id = $1`, id)
+		`SELECT id, username, email, password_hash, default_workspace_id, preferred_language, created_at, updated_at FROM users WHERE id = $1`, id)
 	return scanUser(row)
 }
 
 func (s *DB) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, username, email, password_hash, default_workspace_id, created_at, updated_at FROM users WHERE email = $1`, email)
+		`SELECT id, username, email, password_hash, default_workspace_id, preferred_language, created_at, updated_at FROM users WHERE email = $1`, email)
 	return scanUser(row)
 }
 
 func (s *DB) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, username, email, password_hash, default_workspace_id, created_at, updated_at FROM users WHERE username = $1`, username)
+		`SELECT id, username, email, password_hash, default_workspace_id, preferred_language, created_at, updated_at FROM users WHERE username = $1`, username)
 	return scanUser(row)
 }
 
 func scanUser(row *sql.Row) (*models.User, error) {
 	u := &models.User{}
 	var defaultWorkspaceID sql.NullString
-	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &defaultWorkspaceID, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &defaultWorkspaceID, &u.PreferredLanguage, &u.CreatedAt, &u.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -152,10 +152,80 @@ func (s *DB) UpdateUserDefaultWorkspaceTx(ctx context.Context, ex execer, userID
 	row := ex.QueryRowContext(ctx,
 		`UPDATE users SET default_workspace_id = $2, updated_at = NOW()
 		 WHERE id = $1
-		 RETURNING id, username, email, password_hash, default_workspace_id, created_at, updated_at`,
+		 RETURNING id, username, email, password_hash, default_workspace_id, preferred_language, created_at, updated_at`,
 		userID, workspaceID,
 	)
 	return scanUser(row)
+}
+
+func (s *DB) UpdateUserPreferredLanguage(ctx context.Context, userID, language string) (*models.User, error) {
+	row := s.db.QueryRowContext(ctx,
+		`UPDATE users SET preferred_language = $2, updated_at = NOW()
+		 WHERE id = $1
+		 RETURNING id, username, email, password_hash, default_workspace_id, preferred_language, created_at, updated_at`,
+		userID, language,
+	)
+	return scanUser(row)
+}
+
+func (s *DB) UpdateUserPassword(ctx context.Context, userID, passwordHash string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1`,
+		userID, passwordHash,
+	)
+	return err
+}
+
+func (s *DB) CountOwnedDocuments(ctx context.Context, userID string) (int, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM documents WHERE owner_id = $1`, userID)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("count owned documents: %w", err)
+	}
+	return count, nil
+}
+
+func (s *DB) CountAccessibleDocuments(ctx context.Context, userID string) (int, error) {
+	row := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(DISTINCT d.id)
+		 FROM documents d
+		 LEFT JOIN workspace_members wm ON wm.workspace_id = d.workspace_id AND wm.user_id = $1
+		 LEFT JOIN document_permissions dp ON dp.document_id = d.id AND dp.user_id = $1
+		 WHERE wm.user_id IS NOT NULL OR dp.user_id IS NOT NULL`,
+		userID,
+	)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("count accessible documents: %w", err)
+	}
+	return count, nil
+}
+
+func (s *DB) CountWorkspacesByUser(ctx context.Context, userID string) (int, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM workspace_members WHERE user_id = $1`, userID)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("count workspaces: %w", err)
+	}
+	return count, nil
+}
+
+func (s *DB) CountAttachmentsUploaded(ctx context.Context, userID string) (int, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM attachments WHERE upload_by = $1`, userID)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("count attachments: %w", err)
+	}
+	return count, nil
+}
+
+func (s *DB) CountSnapshotsAuthored(ctx context.Context, userID string) (int, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM snapshots WHERE author_id = $1`, userID)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("count snapshots: %w", err)
+	}
+	return count, nil
 }
 
 // -------------------------------------------------------------------------

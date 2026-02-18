@@ -1,4 +1,4 @@
-import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember } from '@/types';
+import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats } from '@/types';
 
 const API_BASE_URL = '/api';
 
@@ -33,6 +33,22 @@ export const authService = {
       body: JSON.stringify({ email, password }),
     }),
   me: () => request<AuthResponse['user']>('/auth/me'),
+};
+
+// ---- Users ----
+
+export const userService = {
+  stats: () => request<UserStats>('/users/me/stats'),
+  updatePassword: (currentPassword: string, newPassword: string) =>
+    request<void>('/users/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+  updatePreferences: (preferredLanguage: string) =>
+    request<AuthResponse['user']>('/users/me/preferences', {
+      method: 'PATCH',
+      body: JSON.stringify({ preferred_language: preferredLanguage }),
+    }),
 };
 
 // ---- Documents ----

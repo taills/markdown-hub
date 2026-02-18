@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { User } from '@/types';
 import { authService } from '@/services/api';
+import { setLanguage, type SupportedLanguage } from '@/i18n';
 
 interface AuthContextValue {
   user: User | null;
@@ -8,6 +9,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (user: User) => void;
   isLoading: boolean;
 }
 
@@ -25,7 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     authService
       .me()
-      .then(setUser)
+      .then((data) => {
+        setUser(data);
+        if (data?.preferred_language) {
+          setLanguage(data.preferred_language as SupportedLanguage);
+        }
+      })
       .catch(() => {
         localStorage.removeItem('mh_token');
         setToken(null);
@@ -38,6 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('mh_token', res.token);
     setToken(res.token);
     setUser(res.user);
+    if (res.user?.preferred_language) {
+      setLanguage(res.user.preferred_language as SupportedLanguage);
+    }
   }, []);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
@@ -45,6 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('mh_token', res.token);
     setToken(res.token);
     setUser(res.user);
+    if (res.user?.preferred_language) {
+      setLanguage(res.user.preferred_language as SupportedLanguage);
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -53,8 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((nextUser: User) => {
+    setUser(nextUser);
+    if (nextUser?.preferred_language) {
+      setLanguage(nextUser.preferred_language as SupportedLanguage);
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -51,11 +51,24 @@ func (s *WorkspaceService) CreateWorkspace(ctx context.Context, ownerID, name st
 }
 
 // GetWorkspace returns a workspace if the user has read access.
+// If userID is empty and the workspace is public, anyone can access it.
 func (s *WorkspaceService) GetWorkspace(ctx context.Context, workspaceID, userID string) (*models.Workspace, error) {
+	ws, err := s.db.GetWorkspaceByID(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	// Allow public access for public workspaces
+	if ws.IsPublic {
+		return ws, nil
+	}
+	// Otherwise require authentication and permission
+	if userID == "" {
+		return nil, ErrUnauthorized
+	}
 	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionRead); err != nil {
 		return nil, err
 	}
-	return s.db.GetWorkspaceByID(ctx, workspaceID)
+	return ws, nil
 }
 
 // ListWorkspaces lists all workspaces the user belongs to.
@@ -107,4 +120,12 @@ func (s *WorkspaceService) UpdateWorkspaceName(ctx context.Context, workspaceID,
 		return nil, err
 	}
 	return s.db.UpdateWorkspaceName(ctx, workspaceID, name)
+}
+
+// SetPublicStatus updates the public status of a workspace (requires manage permission).
+func (s *WorkspaceService) SetPublicStatus(ctx context.Context, workspaceID, userID string, isPublic bool) (*models.Workspace, error) {
+	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionManage); err != nil {
+		return nil, err
+	}
+	return s.db.UpdateWorkspacePublicStatus(ctx, workspaceID, isPublic)
 }

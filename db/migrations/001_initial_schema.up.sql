@@ -7,6 +7,7 @@ CREATE TABLE users (
     username    TEXT NOT NULL UNIQUE,
     email       TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    preferred_language TEXT NOT NULL DEFAULT 'zh-CN',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -41,7 +42,7 @@ CREATE TABLE documents (
 
 CREATE TABLE attachments (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id  UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    document_id  UUID REFERENCES documents(id) ON DELETE CASCADE,
     upload_by    UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     filename     TEXT NOT NULL,
     file_type    TEXT NOT NULL,
@@ -94,28 +95,3 @@ CREATE INDEX idx_documents_workspace_updated_at ON documents(workspace_id, updat
 
 CREATE INDEX idx_attachments_document ON attachments(document_id);
 CREATE INDEX idx_attachments_workspace_id ON attachments(workspace_id);
-
--- Make document_id nullable for workspace-level attachments
-ALTER TABLE attachments
-ALTER COLUMN document_id DROP NOT NULL;
-
--- Update the unique constraint to exclude NULL document_id values
--- This allows multiple workspace-level attachments to the same file_path
-DROP INDEX IF EXISTS idx_attachments_workspace_path;
-CREATE UNIQUE INDEX idx_attachments_workspace_path ON attachments(workspace_id, file_path) WHERE document_id IS NOT NULL;
-
--- Add an index for workspace-level attachments (document_id IS NULL)
-CREATE INDEX idx_attachments_workspace_level ON attachments(workspace_id) WHERE document_id IS NULL;
-
-CREATE INDEX idx_attachment_refs_attachment ON attachment_references(attachment_id);
-CREATE INDEX idx_attachment_refs_document ON attachment_references(document_id);
-
-CREATE INDEX idx_snapshots_document_id ON snapshots(document_id);
-CREATE INDEX idx_snapshots_created_at  ON snapshots(document_id, created_at DESC);
-
-CREATE INDEX idx_doc_perms_document ON document_permissions(document_id);
-CREATE INDEX idx_heading_perms_document ON heading_permissions(document_id);
-
-CREATE INDEX idx_workspaces_owner ON workspaces(owner_id);
-CREATE INDEX idx_workspace_members_workspace ON workspace_members(workspace_id);
-CREATE INDEX idx_workspace_members_user ON workspace_members(user_id);

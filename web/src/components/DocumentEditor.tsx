@@ -8,7 +8,7 @@ import { MarkdownPreview } from '@/components/MarkdownPreview';
 import { SnapshotPanel } from '@/components/SnapshotPanel';
 import { PermissionsPanel } from '@/components/PermissionsPanel';
 import { AttachmentPanel } from '@/components/AttachmentPanel';
-import { attachmentService } from '@/services/api';
+import { attachmentService, documentService } from '@/services/api';
 import { applyLinePatch, createLinePatch } from '@/utils/linePatch';
 import type { Attachment, WSMessage } from '@/types';
 
@@ -162,6 +162,21 @@ export function DocumentEditor() {
     return () => window.removeEventListener('keydown', handler);
   }, [sendPendingPatch]);
 
+  const togglePublic = async () => {
+    if (!document || !id) return;
+    try {
+      const updated = await documentService.setPublic(id, !document.is_public);
+      setDocument(updated);
+    } catch (err) {
+      console.error('Failed to toggle public status:', err);
+    }
+  };
+
+  const viewRaw = () => {
+    if (!id) return;
+    window.open(`/api/documents/${id}/raw`, '_blank');
+  };
+
   if (isLoading) return <div className="loading">Loading document…</div>;
   if (error) return <div className="error">{error}</div>;
   if (!document) return null;
@@ -174,6 +189,10 @@ export function DocumentEditor() {
         </button>
         <h2 className="doc-title">{document.title}</h2>
         <div className="toolbar">
+          <button onClick={togglePublic}>
+            {document.is_public ? '🌐 Public' : '🔒 Private'}
+          </button>
+          <button onClick={viewRaw}>📄 Raw</button>
           <span className={`ws-status ws-${connectionState}`}>{connectionState}</span>
           {collaborators.length > 0 && (
             <span className="collaborators">{collaborators.length} online</span>

@@ -223,11 +223,11 @@ func (s *DB) CreateWorkspaceTx(ctx context.Context, ex execer, ownerID, name str
 	row := ex.QueryRowContext(ctx,
 		`INSERT INTO workspaces (id, owner_id, name)
 		 VALUES ($1, $2, $3)
-		 RETURNING id, owner_id, name, created_at, updated_at`,
+		 RETURNING id, owner_id, name, is_public, created_at, updated_at`,
 		id, ownerID, name,
 	)
 	ws := &models.Workspace{}
-	if err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
+	if err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.IsPublic, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
 		return nil, fmt.Errorf("create workspace: %w", err)
 	}
 	return ws, nil
@@ -235,9 +235,9 @@ func (s *DB) CreateWorkspaceTx(ctx context.Context, ex execer, ownerID, name str
 
 func (s *DB) GetWorkspaceByID(ctx context.Context, id string) (*models.Workspace, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, owner_id, name, created_at, updated_at FROM workspaces WHERE id = $1`, id)
+		`SELECT id, owner_id, name, is_public, created_at, updated_at FROM workspaces WHERE id = $1`, id)
 	ws := &models.Workspace{}
-	err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.CreatedAt, &ws.UpdatedAt)
+	err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.IsPublic, &ws.CreatedAt, &ws.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -249,7 +249,7 @@ func (s *DB) GetWorkspaceByID(ctx context.Context, id string) (*models.Workspace
 
 func (s *DB) ListWorkspacesByUser(ctx context.Context, userID string) ([]*models.Workspace, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT w.id, w.owner_id, w.name, w.created_at, w.updated_at
+		`SELECT w.id, w.owner_id, w.name, w.is_public, w.created_at, w.updated_at
 		 FROM workspaces w
 		 JOIN workspace_members wm ON wm.workspace_id = w.id
 		 WHERE wm.user_id = $1
@@ -261,7 +261,7 @@ func (s *DB) ListWorkspacesByUser(ctx context.Context, userID string) ([]*models
 	var workspaces []*models.Workspace
 	for rows.Next() {
 		ws := &models.Workspace{}
-		if err := rows.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
+		if err := rows.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.IsPublic, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan workspace: %w", err)
 		}
 		workspaces = append(workspaces, ws)
@@ -273,15 +273,32 @@ func (s *DB) UpdateWorkspaceName(ctx context.Context, id, name string) (*models.
 	row := s.db.QueryRowContext(ctx,
 		`UPDATE workspaces SET name = $2, updated_at = NOW()
 		 WHERE id = $1
-		 RETURNING id, owner_id, name, created_at, updated_at`,
+		 RETURNING id, owner_id, name, is_public, created_at, updated_at`,
 		id, name,
 	)
 	ws := &models.Workspace{}
-	if err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
+	if err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.IsPublic, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("update workspace name: %w", err)
+	}
+	return ws, nil
+}
+
+func (s *DB) UpdateWorkspacePublicStatus(ctx context.Context, id string, isPublic bool) (*models.Workspace, error) {
+	row := s.db.QueryRowContext(ctx,
+		`UPDATE workspaces SET is_public = $2, updated_at = NOW()
+		 WHERE id = $1
+		 RETURNING id, owner_id, name, is_public, created_at, updated_at`,
+		id, isPublic,
+	)
+	ws := &models.Workspace{}
+	if err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.IsPublic, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("update workspace public status: %w", err)
 	}
 	return ws, nil
 }
@@ -367,7 +384,7 @@ func (s *DB) CreateDocument(ctx context.Context, workspaceID, ownerID, title, co
 	row := s.db.QueryRowContext(ctx,
 		`INSERT INTO documents (id, workspace_id, owner_id, title, content)
 		 VALUES ($1, $2, $3, $4, $5)
-		 RETURNING id, workspace_id, owner_id, title, content, created_at, updated_at`,
+		 RETURNING id, workspace_id, owner_id, title, content, is_public, created_at, updated_at`,
 		id, workspaceID, ownerID, title, content,
 	)
 	return scanDocument(row)
@@ -375,13 +392,13 @@ func (s *DB) CreateDocument(ctx context.Context, workspaceID, ownerID, title, co
 
 func (s *DB) GetDocumentByID(ctx context.Context, id string) (*models.Document, error) {
 	row := s.db.QueryRowContext(ctx,
-		`SELECT id, workspace_id, owner_id, title, content, created_at, updated_at FROM documents WHERE id = $1`, id)
+		`SELECT id, workspace_id, owner_id, title, content, is_public, created_at, updated_at FROM documents WHERE id = $1`, id)
 	return scanDocument(row)
 }
 
 func (s *DB) ListDocumentsByOwner(ctx context.Context, ownerID string) ([]*models.Document, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, workspace_id, owner_id, title, content, created_at, updated_at
+		`SELECT id, workspace_id, owner_id, title, content, is_public, created_at, updated_at
 		 FROM documents WHERE owner_id = $1 ORDER BY updated_at DESC`, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("list documents: %w", err)
@@ -395,7 +412,7 @@ func (s *DB) ListDocumentsByWorkspaceIDs(ctx context.Context, workspaceIDs []str
 		return []*models.Document{}, nil
 	}
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, workspace_id, owner_id, title, content, created_at, updated_at
+		`SELECT id, workspace_id, owner_id, title, content, is_public, created_at, updated_at
 		 FROM documents WHERE workspace_id = ANY($1) ORDER BY updated_at DESC`, pq.Array(workspaceIDs))
 	if err != nil {
 		return nil, fmt.Errorf("list documents by workspace: %w", err)
@@ -412,7 +429,7 @@ func (s *DB) UpdateDocumentContentTx(ctx context.Context, ex execer, id, content
 	row := ex.QueryRowContext(ctx,
 		`UPDATE documents SET content = $2, updated_at = NOW()
 		 WHERE id = $1
-		 RETURNING id, workspace_id, owner_id, title, content, created_at, updated_at`,
+		 RETURNING id, workspace_id, owner_id, title, content, is_public, created_at, updated_at`,
 		id, content,
 	)
 	return scanDocument(row)
@@ -422,8 +439,18 @@ func (s *DB) UpdateDocumentTitle(ctx context.Context, id, title string) (*models
 	row := s.db.QueryRowContext(ctx,
 		`UPDATE documents SET title = $2, updated_at = NOW()
 		 WHERE id = $1
-		 RETURNING id, workspace_id, owner_id, title, content, created_at, updated_at`,
+		 RETURNING id, workspace_id, owner_id, title, content, is_public, created_at, updated_at`,
 		id, title,
+	)
+	return scanDocument(row)
+}
+
+func (s *DB) UpdateDocumentPublicStatus(ctx context.Context, id string, isPublic bool) (*models.Document, error) {
+	row := s.db.QueryRowContext(ctx,
+		`UPDATE documents SET is_public = $2, updated_at = NOW()
+		 WHERE id = $1
+		 RETURNING id, workspace_id, owner_id, title, content, is_public, created_at, updated_at`,
+		id, isPublic,
 	)
 	return scanDocument(row)
 }
@@ -435,7 +462,7 @@ func (s *DB) DeleteDocument(ctx context.Context, id string) error {
 
 func scanDocument(row *sql.Row) (*models.Document, error) {
 	d := &models.Document{}
-	err := row.Scan(&d.ID, &d.WorkspaceID, &d.OwnerID, &d.Title, &d.Content, &d.CreatedAt, &d.UpdatedAt)
+	err := row.Scan(&d.ID, &d.WorkspaceID, &d.OwnerID, &d.Title, &d.Content, &d.IsPublic, &d.CreatedAt, &d.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -449,7 +476,7 @@ func scanDocuments(rows *sql.Rows) ([]*models.Document, error) {
 	var docs []*models.Document
 	for rows.Next() {
 		d := &models.Document{}
-		if err := rows.Scan(&d.ID, &d.WorkspaceID, &d.OwnerID, &d.Title, &d.Content, &d.CreatedAt, &d.UpdatedAt); err != nil {
+		if err := rows.Scan(&d.ID, &d.WorkspaceID, &d.OwnerID, &d.Title, &d.Content, &d.IsPublic, &d.CreatedAt, &d.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan document row: %w", err)
 		}
 		docs = append(docs, d)

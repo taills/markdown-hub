@@ -56,6 +56,25 @@ export const userService = {
 export const documentService = {
   list: () => request<DocumentListItem[]>('/documents'),
   get: (id: string) => request<Document>(`/documents/${id}`),
+  getPublic: async (id: string): Promise<Document> => {
+    // Fetch without auth token for anonymous/public access
+    const res = await fetch(`${API_BASE_URL}/documents/${id}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<Document>;
+  },
+  getRaw: async (id: string): Promise<string> => {
+    const token = localStorage.getItem('mh_token');
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(`${API_BASE_URL}/documents/${id}/raw`, { headers });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    return res.text();
+  },
   create: (title: string, content = '', workspaceId: string) =>
     request<Document>('/documents', {
       method: 'POST',
@@ -71,6 +90,11 @@ export const documentService = {
       method: 'PATCH',
       body: JSON.stringify({ title }),
     }),
+  setPublic: (id: string, isPublic: boolean) =>
+    request<Document>(`/documents/${id}/public`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_public: isPublic }),
+    }),
   delete: (id: string) =>
     request<void>(`/documents/${id}`, { method: 'DELETE' }),
   headings: (id: string) => request<HeadingSection[]>(`/documents/${id}/headings`),
@@ -81,6 +105,22 @@ export const documentService = {
 export const workspaceService = {
   list: () => request<Workspace[]>('/workspaces'),
   get: (id: string) => request<Workspace>(`/workspaces/${id}`),
+  getPublic: async (id: string): Promise<Workspace> => {
+    const res = await fetch(`${API_BASE_URL}/workspaces/${id}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<Workspace>;
+  },
+  getPublicDocuments: async (id: string): Promise<Document[]> => {
+    const res = await fetch(`${API_BASE_URL}/workspaces/${id}/documents`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<Document[]>;
+  },
   create: (name: string) =>
     request<Workspace>('/workspaces', {
       method: 'POST',
@@ -90,6 +130,11 @@ export const workspaceService = {
     request<Workspace>(`/workspaces/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ name }),
+    }),
+  setPublic: (id: string, isPublic: boolean) =>
+    request<Workspace>(`/workspaces/${id}/public`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_public: isPublic }),
     }),
   listMembers: (workspaceId: string) =>
     request<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`),

@@ -76,6 +76,8 @@ export function NotesLayout() {
   const [titleDraft, setTitleDraft] = useState('');
   const [titleSaving, setTitleSaving] = useState(false);
   const [titleError, setTitleError] = useState('');
+  const [publicToggling, setPublicToggling] = useState(false);
+  const [publicLinkCopied, setPublicLinkCopied] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -244,9 +246,9 @@ export function NotesLayout() {
     return workspaces.find((ws) => ws.id === selectedWorkspaceId);
   }, [workspaces, selectedWorkspaceId]);
 
-  const handleWorkspaceUpdated = useCallback((updated: { id: string; name: string }) => {
+  const handleWorkspaceUpdated = useCallback((updated: { id: string; name: string; is_public: boolean }) => {
     setWorkspaces((prev) =>
-      prev.map((ws) => (ws.id === updated.id ? { ...ws, name: updated.name } : ws))
+      prev.map((ws) => (ws.id === updated.id ? { ...ws, name: updated.name, is_public: updated.is_public } : ws))
     );
   }, []);
 
@@ -264,6 +266,12 @@ export function NotesLayout() {
     if (!document) return false;
     if (document.owner_id === user?.id) return true;
     return activeDocPermission === 'edit' || activeDocPermission === 'manage';
+  }, [activeDocPermission, document, user?.id]);
+
+  const canManageDoc = useMemo(() => {
+    if (!document) return false;
+    if (document.owner_id === user?.id) return true;
+    return activeDocPermission === 'manage';
   }, [activeDocPermission, document, user?.id]);
 
   const handleCreateDocument = async () => {
@@ -341,6 +349,33 @@ export function NotesLayout() {
     setTitleDraft(document.title);
     setIsEditingTitle(false);
     setTitleError('');
+  };
+
+  const handleToggleDocPublic = async () => {
+    if (!document || publicToggling) return;
+    setPublicToggling(true);
+    try {
+      const updated = await documentService.setPublic(document.id, !document.is_public);
+      setDocument(updated);
+    } catch (e: unknown) {
+      console.error(e instanceof Error ? e.message : t('doc.togglePublicFailed'));
+    } finally {
+      setPublicToggling(false);
+    }
+  };
+
+  const handleCopyPublicLink = () => {
+    if (!document) return;
+    const link = `${window.location.origin}/documents/${document.id}/view`;
+    navigator.clipboard.writeText(link).then(() => {
+      setPublicLinkCopied(true);
+      setTimeout(() => setPublicLinkCopied(false), 2000);
+    });
+  };
+
+  const handleViewRaw = () => {
+    if (!document) return;
+    window.open(`/api/documents/${document.id}/raw`, '_blank');
   };
 
   const toggleColumn = (column: Column) => {
@@ -569,6 +604,32 @@ export function NotesLayout() {
         </div>
 
         <div className="topbar-right">
+          {document && mode === 'edit' && (
+            <div className="menu-group doc-visibility-group">
+              {canManageDoc && (
+                <button
+                  className={`ghost doc-public-btn ${document.is_public ? 'public' : 'private'}`}
+                  onClick={handleToggleDocPublic}
+                  disabled={publicToggling}
+                  title={document.is_public ? t('doc.setPrivate') : t('doc.setPublic')}
+                >
+                  {document.is_public ? `🌐 ${t('doc.setPublic')}` : `🔒 ${t('doc.setPrivate')}`}
+                </button>
+              )}
+              {document.is_public && (
+                <button
+                  className="ghost"
+                  onClick={handleCopyPublicLink}
+                  title={t('doc.publicLink')}
+                >
+                  {publicLinkCopied ? t('doc.publicLinkCopied') : t('doc.publicLink')}
+                </button>
+              )}
+              <button className="ghost" onClick={handleViewRaw} title={t('doc.viewRaw')}>
+                {t('doc.viewRaw')}
+              </button>
+            </div>
+          )}
           {id && (
             <span className={`ws-pill ws-${connectionState}`}>
               {connectionState}
@@ -790,6 +851,7 @@ export function NotesLayout() {
                 workspaceId={selectedWorkspaceId}
                 workspaceOwnerId={selectedWorkspace?.owner_id}
                 workspaceName={selectedWorkspace?.name}
+                workspaceIsPublic={selectedWorkspace?.is_public}
                 onWorkspaceUpdated={handleWorkspaceUpdated}
               />
             </div>

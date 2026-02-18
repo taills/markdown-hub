@@ -58,12 +58,9 @@ func (h *WorkspaceHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Get godoc
 // GET /api/workspaces/{id}
+// Supports optional authentication for public workspaces
 func (h *WorkspaceHandler) Get(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
+	userID, _ := userIDFromContext(r.Context()) // Optional authentication
 	workspaceID := pathParamAt(r.URL.Path, 2)
 	ws, err := h.workspaceSvc.GetWorkspace(r.Context(), workspaceID, userID)
 	if err != nil {
@@ -163,4 +160,28 @@ func (h *WorkspaceHandler) DeleteMember(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// SetPublicStatus godoc
+// PATCH /api/workspaces/{id}/public
+func (h *WorkspaceHandler) SetPublicStatus(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	workspaceID := pathParamAt(r.URL.Path, 2)
+	var body struct {
+		IsPublic bool `json:"is_public"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	ws, err := h.workspaceSvc.SetPublicStatus(r.Context(), workspaceID, userID, body.IsPublic)
+	if err != nil {
+		writeError(w, errStatus(err), err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, ws)
 }

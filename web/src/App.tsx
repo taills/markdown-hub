@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { LoginPage } from '@/components/LoginPage';
 import { NotesLayout } from '@/components/NotesLayout';
 import { PersonalCenter } from '@/components/PersonalCenter';
+import { PublicDocumentView } from '@/components/PublicDocumentView';
+import { PublicWorkspaceView } from '@/components/PublicWorkspaceView';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -41,6 +43,9 @@ function AppRoutes() {
           </RequireAuth>
         }
       />
+      {/* Public routes — accessible without login */}
+      <Route path="/documents/:id/view" element={<PublicDocumentView />} />
+      <Route path="/workspaces/:id/view" element={<PublicWorkspaceView />} />
       <Route
         path="/me"
         element={

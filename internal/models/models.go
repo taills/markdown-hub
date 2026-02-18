@@ -40,6 +40,7 @@ type Document struct {
 	OwnerID     string    `json:"owner_id"`
 	Title       string    `json:"title"`
 	Content     string    `json:"content"`
+	IsPublic    bool      `json:"is_public"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -117,6 +118,7 @@ type Workspace struct {
 	ID        string    `json:"id"`
 	OwnerID   string    `json:"owner_id"`
 	Name      string    `json:"name"`
+	IsPublic  bool      `json:"is_public"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

@@ -751,3 +751,220 @@ body.is-resizing * {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ---- Document visibility & raw buttons in topbar ---- */
+.doc-visibility-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.doc-public-btn.public {
+  color: #166534;
+}
+
+.doc-public-btn.private {
+  color: var(--text-muted);
+}
+
+/* ---- Public document view (/documents/:id/view) ---- */
+.public-doc-shell {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.public-doc-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 1.25rem 2rem;
+}
+
+.public-doc-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.public-doc-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.public-doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.public-badge {
+  font-size: 0.8rem;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.public-doc-raw-link {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+}
+
+.public-doc-raw-link:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.public-doc-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.public-doc-content {
+  flex: 1;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.public-doc-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex: 1;
+  padding: 4rem 2rem;
+}
+
+/* Public workspace document list */
+.public-workspace-docs-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.public-workspace-doc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.public-workspace-doc-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.public-workspace-doc-link {
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  flex: 1;
+}
+
+.public-workspace-doc-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.public-workspace-doc-date {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---- Raw document view (/documents/:id/raw) ---- */
+.raw-doc-shell {
+  min-height: 100vh;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  display: flex;
+  flex-direction: column;
+}
+
+.raw-doc-header {
+  background: #252526;
+  border-bottom: 1px solid #3e3e42;
+  padding: 0.9rem 1.5rem;
+}
+
+.raw-doc-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.raw-doc-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #cccccc;
+}
+
+.raw-doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ghost-link {
+  font-size: 0.85rem;
+  color: #9cdcfe;
+  text-decoration: none;
+  border: 1px solid #3e3e42;
+  border-radius: 5px;
+  padding: 0.2rem 0.55rem;
+}
+
+.ghost-link:hover {
+  background: #2d2d2d;
+}
+
+.raw-doc-content {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+}
+
+.raw-doc-pre {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #d4d4d4;
+  background: transparent;
+  border: none;
+}
+
+.raw-doc-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex: 1;
+  padding: 4rem 2rem;
+}

@@ -51,10 +51,19 @@ func (s *DocumentService) CreateDocument(ctx context.Context, ownerID, workspace
 }
 
 // GetDocument retrieves a document, enforcing read permission for userID.
+// If userID is empty and the document is public, anyone can access it.
 func (s *DocumentService) GetDocument(ctx context.Context, documentID, userID string) (*models.Document, error) {
 	doc, err := s.db.GetDocumentByID(ctx, documentID)
 	if err != nil {
 		return nil, err
+	}
+	// Allow public access for public documents
+	if doc.IsPublic {
+		return doc, nil
+	}
+	// Otherwise require authentication and permission
+	if userID == "" {
+		return nil, ErrUnauthorized
 	}
 	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionRead); err != nil {
 		return nil, err
@@ -65,6 +74,22 @@ func (s *DocumentService) GetDocument(ctx context.Context, documentID, userID st
 // ListDocuments returns all documents owned by userID.
 func (s *DocumentService) ListDocuments(ctx context.Context, ownerID string) ([]*models.Document, error) {
 	return s.db.ListDocumentsByOwner(ctx, ownerID)
+}
+
+// ListPublicDocumentsByWorkspace returns all public documents in a workspace.
+// It does not require authentication — used for anonymous public workspace views.
+func (s *DocumentService) ListPublicDocumentsByWorkspace(ctx context.Context, workspaceID string) ([]*models.Document, error) {
+	docs, err := s.db.ListDocumentsByWorkspaceIDs(ctx, []string{workspaceID})
+	if err != nil {
+		return nil, fmt.Errorf("list workspace documents: %w", err)
+	}
+	public := make([]*models.Document, 0, len(docs))
+	for _, doc := range docs {
+		if doc.IsPublic {
+			public = append(public, doc)
+		}
+	}
+	return public, nil
 }
 
 // ListAllAccessibleDocuments returns all documents that a user can access,
@@ -187,6 +212,18 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, documentID, userID
 		return err
 	}
 	return s.db.DeleteDocument(ctx, documentID)
+}
+
+// SetPublicStatus updates the public status of a document (requires manage permission).
+func (s *DocumentService) SetPublicStatus(ctx context.Context, documentID, userID string, isPublic bool) (*models.Document, error) {
+	doc, err := s.db.GetDocumentByID(ctx, documentID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, doc, userID, models.PermissionManage); err != nil {
+		return nil, err
+	}
+	return s.db.UpdateDocumentPublicStatus(ctx, documentID, isPublic)
 }
 
 func (s *DocumentService) requireWorkspaceOrDocumentPermission(

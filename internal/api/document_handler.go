@@ -60,12 +60,9 @@ func (h *DocumentHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Get godoc
 // GET /api/documents/{id}
+// Supports optional authentication for public documents
 func (h *DocumentHandler) Get(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
-		return
-	}
+	userID, _ := userIDFromContext(r.Context()) // Optional authentication
 	docID := pathParam(r, "id")
 	doc, err := h.docService.GetDocument(r.Context(), docID, userID)
 	if err != nil {
@@ -73,6 +70,22 @@ func (h *DocumentHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, doc)
+}
+
+// GetRaw godoc
+// GET /api/documents/{id}/raw
+// Returns the raw markdown content with text/plain content type
+func (h *DocumentHandler) GetRaw(w http.ResponseWriter, r *http.Request) {
+	userID, _ := userIDFromContext(r.Context()) // Optional authentication
+	docID := pathParam(r, "id")
+	doc, err := h.docService.GetDocument(r.Context(), docID, userID)
+	if err != nil {
+		writeError(w, errStatus(err), err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(doc.Content))
 }
 
 // UpdateContent godoc
@@ -139,6 +152,30 @@ func (h *DocumentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// SetPublicStatus godoc
+// PATCH /api/documents/{id}/public
+func (h *DocumentHandler) SetPublicStatus(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	docID := pathParam(r, "id")
+	var body struct {
+		IsPublic bool `json:"is_public"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	doc, err := h.docService.SetPublicStatus(r.Context(), docID, userID, body.IsPublic)
+	if err != nil {
+		writeError(w, errStatus(err), err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, doc)
+}
+
 // Headings godoc
 // GET /api/documents/{id}/headings
 func (h *DocumentHandler) Headings(w http.ResponseWriter, r *http.Request) {
@@ -155,6 +192,19 @@ func (h *DocumentHandler) Headings(w http.ResponseWriter, r *http.Request) {
 	}
 	sections := core.ParseHeadings(doc.Content)
 	writeJSON(w, http.StatusOK, sections)
+}
+
+// ListPublicByWorkspace godoc
+// GET /api/workspaces/{id}/documents
+// Returns all public documents in a workspace. No authentication required.
+func (h *DocumentHandler) ListPublicByWorkspace(w http.ResponseWriter, r *http.Request) {
+	workspaceID := pathParamAt(r.URL.Path, 2)
+	docs, err := h.docService.ListPublicDocumentsByWorkspace(r.Context(), workspaceID)
+	if err != nil {
+		writeError(w, errStatus(err), err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, docs)
 }
 
 // pathParam extracts the last path segment named by key from a URL like

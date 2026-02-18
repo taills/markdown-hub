@@ -47,7 +47,176 @@ func NewServer(
 	mux.HandleFunc("POST /api/auth/register", authH.Register)
 	mux.HandleFunc("POST /api/auth/login", authH.Login)
 
-	// Protected routes wrapped in authMiddleware.
+	// Unified document/workspace handler: some GET paths allow unauthenticated
+	// access (public docs/workspaces); all others require a valid token.
+	// We wrap everything in optionalAuthMiddleware so the user claim is always
+	// populated when a token is present, then enforce auth inside the switch for
+	// paths that require it.
+	docAndWorkspaceHandler := optionalAuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Helper: reject if the request carries no authenticated user.
+		requireAuth := func() bool {
+			if _, ok := userIDFromContext(r.Context()); !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return false
+			}
+			return true
+		}
+
+		switch {
+		// ── Public document access (no auth required) ────────────────────────
+		case r.Method == http.MethodGet && isDocPath(r.URL.Path, ""):
+			docH.Get(w, r)
+		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/raw"):
+			docH.GetRaw(w, r)
+
+		// ── Public workspace access (no auth required) ───────────────────────
+		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, ""):
+			workspaceH.Get(w, r)
+		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, "/documents"):
+			docH.ListPublicByWorkspace(w, r)
+
+		// ── Protected document routes ─────────────────────────────────────────
+		case r.Method == http.MethodGet && r.URL.Path == "/api/documents":
+			if requireAuth() {
+				docH.List(w, r)
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/api/documents":
+			if requireAuth() {
+				docH.Create(w, r)
+			}
+		case r.Method == http.MethodPatch && isDocPath(r.URL.Path, "/content"):
+			if requireAuth() {
+				docH.UpdateContent(w, r)
+			}
+		case r.Method == http.MethodPatch && isDocPath(r.URL.Path, "/title"):
+			if requireAuth() {
+				docH.UpdateTitle(w, r)
+			}
+		case r.Method == http.MethodPatch && isDocPath(r.URL.Path, "/public"):
+			if requireAuth() {
+				docH.SetPublicStatus(w, r)
+			}
+		case r.Method == http.MethodDelete && isDocPath(r.URL.Path, ""):
+			if requireAuth() {
+				docH.Delete(w, r)
+			}
+		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/headings"):
+			if requireAuth() {
+				docH.Headings(w, r)
+			}
+
+		// ── Protected snapshot routes ─────────────────────────────────────────
+		case r.Method == http.MethodPost && isDocPath(r.URL.Path, "/snapshots"):
+			if requireAuth() {
+				snapH.Create(w, r)
+			}
+		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/snapshots"):
+			if requireAuth() {
+				snapH.List(w, r)
+			}
+		case r.Method == http.MethodPost && isSnapPath(r.URL.Path, "/restore"):
+			if requireAuth() {
+				snapH.Restore(w, r)
+			}
+		case r.Method == http.MethodGet && isSnapPath(r.URL.Path, "/diff"):
+			if requireAuth() {
+				snapH.Diff(w, r)
+			}
+
+		// ── Protected permission routes ───────────────────────────────────────
+		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/permissions"):
+			if requireAuth() {
+				permH.List(w, r)
+			}
+		case r.Method == http.MethodPut && isDocPath(r.URL.Path, "/permissions"):
+			if requireAuth() {
+				permH.Set(w, r)
+			}
+		case r.Method == http.MethodDelete && isPermPath(r.URL.Path, ""):
+			if requireAuth() {
+				permH.Delete(w, r)
+			}
+		case r.Method == http.MethodPut && isHeadingPermPath(r.URL.Path):
+			if requireAuth() {
+				permH.SetHeading(w, r)
+			}
+
+		// ── Protected attachment routes ───────────────────────────────────────
+		case r.Method == http.MethodPost && isDocPath(r.URL.Path, "/attachments"):
+			if requireAuth() {
+				attachH.Upload(w, r)
+			}
+		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/attachments"):
+			if requireAuth() {
+				attachH.List(w, r)
+			}
+		case r.Method == http.MethodGet && isAttachmentDownloadPath(r.URL.Path):
+			if requireAuth() {
+				attachH.Download(w, r)
+			}
+		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/attachments/unreferenced"):
+			if requireAuth() {
+				attachH.GetUnreferenced(w, r)
+			}
+		case r.Method == http.MethodDelete && isAttachmentPath(r.URL.Path, ""):
+			if requireAuth() {
+				attachH.Delete(w, r)
+			}
+
+		// ── Protected workspace routes ────────────────────────────────────────
+		case r.Method == http.MethodGet && r.URL.Path == "/api/workspaces":
+			if requireAuth() {
+				workspaceH.List(w, r)
+			}
+		case r.Method == http.MethodPost && r.URL.Path == "/api/workspaces":
+			if requireAuth() {
+				workspaceH.Create(w, r)
+			}
+		case r.Method == http.MethodPatch && isWorkspacePath(r.URL.Path, ""):
+			if requireAuth() {
+				workspaceH.Update(w, r)
+			}
+		case r.Method == http.MethodPatch && isWorkspacePath(r.URL.Path, "/public"):
+			if requireAuth() {
+				workspaceH.SetPublicStatus(w, r)
+			}
+		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, "/members"):
+			if requireAuth() {
+				workspaceH.ListMembers(w, r)
+			}
+		case r.Method == http.MethodPut && isWorkspacePath(r.URL.Path, "/members"):
+			if requireAuth() {
+				workspaceH.SetMember(w, r)
+			}
+		case r.Method == http.MethodDelete && isWorkspaceMemberPath(r.URL.Path):
+			if requireAuth() {
+				workspaceH.DeleteMember(w, r)
+			}
+
+		// ── Protected workspace attachment routes ─────────────────────────────
+		case r.Method == http.MethodPost && isWorkspacePath(r.URL.Path, "/attachments"):
+			if requireAuth() {
+				workspaceAttachH.Upload(w, r)
+			}
+		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, "/attachments"):
+			if requireAuth() {
+				workspaceAttachH.List(w, r)
+			}
+		case r.Method == http.MethodDelete && isWorkspaceAttachmentPath(r.URL.Path):
+			if requireAuth() {
+				workspaceAttachH.Delete(w, r)
+			}
+		case r.Method == http.MethodGet && isWorkspaceAttachmentDownloadPath(r.URL.Path):
+			if requireAuth() {
+				workspaceAttachH.Download(w, r)
+			}
+
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+
+	// Protected routes wrapped in authMiddleware (non-document/workspace paths).
 	protected := authMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		// Auth
@@ -62,75 +231,19 @@ func NewServer(
 		case r.Method == http.MethodPatch && r.URL.Path == "/api/users/me/preferences":
 			userH.UpdatePreferences(w, r)
 
-		// Documents
-		case r.Method == http.MethodPost && r.URL.Path == "/api/documents":
-			docH.Create(w, r)
-		case r.Method == http.MethodGet && r.URL.Path == "/api/documents":
-			docH.List(w, r)
-		case r.Method == http.MethodGet && isDocPath(r.URL.Path, ""):
-			docH.Get(w, r)
-		case r.Method == http.MethodPatch && isDocPath(r.URL.Path, "/content"):
-			docH.UpdateContent(w, r)
-		case r.Method == http.MethodPatch && isDocPath(r.URL.Path, "/title"):
-			docH.UpdateTitle(w, r)
-		case r.Method == http.MethodDelete && isDocPath(r.URL.Path, ""):
-			docH.Delete(w, r)
-		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/headings"):
-			docH.Headings(w, r)
-
-		// Snapshots
-		case r.Method == http.MethodPost && isDocPath(r.URL.Path, "/snapshots"):
-			snapH.Create(w, r)
-		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/snapshots"):
-			snapH.List(w, r)
+		// Snapshots (standalone /api/snapshots/ paths)
 		case r.Method == http.MethodPost && isSnapPath(r.URL.Path, "/restore"):
 			snapH.Restore(w, r)
 		case r.Method == http.MethodGet && isSnapPath(r.URL.Path, "/diff"):
 			snapH.Diff(w, r)
 
-		// Permissions
-		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/permissions"):
-			permH.List(w, r)
-		case r.Method == http.MethodPut && isDocPath(r.URL.Path, "/permissions"):
-			permH.Set(w, r)
-		case r.Method == http.MethodDelete && isPermPath(r.URL.Path, ""):
-			permH.Delete(w, r)
-		case r.Method == http.MethodPut && isHeadingPermPath(r.URL.Path):
-			permH.SetHeading(w, r)
-
-		// Attachments
-		case r.Method == http.MethodPost && isDocPath(r.URL.Path, "/attachments"):
-			attachH.Upload(w, r)
-		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/attachments"):
-			attachH.List(w, r)
+		// Attachments (standalone /api/attachments/ paths)
 		case r.Method == http.MethodGet && isAttachmentDownloadPath(r.URL.Path):
 			attachH.Download(w, r)
-		case r.Method == http.MethodGet && isDocPath(r.URL.Path, "/attachments/unreferenced"):
-			attachH.GetUnreferenced(w, r)
 		case r.Method == http.MethodDelete && isAttachmentPath(r.URL.Path, ""):
 			attachH.Delete(w, r)
 
-		// Workspaces
-		case r.Method == http.MethodPost && r.URL.Path == "/api/workspaces":
-			workspaceH.Create(w, r)
-		case r.Method == http.MethodGet && r.URL.Path == "/api/workspaces":
-			workspaceH.List(w, r)
-		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, ""):
-			workspaceH.Get(w, r)
-		case r.Method == http.MethodPatch && isWorkspacePath(r.URL.Path, ""):
-			workspaceH.Update(w, r)
-		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, "/members"):
-			workspaceH.ListMembers(w, r)
-		case r.Method == http.MethodPut && isWorkspacePath(r.URL.Path, "/members"):
-			workspaceH.SetMember(w, r)
-		case r.Method == http.MethodDelete && isWorkspaceMemberPath(r.URL.Path):
-			workspaceH.DeleteMember(w, r)
-
-		// Workspace attachments
-		case r.Method == http.MethodPost && isWorkspacePath(r.URL.Path, "/attachments"):
-			workspaceAttachH.Upload(w, r)
-		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, "/attachments"):
-			workspaceAttachH.List(w, r)
+		// Workspace attachments (standalone /api/workspace-attachments/ paths)
 		case r.Method == http.MethodDelete && isWorkspaceAttachmentPath(r.URL.Path):
 			workspaceAttachH.Delete(w, r)
 		case r.Method == http.MethodGet && isWorkspaceAttachmentDownloadPath(r.URL.Path):
@@ -141,15 +254,17 @@ func NewServer(
 		}
 	}))
 
+	// Route all document and workspace traffic through the unified handler.
+	mux.Handle("/api/documents", docAndWorkspaceHandler)
+	mux.Handle("/api/documents/", docAndWorkspaceHandler)
+	mux.Handle("/api/workspaces", docAndWorkspaceHandler)
+	mux.Handle("/api/workspaces/", docAndWorkspaceHandler)
+
 	mux.Handle("/api/auth/me", protected)
 	mux.Handle("/api/users/me", protected)
 	mux.Handle("/api/users/me/", protected)
-	mux.Handle("/api/documents", protected)
-	mux.Handle("/api/documents/", protected)
 	mux.Handle("/api/snapshots/", protected)
 	mux.Handle("/api/attachments/", protected)
-	mux.Handle("/api/workspaces", protected)
-	mux.Handle("/api/workspaces/", protected)
 	mux.Handle("/api/workspace-attachments/", protected)
 
 	// WebSocket endpoint.
@@ -164,6 +279,19 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/ws" {
 		s.mux.ServeHTTP(w, r)
 		return
+	}
+
+	// /documents/{id}/raw — rewrite to the API handler so it returns plain text
+	// directly without requiring authentication (public documents are accessible
+	// anonymously via optionalAuthMiddleware).
+	if r.Method == http.MethodGet {
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) == 3 && parts[0] == "documents" && parts[2] == "raw" {
+			r2 := *r
+			r2.URL.Path = "/api/documents/" + parts[1] + "/raw"
+			s.mux.ServeHTTP(w, &r2)
+			return
+		}
 	}
 
 	// Serve uploaded files directly (handle both /uploads/ and /documents/uploads/)

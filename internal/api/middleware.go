@@ -96,6 +96,35 @@ func userIDFromContext(ctx context.Context) (string, bool) {
 	return id, ok
 }
 
+// optionalAuthMiddleware extracts the JWT if present but doesn't require it.
+// This allows anonymous access to public resources while still identifying
+// authenticated users.
+func optionalAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenString := ""
+		// Try Authorization: Bearer <token>
+		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+			tokenString = strings.TrimPrefix(auth, "Bearer ")
+		}
+		// Fall back to cookie.
+		if tokenString == "" {
+			if c, err := r.Cookie(jwtCookieName); err == nil {
+				tokenString = c.Value
+			}
+		}
+		// If token exists and is valid, add user ID to context
+		if tokenString != "" {
+			if c, err := parseToken(tokenString); err == nil {
+				ctx := context.WithValue(r.Context(), ctxKeyUserID, c.UserID)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+		}
+		// Otherwise, continue without user ID (anonymous access)
+		next.ServeHTTP(w, r)
+	})
+}
+
 // -------------------------------------------------------------------------
 // JSON helpers
 // -------------------------------------------------------------------------

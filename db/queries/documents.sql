@@ -1,6 +1,6 @@
 -- name: CreateDocument :one
-INSERT INTO documents (owner_id, title, content)
-VALUES ($1, $2, $3)
+INSERT INTO documents (owner_id, title, content, workspace_id)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetDocumentByID :one
@@ -18,6 +18,12 @@ RETURNING *;
 -- name: UpdateDocumentTitle :one
 UPDATE documents
 SET title = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateDocumentPublicStatus :one
+UPDATE documents
+SET is_public = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 

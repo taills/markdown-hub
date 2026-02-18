@@ -7,13 +7,15 @@ interface WorkspaceSettingsPanelProps {
   workspaceId: string;
   workspaceOwnerId?: string;
   workspaceName?: string;
-  onWorkspaceUpdated?: (workspace: { id: string; name: string }) => void;
+  workspaceIsPublic?: boolean;
+  onWorkspaceUpdated?: (workspace: { id: string; name: string; is_public: boolean }) => void;
 }
 
 export function WorkspaceSettingsPanel({
   workspaceId,
   workspaceOwnerId,
   workspaceName,
+  workspaceIsPublic,
   onWorkspaceUpdated,
 }: WorkspaceSettingsPanelProps) {
   const { t } = useTranslation();
@@ -28,6 +30,10 @@ export function WorkspaceSettingsPanel({
   const [nameEditing, setNameEditing] = useState(false);
   const [nameSaving, setNameSaving] = useState(false);
   const [nameError, setNameError] = useState('');
+  const [isPublic, setIsPublic] = useState(workspaceIsPublic ?? false);
+  const [publicToggling, setPublicToggling] = useState(false);
+  const [publicError, setPublicError] = useState('');
+  const [publicLinkCopied, setPublicLinkCopied] = useState(false);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -47,7 +53,9 @@ export function WorkspaceSettingsPanel({
     setNameDraft(workspaceName ?? '');
     setNameEditing(false);
     setNameError('');
-  }, [workspaceId, workspaceName]);
+    setIsPublic(workspaceIsPublic ?? false);
+    setPublicError('');
+  }, [workspaceId, workspaceName, workspaceIsPublic]);
 
   const handleSaveWorkspaceName = async () => {
     if (!workspaceId || nameSaving) return;
@@ -67,12 +75,34 @@ export function WorkspaceSettingsPanel({
       const ws = await workspaceService.updateName(workspaceId, nextName);
       setNameDraft(ws.name);
       setNameEditing(false);
-      onWorkspaceUpdated?.({ id: ws.id, name: ws.name });
+      onWorkspaceUpdated?.({ id: ws.id, name: ws.name, is_public: isPublic });
     } catch (e: unknown) {
       setNameError(e instanceof Error ? e.message : t('workspace.nameUpdateFailed'));
     } finally {
       setNameSaving(false);
     }
+  };
+
+  const handleTogglePublic = async () => {
+    if (!workspaceId || publicToggling) return;
+    setPublicToggling(true);
+    setPublicError('');
+    try {
+      const ws = await workspaceService.setPublic(workspaceId, !isPublic);
+      setIsPublic(ws.is_public);
+      onWorkspaceUpdated?.({ id: ws.id, name: ws.name, is_public: ws.is_public });
+    } catch (e: unknown) {
+      setPublicError(e instanceof Error ? e.message : t('workspace.togglePublicFailed'));
+    } finally {
+      setPublicToggling(false);
+    }
+  };
+
+  const handleCopyPublicLink = async () => {
+    const url = `${window.location.origin}/workspaces/${workspaceId}/view`;
+    await navigator.clipboard.writeText(url).catch(() => null);
+    setPublicLinkCopied(true);
+    setTimeout(() => setPublicLinkCopied(false), 2000);
   };
 
   const handleCancelWorkspaceName = () => {
@@ -174,6 +204,23 @@ export function WorkspaceSettingsPanel({
           </button>
         </div>
         {nameError && <p className="error">{nameError}</p>}
+      </div>
+
+      <div className="workspace-settings-section">
+        <div className="section-header">
+          <h3>{t('workspace.isPublic')}</h3>
+        </div>
+        <div className="inline-form">
+          <button onClick={handleTogglePublic} disabled={publicToggling}>
+            {isPublic ? t('workspace.setPublic') : t('workspace.setPrivate')}
+          </button>
+          {isPublic && (
+            <button className="secondary" onClick={handleCopyPublicLink}>
+              {publicLinkCopied ? t('workspace.publicLinkCopied') : t('workspace.publicLink')}
+            </button>
+          )}
+        </div>
+        {publicError && <p className="error">{publicError}</p>}
       </div>
 
       <div className="workspace-settings-section">

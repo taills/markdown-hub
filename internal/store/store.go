@@ -217,6 +217,23 @@ func (s *DB) ListWorkspacesByUser(ctx context.Context, userID string) ([]*models
 	return workspaces, rows.Err()
 }
 
+func (s *DB) UpdateWorkspaceName(ctx context.Context, id, name string) (*models.Workspace, error) {
+	row := s.db.QueryRowContext(ctx,
+		`UPDATE workspaces SET name = $2, updated_at = NOW()
+		 WHERE id = $1
+		 RETURNING id, owner_id, name, created_at, updated_at`,
+		id, name,
+	)
+	ws := &models.Workspace{}
+	if err := row.Scan(&ws.ID, &ws.OwnerID, &ws.Name, &ws.CreatedAt, &ws.UpdatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("update workspace name: %w", err)
+	}
+	return ws, nil
+}
+
 func (s *DB) UpsertWorkspaceMember(ctx context.Context, workspaceID, userID string, level models.PermissionLevel) (*models.WorkspaceMember, error) {
 	return s.UpsertWorkspaceMemberTx(ctx, s.db, workspaceID, userID, level)
 }

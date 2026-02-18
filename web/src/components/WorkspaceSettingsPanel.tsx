@@ -4,9 +4,17 @@ import type { Attachment, PermissionLevel, WorkspaceMember } from '@/types';
 
 interface WorkspaceSettingsPanelProps {
   workspaceId: string;
+  workspaceOwnerId?: string;
+  workspaceName?: string;
+  onWorkspaceUpdated?: (workspace: { id: string; name: string }) => void;
 }
 
-export function WorkspaceSettingsPanel({ workspaceId }: WorkspaceSettingsPanelProps) {
+export function WorkspaceSettingsPanel({
+  workspaceId,
+  workspaceOwnerId,
+  workspaceName,
+  onWorkspaceUpdated,
+}: WorkspaceSettingsPanelProps) {
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
   const [workspaceAttachments, setWorkspaceAttachments] = useState<Attachment[]>([]);
   const [memberUsername, setMemberUsername] = useState('');
@@ -14,6 +22,10 @@ export function WorkspaceSettingsPanel({ workspaceId }: WorkspaceSettingsPanelPr
   const [memberSaving, setMemberSaving] = useState(false);
   const [attachmentsUploading, setAttachmentsUploading] = useState(false);
   const [workspaceError, setWorkspaceError] = useState('');
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState('');
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -27,6 +39,45 @@ export function WorkspaceSettingsPanel({ workspaceId }: WorkspaceSettingsPanelPr
       .then((data) => setWorkspaceAttachments(data ?? []))
       .catch((e: Error) => setWorkspaceError(e.message));
   }, [workspaceId]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    setNameDraft(workspaceName ?? '');
+    setNameEditing(false);
+    setNameError('');
+  }, [workspaceId, workspaceName]);
+
+  const handleSaveWorkspaceName = async () => {
+    if (!workspaceId || nameSaving) return;
+    const nextName = nameDraft.trim();
+    if (!nextName) {
+      setNameError('名称不能为空');
+      return;
+    }
+    if (nextName === workspaceName) {
+      setNameEditing(false);
+      setNameError('');
+      return;
+    }
+    setNameSaving(true);
+    setNameError('');
+    try {
+      const ws = await workspaceService.updateName(workspaceId, nextName);
+      setNameDraft(ws.name);
+      setNameEditing(false);
+      onWorkspaceUpdated?.({ id: ws.id, name: ws.name });
+    } catch (e: unknown) {
+      setNameError(e instanceof Error ? e.message : '更新失败');
+    } finally {
+      setNameSaving(false);
+    }
+  };
+
+  const handleCancelWorkspaceName = () => {
+    setNameDraft(workspaceName ?? '');
+    setNameEditing(false);
+    setNameError('');
+  };
 
   const handleAddMember = async () => {
     if (!memberUsername.trim() || !workspaceId) return;
@@ -96,6 +147,34 @@ export function WorkspaceSettingsPanel({ workspaceId }: WorkspaceSettingsPanelPr
   return (
     <div className="workspace-settings">
       <div className="workspace-settings-section">
+        <div className="section-header">
+          <h3>工作空间名称</h3>
+        </div>
+        <div className="inline-form">
+          <input
+            type="text"
+            placeholder="工作空间名称"
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onFocus={() => setNameEditing(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveWorkspaceName();
+              if (e.key === 'Escape') handleCancelWorkspaceName();
+            }}
+            onBlur={() => nameEditing && handleSaveWorkspaceName()}
+            disabled={nameSaving}
+          />
+          <button onClick={handleSaveWorkspaceName} disabled={nameSaving || !nameDraft.trim()}>
+            {nameSaving ? '保存中…' : '保存'}
+          </button>
+          <button className="secondary" onClick={handleCancelWorkspaceName} disabled={nameSaving}>
+            取消
+          </button>
+        </div>
+        {nameError && <p className="error">{nameError}</p>}
+      </div>
+
+      <div className="workspace-settings-section">
         <h3>成员权限</h3>
         <div className="inline-form">
           <input
@@ -115,32 +194,47 @@ export function WorkspaceSettingsPanel({ workspaceId }: WorkspaceSettingsPanelPr
         </div>
         {workspaceError && <p className="error">{workspaceError}</p>}
         <ul className="member-list">
-          {workspaceMembers.map((member) => (
-            <li key={member.id} className="member-item">
-              <span className="member-name">{member.username || member.user_id}</span>
-              <span className={`perm-level perm-${member.level}`}>{member.level}</span>
-              <button onClick={() => handleRemoveMember(member.user_id)}>移除</button>
-            </li>
-          ))}
+          {workspaceMembers.map((member) => {
+            const isOwner = member.user_id === workspaceOwnerId;
+            return (
+              <li key={member.id} className="member-item">
+                <span className="member-name">{member.username || member.user_id}</span>
+                {isOwner ? (
+                  <span className="perm-level perm-owner">Owner</span>
+                ) : (
+                  <span className={`perm-level perm-${member.level}`}>{member.level}</span>
+                )}
+                <button
+                  onClick={() => handleRemoveMember(member.user_id)}
+                  disabled={isOwner}
+                  title={isOwner ? 'Owner 不能被移除' : '移除成员'}
+                >
+                  移除
+                </button>
+              </li>
+            );
+          })}
           {workspaceMembers.length === 0 && <li className="empty">暂无成员。</li>}
         </ul>
       </div>
 
       <div className="workspace-settings-section">
-        <h3>工作空间附件</h3>
-        <label className="upload-button">
-          {attachmentsUploading ? '上传中…' : '上传附件'}
-          <input
-            type="file"
-            hidden
-            disabled={attachmentsUploading || !workspaceId}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleWorkspaceUpload(file);
-              e.currentTarget.value = '';
-            }}
-          />
-        </label>
+        <div className="section-header">
+          <h3>工作空间附件</h3>
+          <label className="upload-button compact">
+            {attachmentsUploading ? '上传中…' : '上传附件'}
+            <input
+              type="file"
+              hidden
+              disabled={attachmentsUploading || !workspaceId}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleWorkspaceUpload(file);
+                e.currentTarget.value = '';
+              }}
+            />
+          </label>
+        </div>
         <table className="attachment-table">
           <thead>
             <tr>

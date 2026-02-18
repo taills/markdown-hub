@@ -12,9 +12,19 @@ import { AttachmentPanel } from '@/components/AttachmentPanel';
 import { WorkspaceSettingsPanel } from '@/components/WorkspaceSettingsPanel';
 import type { Attachment, DocumentListItem, Workspace, WSMessage } from '@/types';
 
-type Panel = 'preview' | 'history' | 'permissions' | 'attachments' | 'workspace';
+type Panel = 'preview' | 'history' | 'permissions' | 'attachments';
 
 type Column = 'workspace' | 'documents' | 'preview';
+
+type ResizableColumn = 'workspace' | 'documents' | 'preview';
+
+const RESIZER_WIDTH = 6;
+const MIN_EDITOR_WIDTH = 420;
+const MIN_WIDTHS: Record<ResizableColumn, number> = {
+  workspace: 180,
+  documents: 220,
+  preview: 260,
+};
 
 export function NotesLayout() {
   const { id } = useParams<{ id?: string }>();
@@ -25,15 +35,27 @@ export function NotesLayout() {
 
   const [content, setContent] = useState('');
   const [activePanel, setActivePanel] = useState<Panel>('preview');
+  const [mode, setMode] = useState<'edit' | 'settings'>('edit');
   const [visibleColumns, setVisibleColumns] = useState<Record<Column, boolean>>({
     workspace: true,
     documents: true,
     preview: true,
   });
+  const [columnWidths, setColumnWidths] = useState<Record<ResizableColumn, number>>({
+    workspace: 240,
+    documents: 300,
+    preview: 360,
+  });
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [connectionState, setConnectionState] = useState('disconnected');
+  const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resizeRef = useRef<{
+    type: ResizableColumn;
+    startX: number;
+    startWidths: Record<ResizableColumn, number>;
+  } | null>(null);
 
   const [newTitle, setNewTitle] = useState('');
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
@@ -46,6 +68,10 @@ export function NotesLayout() {
   const [creatingDocument, setCreatingDocument] = useState(false);
   const [createDocError, setCreateDocError] = useState('');
   const [showAllWorkspaces, setShowAllWorkspaces] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [titleSaving, setTitleSaving] = useState(false);
+  const [titleError, setTitleError] = useState('');
 
   useEffect(() => {
     setDefaultWorkspaceId(user?.default_workspace_id ?? '');
@@ -73,6 +99,18 @@ export function NotesLayout() {
     if (document) setContent(document.content);
     if (!document) setContent('');
   }, [document]);
+
+  useEffect(() => {
+    if (!document) {
+      setTitleDraft('');
+      setIsEditingTitle(false);
+      setTitleError('');
+      return;
+    }
+    setTitleDraft(document.title);
+    setIsEditingTitle(false);
+    setTitleError('');
+  }, [document?.id, document?.title]);
 
   const handleWSMessage = useCallback((msg: WSMessage) => {
     if (msg.type === 'init' || msg.type === 'update') {
@@ -181,10 +219,31 @@ export function NotesLayout() {
     return map;
   }, [workspaces]);
 
+  const selectedWorkspace = useMemo(() => {
+    return workspaces.find((ws) => ws.id === selectedWorkspaceId);
+  }, [workspaces, selectedWorkspaceId]);
+
+  const handleWorkspaceUpdated = useCallback((updated: { id: string; name: string }) => {
+    setWorkspaces((prev) =>
+      prev.map((ws) => (ws.id === updated.id ? { ...ws, name: updated.name } : ws))
+    );
+  }, []);
+
   const filteredDocuments = useMemo(() => {
     if (showAllWorkspaces || !selectedWorkspaceId) return documents;
     return (documents ?? []).filter((doc) => doc.workspace_id === selectedWorkspaceId);
   }, [documents, selectedWorkspaceId, showAllWorkspaces]);
+
+  const activeDocPermission = useMemo(() => {
+    if (!id) return null;
+    return documents.find((doc) => doc.id === id)?.permission ?? null;
+  }, [documents, id]);
+
+  const canEditTitle = useMemo(() => {
+    if (!document) return false;
+    if (document.owner_id === user?.id) return true;
+    return activeDocPermission === 'edit' || activeDocPermission === 'manage';
+  }, [activeDocPermission, document, user?.id]);
 
   const handleCreateDocument = async () => {
     if (!newTitle.trim()) return;
@@ -239,25 +298,208 @@ export function NotesLayout() {
     }
   };
 
+  const saveTitle = async () => {
+    if (!document || titleSaving) return;
+    const nextTitle = titleDraft.trim();
+    if (!nextTitle) {
+      setTitleError('标题不能为空');
+      return;
+    }
+    if (nextTitle === document.title) {
+      setIsEditingTitle(false);
+      setTitleError('');
+      return;
+    }
+    setTitleSaving(true);
+    setTitleError('');
+    try {
+      const updated = await documentService.updateTitle(document.id, nextTitle);
+      setDocument(updated);
+      setTitleDraft(updated.title);
+      setIsEditingTitle(false);
+      reload();
+    } catch (e: unknown) {
+      setTitleError(e instanceof Error ? e.message : '更新标题失败');
+    } finally {
+      setTitleSaving(false);
+    }
+  };
+
+  const cancelTitleEdit = () => {
+    if (!document) return;
+    setTitleDraft(document.title);
+    setIsEditingTitle(false);
+    setTitleError('');
+  };
+
   const toggleColumn = (column: Column) => {
     setVisibleColumns((prev) => ({ ...prev, [column]: !prev[column] }));
   };
 
-  const columnsStyle = useMemo(() => {
-    const workspaceWidth = visibleColumns.workspace ? '240px' : '0px';
-    const documentWidth = visibleColumns.documents ? '300px' : '0px';
-    const previewWidth = visibleColumns.preview ? '360px' : '0px';
-    return {
-      gridTemplateColumns: `${workspaceWidth} ${documentWidth} minmax(420px, 1fr) ${previewWidth}`,
-    } as React.CSSProperties;
+  const startResize = useCallback((type: ResizableColumn) => {
+    return (event: React.MouseEvent) => {
+      event.preventDefault();
+      resizeRef.current = {
+        type,
+        startX: event.clientX,
+        startWidths: { ...columnWidths },
+      };
+      window.document.body.classList.add('is-resizing');
+    };
+  }, [columnWidths]);
+
+  useEffect(() => {
+    const handleMove = (event: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const containerWidth = containerRef.current?.offsetWidth ?? 0;
+      if (!containerWidth) return;
+
+      const { type, startX, startWidths } = resizeRef.current;
+      const delta = event.clientX - startX;
+
+      const hasWorkspace = visibleColumns.workspace;
+      const hasDocuments = visibleColumns.documents;
+      const hasPreview = visibleColumns.preview;
+      const hasLeftColumn = hasWorkspace || hasDocuments;
+      const hasWorkspaceDocsHandle = hasWorkspace && hasDocuments;
+      const resizerCount = (hasWorkspaceDocsHandle ? 1 : 0)
+        + (hasLeftColumn ? 1 : 0)
+        + (hasPreview ? 1 : 0);
+      const resizerTotal = resizerCount * RESIZER_WIDTH;
+
+      const workspaceWidth = hasWorkspace ? startWidths.workspace : 0;
+      const documentsWidth = hasDocuments ? startWidths.documents : 0;
+      const previewWidth = hasPreview ? startWidths.preview : 0;
+
+      const clamp = (value: number, min: number, max: number) => {
+        if (Number.isFinite(max)) return Math.max(min, Math.min(value, max));
+        return Math.max(min, value);
+      };
+
+      if (type === 'workspace' && hasWorkspace) {
+        const maxWidth = containerWidth - resizerTotal - documentsWidth - previewWidth - MIN_EDITOR_WIDTH;
+        const nextWidth = clamp(
+          startWidths.workspace + delta,
+          MIN_WIDTHS.workspace,
+          maxWidth
+        );
+        setColumnWidths((prev) => ({ ...prev, workspace: nextWidth }));
+        return;
+      }
+
+      if (type === 'documents' && hasDocuments) {
+        const maxWidth = containerWidth - resizerTotal - workspaceWidth - previewWidth - MIN_EDITOR_WIDTH;
+        const nextWidth = clamp(
+          startWidths.documents + delta,
+          MIN_WIDTHS.documents,
+          maxWidth
+        );
+        setColumnWidths((prev) => ({ ...prev, documents: nextWidth }));
+        return;
+      }
+
+      if (type === 'preview' && hasPreview) {
+        const maxWidth = containerWidth - resizerTotal - workspaceWidth - documentsWidth - MIN_EDITOR_WIDTH;
+        const nextWidth = clamp(
+          startWidths.preview - delta,
+          MIN_WIDTHS.preview,
+          maxWidth
+        );
+        setColumnWidths((prev) => ({ ...prev, preview: nextWidth }));
+      }
+    };
+
+    const handleUp = () => {
+      if (resizeRef.current) {
+        resizeRef.current = null;
+        window.document.body.classList.remove('is-resizing');
+      }
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
   }, [visibleColumns]);
+
+  const columnsStyle = useMemo(() => {
+    const columns: string[] = [];
+    const isSettingsMode = mode === 'settings';
+    const hasWorkspace = visibleColumns.workspace;
+    const hasDocuments = visibleColumns.documents && !isSettingsMode;
+    const hasPreview = visibleColumns.preview && !isSettingsMode;
+    const hasEditor = !isSettingsMode;
+    const hasLeftColumn = hasWorkspace || hasDocuments;
+    const hasWorkspaceDocsHandle = hasWorkspace && hasDocuments;
+
+    if (hasWorkspace) columns.push(`${columnWidths.workspace}px`);
+    if (hasWorkspaceDocsHandle) columns.push(`${RESIZER_WIDTH}px`);
+    if (hasDocuments) columns.push(`${columnWidths.documents}px`);
+    if (hasLeftColumn && hasEditor) columns.push(`${RESIZER_WIDTH}px`);
+    if (hasEditor) columns.push(`minmax(${MIN_EDITOR_WIDTH}px, 1fr)`);
+    if (hasPreview) columns.push(`${RESIZER_WIDTH}px`, `${columnWidths.preview}px`);
+    if (isSettingsMode) columns.push(`minmax(${MIN_EDITOR_WIDTH}px, 1fr)`);
+    return {
+      gridTemplateColumns: columns.join(' '),
+    } as React.CSSProperties;
+  }, [visibleColumns, columnWidths, mode]);
 
   return (
     <div className="notes-shell">
       <header className="notes-topbar">
         <div className="topbar-left">
           <span className="app-title">MarkdownHub</span>
-          <span className="doc-title">{document?.title || '未选择文档'}</span>
+          <div className="doc-title-wrap">
+            {!document && <span className="doc-title">未选择文档</span>}
+            {document && !isEditingTitle && (
+              <span className="doc-title" title={document.title}>{document.title}</span>
+            )}
+            {document && isEditingTitle && (
+              <div className="doc-title-edit">
+                <input
+                  className="doc-title-input"
+                  type="text"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveTitle();
+                    if (e.key === 'Escape') cancelTitleEdit();
+                  }}
+                  onBlur={saveTitle}
+                  disabled={titleSaving}
+                  aria-label="文档标题"
+                />
+                <div className="doc-title-actions">
+                  <button
+                    className="doc-title-btn"
+                    onClick={saveTitle}
+                    disabled={titleSaving}
+                  >
+                    保存
+                  </button>
+                  <button
+                    className="doc-title-btn ghost"
+                    onClick={cancelTitleEdit}
+                    disabled={titleSaving}
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
+            {document && canEditTitle && !isEditingTitle && (
+              <button
+                className="doc-title-btn ghost"
+                onClick={() => setIsEditingTitle(true)}
+                title="编辑标题"
+              >
+                编辑
+              </button>
+            )}
+          </div>
+          {titleError && <span className="doc-title-error">{titleError}</span>}
         </div>
 
         <div className="topbar-center">
@@ -271,12 +513,14 @@ export function NotesLayout() {
             <button
               className={visibleColumns.documents ? 'active' : ''}
               onClick={() => toggleColumn('documents')}
+              disabled={mode === 'settings'}
             >
               文档列表
             </button>
             <button
               className={visibleColumns.preview ? 'active' : ''}
               onClick={() => toggleColumn('preview')}
+              disabled={mode === 'settings'}
             >
               预览/面板
             </button>
@@ -285,32 +529,30 @@ export function NotesLayout() {
             <button
               className={activePanel === 'preview' ? 'active' : ''}
               onClick={() => setActivePanel('preview')}
+              disabled={mode === 'settings'}
             >
               预览
             </button>
             <button
               className={activePanel === 'history' ? 'active' : ''}
               onClick={() => setActivePanel('history')}
+              disabled={mode === 'settings'}
             >
               历史
             </button>
             <button
               className={activePanel === 'permissions' ? 'active' : ''}
               onClick={() => setActivePanel('permissions')}
+              disabled={mode === 'settings'}
             >
               权限
             </button>
             <button
               className={activePanel === 'attachments' ? 'active' : ''}
               onClick={() => setActivePanel('attachments')}
+              disabled={mode === 'settings'}
             >
               附件
-            </button>
-            <button
-              className={activePanel === 'workspace' ? 'active' : ''}
-              onClick={() => setActivePanel('workspace')}
-            >
-              工作空间设置
             </button>
           </div>
         </div>
@@ -329,7 +571,7 @@ export function NotesLayout() {
         </div>
       </header>
 
-      <div className="notes-columns" style={columnsStyle}>
+      <div className="notes-columns" style={columnsStyle} ref={containerRef}>
         {visibleColumns.workspace && (
           <aside className="notes-column workspace-column">
             <div className="column-header">
@@ -354,17 +596,33 @@ export function NotesLayout() {
                 全部工作空间
               </button>
               {workspaces.map((ws) => (
-                <button
+                <div
                   key={ws.id}
                   className={`workspace-item ${!showAllWorkspaces && selectedWorkspaceId === ws.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setShowAllWorkspaces(false);
-                    setSelectedWorkspaceId(ws.id);
-                  }}
                 >
-                  <span>{ws.name}</span>
-                  {ws.id === defaultWorkspaceId && <span className="workspace-badge">默认</span>}
-                </button>
+                  <button
+                    className="workspace-main"
+                    onClick={() => {
+                      setMode('edit');
+                      setShowAllWorkspaces(false);
+                      setSelectedWorkspaceId(ws.id);
+                    }}
+                  >
+                    <span>{ws.name}</span>
+                    {ws.id === defaultWorkspaceId && <span className="workspace-badge">默认</span>}
+                  </button>
+                  <button
+                    className="workspace-settings-btn"
+                    title="工作空间设置"
+                    onClick={() => {
+                      setShowAllWorkspaces(false);
+                      setSelectedWorkspaceId(ws.id);
+                      setMode('settings');
+                    }}
+                  >
+                    ⚙️
+                  </button>
+                </div>
               ))}
               {workspaces.length === 0 && !workspaceLoading && (
                 <div className="empty">暂无工作空间。</div>
@@ -385,7 +643,16 @@ export function NotesLayout() {
           </aside>
         )}
 
-        {visibleColumns.documents && (
+        {mode === 'edit' && visibleColumns.workspace && visibleColumns.documents && (
+          <div
+            className="column-resizer"
+            role="separator"
+            aria-label="调整工作空间宽度"
+            onMouseDown={startResize('workspace')}
+          />
+        )}
+
+        {mode === 'edit' && visibleColumns.documents && (
           <aside className="notes-column document-column">
             <div className="column-header">
               <div>
@@ -433,26 +700,45 @@ export function NotesLayout() {
           </aside>
         )}
 
-        <main className="notes-column editor-column">
-          {docLoading && <div className="loading-inline">加载中…</div>}
-          {!docLoading && documentError && <div className="error">{documentError}</div>}
-          {!docLoading && !document && (
-            <div className="empty-state">
-              请选择左侧文档，开始写作。
-            </div>
-          )}
-          {!docLoading && document && (
-            <textarea
-              ref={textareaRef}
-              className="editor-textarea"
-              value={content}
-              onChange={(e) => handleContentChange(e.target.value)}
-              spellCheck={false}
-            />
-          )}
-        </main>
+        {mode === 'edit' && (visibleColumns.documents || visibleColumns.workspace) && (
+          <div
+            className="column-resizer"
+            role="separator"
+            aria-label="调整左侧列表宽度"
+            onMouseDown={startResize(visibleColumns.documents ? 'documents' : 'workspace')}
+          />
+        )}
+        {mode === 'edit' && (
+          <main className="notes-column editor-column">
+            {docLoading && <div className="loading-inline">加载中…</div>}
+            {!docLoading && documentError && <div className="error">{documentError}</div>}
+            {!docLoading && !document && (
+              <div className="empty-state">
+                请选择左侧文档，开始写作。
+              </div>
+            )}
+            {!docLoading && document && (
+              <textarea
+                ref={textareaRef}
+                className="editor-textarea"
+                value={content}
+                onChange={(e) => handleContentChange(e.target.value)}
+                spellCheck={false}
+              />
+            )}
+          </main>
+        )}
 
-        {visibleColumns.preview && (
+        {mode === 'edit' && visibleColumns.preview && (
+          <div
+            className="column-resizer"
+            role="separator"
+            aria-label="调整预览宽度"
+            onMouseDown={startResize('preview')}
+          />
+        )}
+
+        {mode === 'edit' && visibleColumns.preview && (
           <aside className="notes-column preview-column">
             {activePanel === 'preview' && (
               document
@@ -481,10 +767,29 @@ export function NotesLayout() {
                   />
                 : <div className="empty-state">请选择文档查看附件。</div>
             )}
-            {activePanel === 'workspace' && (
-              <WorkspaceSettingsPanel workspaceId={selectedWorkspaceId} />
-            )}
           </aside>
+        )}
+
+        {mode === 'settings' && (
+          <section className="notes-column settings-column">
+            <div className="column-header">
+              <div>
+                <h3>工作空间设置</h3>
+                <p className="muted">Settings</p>
+              </div>
+              <button className="secondary" onClick={() => setMode('edit')}>
+                返回编辑
+              </button>
+            </div>
+            <div className="settings-body">
+              <WorkspaceSettingsPanel
+                workspaceId={selectedWorkspaceId}
+                workspaceOwnerId={selectedWorkspace?.owner_id}
+                workspaceName={selectedWorkspace?.name}
+                onWorkspaceUpdated={handleWorkspaceUpdated}
+              />
+            </div>
+          </section>
         )}
       </div>
     </div>

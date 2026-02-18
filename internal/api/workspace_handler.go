@@ -73,6 +73,30 @@ func (h *WorkspaceHandler) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ws)
 }
 
+// Update godoc
+// PATCH /api/workspaces/{id}
+func (h *WorkspaceHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	workspaceID := pathParamAt(r.URL.Path, 2)
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	ws, err := h.workspaceSvc.UpdateWorkspaceName(r.Context(), workspaceID, userID, body.Name)
+	if err != nil {
+		writeError(w, errStatus(err), err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, ws)
+}
+
 // ListMembers godoc
 // GET /api/workspaces/{id}/members
 func (h *WorkspaceHandler) ListMembers(w http.ResponseWriter, r *http.Request) {

@@ -70,6 +70,11 @@ export const workspaceService = {
       method: 'POST',
       body: JSON.stringify({ name }),
     }),
+  updateName: (id: string, name: string) =>
+    request<Workspace>(`/workspaces/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
   setDefault: (id: string) =>
     request<AuthResponse['user']>(`/workspaces/${id}/default`, { method: 'PUT' }),
   listMembers: (workspaceId: string) =>

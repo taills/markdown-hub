@@ -105,3 +105,14 @@ func (s *WorkspaceService) SetDefaultWorkspace(ctx context.Context, userID, work
 	}
 	return s.db.UpdateUserDefaultWorkspace(ctx, userID, workspaceID)
 }
+
+// UpdateWorkspaceName updates workspace name (requires manage permission).
+func (s *WorkspaceService) UpdateWorkspaceName(ctx context.Context, workspaceID, userID, name string) (*models.Workspace, error) {
+	if name == "" {
+		return nil, fmt.Errorf("%w: name is required", ErrInvalidInput)
+	}
+	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionManage); err != nil {
+		return nil, err
+	}
+	return s.db.UpdateWorkspaceName(ctx, workspaceID, name)
+}

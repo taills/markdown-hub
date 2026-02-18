@@ -86,6 +86,7 @@ header h1 { font-size: 1.5rem; }
 .member-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.6rem; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
 .member-name { flex: 1; font-family: monospace; font-size: 0.85rem; }
 .member-item button { background: none; border: none; color: var(--danger); cursor: pointer; }
+.member-item button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---- Editor layout ---- */
 .editor-layout { display: flex; flex-direction: column; height: 100vh; }
@@ -144,6 +145,7 @@ header h1 { font-size: 1.5rem; }
 .perm-read { background: rgba(88,166,255,0.2); color: var(--accent); }
 .perm-edit { background: rgba(210,153,34,0.2); color: var(--warn); }
 .perm-manage { background: rgba(63,185,80,0.2); color: var(--success); }
+.perm-owner { background: rgba(245,158,11,0.2); color: #b45309; }
 .permission-item button { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.8rem; }
 .add-permission-form { display: flex; flex-direction: column; gap: 0.5rem; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
 .add-permission-form h4 { font-size: 0.9rem; color: var(--text-muted); }
@@ -247,6 +249,55 @@ header h1 { font-size: 1.5rem; }
   white-space: nowrap;
 }
 
+.doc-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.doc-title-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.doc-title-input {
+  min-width: 160px;
+  max-width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.doc-title-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.doc-title-btn {
+  border: 1px solid var(--border);
+  background: #fff7ed;
+  color: #9a3412;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.doc-title-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.doc-title-error {
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+
 .topbar-center {
   display: flex;
   flex-wrap: wrap;
@@ -309,6 +360,7 @@ header h1 { font-size: 1.5rem; }
   flex: 1;
   display: grid;
   min-height: 0;
+  position: relative;
 }
 
 .notes-column {
@@ -317,10 +369,40 @@ header h1 { font-size: 1.5rem; }
   min-height: 0;
   border-right: 1px solid var(--border);
   background: var(--surface);
+  min-width: 0;
 }
 
 .notes-column:last-child {
   border-right: none;
+}
+
+.column-resizer {
+  width: 6px;
+  cursor: col-resize;
+  position: relative;
+  background: transparent;
+}
+
+.column-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border);
+  transform: translateX(-50%);
+  transition: background 0.15s ease;
+}
+
+.column-resizer:hover::after {
+  background: #d1d5db;
+}
+
+body.is-resizing,
+body.is-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .workspace-column,
@@ -347,11 +429,14 @@ header h1 { font-size: 1.5rem; }
   padding: 0.75rem 0.9rem;
   border-bottom: 1px solid var(--border);
   background: #f8fafc;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .inline-form input,
 .inline-form select {
   flex: 1;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -360,6 +445,7 @@ header h1 { font-size: 1.5rem; }
 }
 
 .inline-form button {
+  flex-shrink: 0;
   border: none;
   background: var(--accent);
   color: #1f2937;
@@ -394,12 +480,38 @@ header h1 { font-size: 1.5rem; }
   padding: 0.55rem 0.75rem;
   text-align: left;
   color: var(--text);
-  cursor: pointer;
 }
 
 .workspace-item.active {
   background: #fff7ed;
   border-color: #fed7aa;
+}
+
+.workspace-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workspace-settings-btn {
+  border: none;
+  background: #f3f4f6;
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.workspace-settings-btn:hover {
+  color: var(--text);
 }
 
 .workspace-badge {
@@ -469,6 +581,19 @@ header h1 { font-size: 1.5rem; }
   background: #fafafa;
 }
 
+.settings-column {
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.settings-body {
+  padding: 1rem 1.2rem;
+  overflow-y: auto;
+  max-width: 880px;
+  width: 100%;
+  margin: 0 auto;
+}
+
 .empty-state {
   color: var(--text-muted);
   padding: 2rem 1.5rem;
@@ -512,4 +637,21 @@ header h1 { font-size: 1.5rem; }
 .workspace-settings-section h3 {
   font-size: 0.95rem;
   margin-bottom: 0.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.upload-button.compact {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.workspace-settings-section .attachment-table {
+  margin-top: 0.25rem;
 }

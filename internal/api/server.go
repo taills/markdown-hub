@@ -107,6 +107,8 @@ func NewServer(
 			workspaceH.List(w, r)
 		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, ""):
 			workspaceH.Get(w, r)
+		case r.Method == http.MethodPatch && isWorkspacePath(r.URL.Path, ""):
+			workspaceH.Update(w, r)
 		case r.Method == http.MethodGet && isWorkspacePath(r.URL.Path, "/members"):
 			workspaceH.ListMembers(w, r)
 		case r.Method == http.MethodPut && isWorkspacePath(r.URL.Path, "/members"):

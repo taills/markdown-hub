@@ -1,0 +1,57 @@
+# Binaries
+/markdownhub
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Test binary
+*.test
+
+# Build output
+/dist
+/build
+/uploads
+# Go mod
+go.sum
+
+# Frontend dependencies
+web/node_modules/
+web/dist/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+
+# Uploads
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# node
+.pnpm-debug.log*
+pnpm-debug.log*

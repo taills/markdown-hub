@@ -16,6 +16,8 @@ CREATE TABLE workspaces (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name        TEXT NOT NULL,
+    is_public   BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (owner_id, name)
@@ -35,6 +37,8 @@ CREATE TABLE documents (
     owner_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title       TEXT NOT NULL,
     content     TEXT NOT NULL DEFAULT '',
+    is_public   BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE
@@ -92,6 +96,11 @@ CREATE TABLE heading_permissions (
 CREATE INDEX idx_documents_owner_id ON documents(owner_id);
 CREATE INDEX idx_documents_workspace_id ON documents(workspace_id);
 CREATE INDEX idx_documents_workspace_updated_at ON documents(workspace_id, updated_at DESC);
+CREATE INDEX idx_documents_public ON documents(is_public) WHERE is_public = TRUE;
+CREATE INDEX idx_documents_sort_order ON documents(sort_order);
+
+CREATE INDEX idx_workspaces_public ON workspaces(is_public) WHERE is_public = TRUE;
+CREATE INDEX idx_workspaces_sort_order ON workspaces(sort_order);
 
 CREATE INDEX idx_attachments_document ON attachments(document_id);
 CREATE INDEX idx_attachments_workspace_id ON attachments(workspace_id);

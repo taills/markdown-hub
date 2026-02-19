@@ -30,12 +30,12 @@ func (h *PermissionHandler) List(c *gin.Context) {
 	}
 	docID := c.Param("id")
 	if _, err := h.docService.GetDocument(c.Request.Context(), docID, callerID); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	perms, err := h.permService.ListPermissions(c.Request.Context(), docID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, perms)
@@ -74,13 +74,13 @@ func (h *PermissionHandler) Set(c *gin.Context) {
 
 	doc, err := h.docService.GetDocument(c.Request.Context(), docID, callerID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
 	perm, err := h.permService.SetDocumentPermissionByUsername(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, body.Username, level)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, perm)
@@ -99,11 +99,11 @@ func (h *PermissionHandler) Delete(c *gin.Context) {
 
 	doc, err := h.docService.GetDocument(c.Request.Context(), docID, callerID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	if err := h.permService.RemoveDocumentPermission(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -132,12 +132,12 @@ func (h *PermissionHandler) SetHeading(c *gin.Context) {
 
 	doc, err := h.docService.GetDocument(c.Request.Context(), docID, callerID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	perm, err := h.permService.SetHeadingPermission(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID, headingAnchor, level)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, perm)

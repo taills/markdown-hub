@@ -37,7 +37,7 @@ func (h *SnapshotHandler) Create(c *gin.Context) {
 	}
 	snap, err := h.snapshotService.CreateSnapshot(c.Request.Context(), docID, userID, body.Message)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, snap)
@@ -62,7 +62,7 @@ func (h *SnapshotHandler) List(c *gin.Context) {
 	}
 	snaps, err := h.snapshotService.ListSnapshots(c.Request.Context(), docID, userID, limit, offset)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, snaps)
@@ -79,7 +79,7 @@ func (h *SnapshotHandler) Restore(c *gin.Context) {
 	snapID := c.Param("id")
 	doc, err := h.snapshotService.RestoreSnapshot(c.Request.Context(), snapID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, doc)
@@ -98,7 +98,7 @@ func (h *SnapshotHandler) Diff(c *gin.Context) {
 
 	snap, err := h.snapshotService.GetSnapshot(c.Request.Context(), snapID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *SnapshotHandler) Diff(c *gin.Context) {
 	if compareID != "" {
 		other, err := h.snapshotService.GetSnapshot(c.Request.Context(), compareID, userID)
 		if err != nil {
-			c.JSON(errStatus(err), gin.H{"error": err.Error()})
+			respondError(c, err)
 			return
 		}
 		compareContent = other.Content

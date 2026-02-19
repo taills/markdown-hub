@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDocumentList } from '@/hooks/useDocument';
 import { useAuth } from '@/hooks/useAuth';
 import { documentService, workspaceService, workspaceAttachmentService } from '@/services/api';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { DocumentListItem, PermissionLevel, Workspace, WorkspaceMember, Attachment } from '@/types';
 
 export function DocumentList() {
@@ -25,6 +26,12 @@ export function DocumentList() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [showAllWorkspaces, setShowAllWorkspaces] = useState(false);
+
+  const modalError = error || workspaceError;
+  const handleCloseError = () => {
+    setError('');
+    setWorkspaceError('');
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -221,7 +228,6 @@ export function DocumentList() {
         <button onClick={handleCreate} disabled={creating || !newTitle.trim() || !selectedWorkspaceId}>
           {creating ? 'Creating…' : 'New Document'}
         </button>
-        {error && <p className="error">{error}</p>}
       </div>
 
       <section className="workspace-panel">
@@ -244,8 +250,6 @@ export function DocumentList() {
             {creatingWorkspace ? 'Creating…' : 'Create Workspace'}
           </button>
         </div>
-
-        {workspaceError && <p className="error">{workspaceError}</p>}
 
         <div className="workspace-grid">
           <div className="workspace-card">
@@ -351,6 +355,8 @@ export function DocumentList() {
           {filteredDocuments?.length === 0 && <li className="empty">No documents yet.</li>}
         </ul>
       )}
+
+      <ErrorModal message={modalError} onClose={handleCloseError} />
     </div>
   );
 }

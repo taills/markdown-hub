@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { attachmentService, workspaceAttachmentService } from '@/services/api';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { Attachment } from '@/types';
 
 interface AttachmentPanelProps {
@@ -19,6 +20,8 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
   const [error, setError] = useState('');
   const [showUnreferenced, setShowUnreferenced] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCloseError = () => setError('');
 
   const load = async () => {
     setIsLoading(true);
@@ -96,7 +99,7 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to download attachment:', err);
-      alert(t('attachments.downloadFailed'));
+      setError(t('attachments.downloadFailed'));
     }
   };
 
@@ -175,7 +178,6 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
             >
               {uploading ? t('attachments.uploading') : t('attachments.uploadFiles')}
             </button>
-            {error && <p className="error">{error}</p>}
           </div>
 
           <div className="attachment-list">
@@ -291,6 +293,8 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
           )}
         </>
       )}
+
+      <ErrorModal message={error} onClose={handleCloseError} />
     </div>
   );
 }

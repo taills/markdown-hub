@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { workspaceService, workspaceAttachmentService } from '@/services/api';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { Attachment, PermissionLevel, WorkspaceMember } from '@/types';
 
 interface WorkspaceSettingsPanelProps {
@@ -34,6 +35,13 @@ export function WorkspaceSettingsPanel({
   const [publicToggling, setPublicToggling] = useState(false);
   const [publicError, setPublicError] = useState('');
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
+
+  const modalError = nameError || publicError || workspaceError;
+  const handleCloseError = () => {
+    setNameError('');
+    setPublicError('');
+    setWorkspaceError('');
+  };
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -203,7 +211,6 @@ export function WorkspaceSettingsPanel({
             {t('doc.cancel')}
           </button>
         </div>
-        {nameError && <p className="error">{nameError}</p>}
       </div>
 
       <div className="workspace-settings-section">
@@ -220,7 +227,6 @@ export function WorkspaceSettingsPanel({
             </button>
           )}
         </div>
-        {publicError && <p className="error">{publicError}</p>}
       </div>
 
       <div className="workspace-settings-section">
@@ -241,7 +247,6 @@ export function WorkspaceSettingsPanel({
             {memberSaving ? t('workspace.memberSaving') : t('workspace.memberAdd')}
           </button>
         </div>
-        {workspaceError && <p className="error">{workspaceError}</p>}
         <ul className="member-list">
           {workspaceMembers.map((member) => {
             const isOwner = member.user_id === workspaceOwnerId;
@@ -313,6 +318,8 @@ export function WorkspaceSettingsPanel({
           </tbody>
         </table>
       </div>
+
+      <ErrorModal message={modalError} onClose={handleCloseError} />
     </div>
   );
 }

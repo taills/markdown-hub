@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { adminService } from '@/services/api';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { User } from '@/types';
 
 export function AdminUsers() {
@@ -11,6 +12,8 @@ export function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionInProgress, setActionInProgress] = useState(false);
+
+  const handleCloseError = () => setError('');
 
   const parseId = (uuidOrString: string | { id: string }): string => {
     if (typeof uuidOrString === 'object') {
@@ -93,13 +96,6 @@ export function AdminUsers() {
           </button>
         </div>
       </header>
-
-      {error && (
-        <div className="error-banner">
-          <span className="error-icon">⚠️</span>
-          {error}
-        </div>
-      )}
 
       {loading && (
         <div className="loading-container">
@@ -195,6 +191,8 @@ export function AdminUsers() {
           )}
         </div>
       )}
+
+      <ErrorModal message={error} onClose={handleCloseError} />
     </div>
   );
 }

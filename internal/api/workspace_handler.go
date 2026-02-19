@@ -36,7 +36,7 @@ func (h *WorkspaceHandler) Create(c *gin.Context) {
 	}
 	ws, err := h.workspaceSvc.CreateWorkspace(c.Request.Context(), userID, body.Name)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, ws)
@@ -52,7 +52,7 @@ func (h *WorkspaceHandler) List(c *gin.Context) {
 	}
 	workspaces, err := h.workspaceSvc.ListWorkspaces(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, workspaces)
@@ -66,7 +66,7 @@ func (h *WorkspaceHandler) Get(c *gin.Context) {
 	workspaceID := c.Param("id")
 	ws, err := h.workspaceSvc.GetWorkspace(c.Request.Context(), workspaceID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, ws)
@@ -90,7 +90,7 @@ func (h *WorkspaceHandler) Update(c *gin.Context) {
 	}
 	ws, err := h.workspaceSvc.UpdateWorkspaceName(c.Request.Context(), workspaceID, userID, body.Name)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, ws)
@@ -107,7 +107,7 @@ func (h *WorkspaceHandler) ListMembers(c *gin.Context) {
 	workspaceID := c.Param("id")
 	members, err := h.workspaceSvc.ListWorkspaceMembers(c.Request.Context(), workspaceID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, members)
@@ -141,7 +141,7 @@ func (h *WorkspaceHandler) SetMember(c *gin.Context) {
 	}
 	member, err := h.workspaceSvc.SetWorkspaceMemberByUsername(c.Request.Context(), workspaceID, callerID, body.Username, level)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, member)
@@ -158,7 +158,7 @@ func (h *WorkspaceHandler) DeleteMember(c *gin.Context) {
 	workspaceID := c.Param("id")
 	targetUserID := c.Param("userId")
 	if err := h.workspaceSvc.RemoveWorkspaceMember(c.Request.Context(), workspaceID, callerID, targetUserID); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -182,7 +182,7 @@ func (h *WorkspaceHandler) SetPublicStatus(c *gin.Context) {
 	}
 	ws, err := h.workspaceSvc.SetPublicStatus(c.Request.Context(), workspaceID, userID, body.IsPublic)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, ws)
@@ -204,7 +204,7 @@ func (h *WorkspaceHandler) Reorder(c *gin.Context) {
 		return
 	}
 	if err := h.workspaceSvc.ReorderWorkspaces(c.Request.Context(), userID, body.IDs); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)

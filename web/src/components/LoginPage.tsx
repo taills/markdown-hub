@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
+import { ErrorModal } from '@/components/ErrorModal';
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -11,6 +12,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCloseError = () => setError('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -72,12 +75,13 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          {error && <p className="error">{error}</p>}
           <button type="submit" disabled={isSubmitting}>
             {isSubmitting ? t('auth.loading') : mode === 'login' ? t('auth.signIn') : t('auth.register')}
           </button>
         </form>
       </div>
+
+      <ErrorModal message={error} onClose={handleCloseError} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { permissionService } from '@/services/api';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { DocumentPermission, PermissionLevel } from '@/types';
 
 interface PermissionsPanelProps {
@@ -15,6 +16,8 @@ export function PermissionsPanel({ documentId }: PermissionsPanelProps) {
   const [level, setLevel] = useState<PermissionLevel>('read');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const handleCloseError = () => setError('');
 
   const load = () => {
     setIsLoading(true);
@@ -93,11 +96,12 @@ export function PermissionsPanel({ documentId }: PermissionsPanelProps) {
           <option value="edit">{t('permissions.edit')}</option>
           <option value="manage">{t('permissions.manage')}</option>
         </select>
-        {error && <p className="error">{error}</p>}
         <button type="submit" disabled={saving || !username.trim()}>
           {saving ? t('permissions.adding') : t('permissions.add')}
         </button>
       </form>
+
+      <ErrorModal message={error} onClose={handleCloseError} />
     </div>
   );
 }

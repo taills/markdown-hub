@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { documentService } from '@/services/api';
 import { MarkdownPreview } from '@/components/MarkdownPreview';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { Document } from '@/types';
 
 /**
@@ -46,10 +47,10 @@ export function PublicDocumentView() {
   if (error || !document) {
     return (
       <div className="public-doc-shell">
-        <div className="public-doc-error">
-          <p className="error">{error ?? t('common.error')}</p>
-          <button className="ghost" onClick={() => navigate(-1)}>{t('doc.cancel')}</button>
-        </div>
+        <ErrorModal
+          message={error ?? t('common.error')}
+          onClose={() => navigate(-1)}
+        />
       </div>
     );
   }

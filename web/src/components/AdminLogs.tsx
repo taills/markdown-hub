@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { adminService } from '@/services/api';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { AdminLog } from '@/types';
 
 export function AdminLogs() {
@@ -15,6 +16,8 @@ export function AdminLogs() {
   const [error, setError] = useState<string | null>(null);
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
+
+  const handleCloseError = () => setError(null);
 
   useEffect(() => {
     if (!user?.is_admin) {
@@ -74,13 +77,6 @@ export function AdminLogs() {
           </button>
         </div>
       </header>
-
-      {error && (
-        <div className="error-banner">
-          <span className="error-icon">⚠️</span>
-          {error}
-        </div>
-      )}
 
       {loading && (
         <div className="loading-container">
@@ -173,6 +169,8 @@ export function AdminLogs() {
           </div>
         </>
       )}
+
+      <ErrorModal message={error ?? ''} onClose={handleCloseError} />
     </div>
   );
 }

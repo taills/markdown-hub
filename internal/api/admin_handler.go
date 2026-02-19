@@ -58,7 +58,7 @@ func (h *AdminHandler) AdminCheckMiddleware() gin.HandlerFunc {
 
 		user, err := h.authSvc.GetUser(c.Request.Context(), userID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			respondError(c, err)
 			c.Abort()
 			return
 		}
@@ -84,7 +84,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 
 	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 	// Fetch all users
 	users, err := h.adminSvc.ListUsers(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -119,7 +119,7 @@ func (h *AdminHandler) SetAdmin(c *gin.Context) {
 
 	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *AdminHandler) SetAdmin(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 
 	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -204,7 +204,7 @@ func (h *AdminHandler) ListLogs(c *gin.Context) {
 
 	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -229,7 +229,7 @@ func (h *AdminHandler) ListLogs(c *gin.Context) {
 
 	logs, err := h.adminSvc.ListLogs(c.Request.Context(), limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 

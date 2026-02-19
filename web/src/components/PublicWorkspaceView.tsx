@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { workspaceService } from '@/services/api';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { Document, Workspace } from '@/types';
 
 /**
@@ -49,9 +50,10 @@ export function PublicWorkspaceView() {
   if (error || !workspace) {
     return (
       <div className="public-doc-shell">
-        <div className="public-doc-error">
-          <p className="error">{error ?? t('common.error')}</p>
-        </div>
+        <ErrorModal
+          message={error ?? t('common.error')}
+          onClose={() => window.history.back()}
+        />
       </div>
     );
   }

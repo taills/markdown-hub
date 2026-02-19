@@ -208,6 +208,46 @@ header h1 { font-size: 1.5rem; }
 .loading { display: flex; align-items: center; justify-content: center; height: 100vh; color: var(--text-muted); }
 .success { color: var(--success); font-size: 0.85rem; }
 
+/* ---- Modal ---- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 1000;
+}
+
+.modal-panel {
+  width: min(520px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.3);
+  padding: 1.25rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  outline: none;
+}
+
+.modal-header h3 {
+  font-size: 1.1rem;
+}
+
+.modal-body {
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* ---- Notes layout ---- */
 .notes-shell {
   display: flex;

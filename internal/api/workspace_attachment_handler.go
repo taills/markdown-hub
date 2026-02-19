@@ -83,7 +83,7 @@ func (h *WorkspaceAttachmentHandler) Upload(c *gin.Context) {
 	)
 	if err != nil {
 		os.Remove(filePath)
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *WorkspaceAttachmentHandler) List(c *gin.Context) {
 
 	attachments, err := h.attachSvc.ListWorkspaceAttachments(c.Request.Context(), workspaceID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -131,12 +131,12 @@ func (h *WorkspaceAttachmentHandler) Delete(c *gin.Context) {
 
 	attachment, err := h.attachSvc.GetAttachmentForDownload(c.Request.Context(), attachmentID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
 	if err := h.attachSvc.DeleteAttachment(c.Request.Context(), attachmentID, userID, "", ""); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -164,7 +164,7 @@ func (h *WorkspaceAttachmentHandler) Download(c *gin.Context) {
 
 	attachment, err := h.attachSvc.GetAttachmentForDownload(c.Request.Context(), attachmentID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 

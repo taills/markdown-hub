@@ -8,6 +8,7 @@ import { MarkdownPreview } from '@/components/MarkdownPreview';
 import { SnapshotPanel } from '@/components/SnapshotPanel';
 import { PermissionsPanel } from '@/components/PermissionsPanel';
 import { AttachmentPanel } from '@/components/AttachmentPanel';
+import { ErrorModal } from '@/components/ErrorModal';
 import { attachmentService, documentService } from '@/services/api';
 import { applyLinePatch, createLinePatch } from '@/utils/linePatch';
 import type { Attachment, WSMessage } from '@/types';
@@ -24,6 +25,7 @@ export function DocumentEditor() {
   const [activePanel, setActivePanel] = useState<Panel>('preview');
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [connectionState, setConnectionState] = useState('');
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef('');
@@ -178,7 +180,24 @@ export function DocumentEditor() {
   };
 
   if (isLoading) return <div className="loading">Loading document…</div>;
-  if (error) return <div className="error">{error}</div>;
+  if (error) {
+    const modalError = error !== dismissedError ? error : '';
+    return (
+      <div className="editor-layout">
+        <header className="editor-header">
+          <button className="back-btn" onClick={() => navigate('/')}>⟵ Documents</button>
+          <h2 className="doc-title">MarkdownHub</h2>
+        </header>
+        <ErrorModal
+          message={modalError}
+          onClose={() => {
+            setDismissedError(error);
+            navigate('/');
+          }}
+        />
+      </div>
+    );
+  }
   if (!document) return null;
 
   return (

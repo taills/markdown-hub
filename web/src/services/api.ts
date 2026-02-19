@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats, User, AdminLog } from '@/types';
 
 const API_BASE_URL = '/api';
@@ -13,10 +14,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `HTTP ${res.status}`);
+    throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
+}
+
+function resolveErrorMessage(body: unknown, fallback: string): string {
+  const payload = body as { error?: unknown; error_key?: unknown } | null | undefined;
+  const key = typeof payload?.error_key === 'string' ? payload.error_key : '';
+  if (key) {
+    const translated = i18n.t(key);
+    if (translated && translated !== key) return translated;
+  }
+  if (typeof payload?.error === 'string' && payload.error.trim() !== '') return payload.error;
+  return fallback;
 }
 
 // ---- Auth ----
@@ -61,7 +73,7 @@ export const documentService = {
     const res = await fetch(`${API_BASE_URL}/documents/${id}`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `HTTP ${res.status}`);
+      throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
     }
     return res.json() as Promise<Document>;
   },
@@ -71,7 +83,7 @@ export const documentService = {
     const res = await fetch(`${API_BASE_URL}/documents/${id}/raw`, { headers });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `HTTP ${res.status}`);
+      throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
     }
     return res.text();
   },
@@ -114,7 +126,7 @@ export const workspaceService = {
     const res = await fetch(`${API_BASE_URL}/workspaces/${id}`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `HTTP ${res.status}`);
+      throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
     }
     return res.json() as Promise<Workspace>;
   },
@@ -122,7 +134,7 @@ export const workspaceService = {
     const res = await fetch(`${API_BASE_URL}/workspaces/${id}/documents`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `HTTP ${res.status}`);
+      throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
     }
     return res.json() as Promise<Document[]>;
   },
@@ -214,7 +226,7 @@ export const attachmentService = {
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `HTTP ${res.status}`);
+      throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
     }
     return res.json() as Promise<Attachment>;
   },
@@ -231,7 +243,7 @@ export const attachmentService = {
     return fetch(url, { headers }).then(async (res) => {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${res.status}`);
+        throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
       }
       return res.blob();
     });
@@ -258,7 +270,7 @@ export const workspaceAttachmentService = {
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `HTTP ${res.status}`);
+      throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
     }
     return res.json() as Promise<Attachment>;
   },
@@ -273,7 +285,7 @@ export const workspaceAttachmentService = {
     return fetch(url, { headers }).then(async (res) => {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${res.status}`);
+        throw new Error(resolveErrorMessage(body, `HTTP ${res.status}`));
       }
       return res.blob();
     });

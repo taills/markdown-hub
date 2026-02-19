@@ -37,7 +37,7 @@ func (h *DocumentHandler) Create(c *gin.Context) {
 	}
 	doc, err := h.docService.CreateDocument(c.Request.Context(), userID, body.WorkspaceID, body.Title, body.Content)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, doc)
@@ -53,7 +53,7 @@ func (h *DocumentHandler) List(c *gin.Context) {
 	}
 	items, err := h.docService.ListAllAccessibleDocumentsWithPermission(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -67,7 +67,7 @@ func (h *DocumentHandler) Get(c *gin.Context) {
 	docID := c.Param("id")
 	doc, err := h.docService.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, doc)
@@ -81,7 +81,7 @@ func (h *DocumentHandler) GetRaw(c *gin.Context) {
 	docID := c.Param("id")
 	doc, err := h.docService.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.Header("Content-Type", "text/plain; charset=utf-8")
@@ -106,7 +106,7 @@ func (h *DocumentHandler) UpdateContent(c *gin.Context) {
 	}
 	doc, err := h.docService.UpdateContent(c.Request.Context(), docID, userID, body.Content)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, doc)
@@ -130,7 +130,7 @@ func (h *DocumentHandler) UpdateTitle(c *gin.Context) {
 	}
 	doc, err := h.docService.UpdateTitle(c.Request.Context(), docID, userID, body.Title)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, doc)
@@ -146,7 +146,7 @@ func (h *DocumentHandler) Delete(c *gin.Context) {
 	}
 	docID := c.Param("id")
 	if err := h.docService.DeleteDocument(c.Request.Context(), docID, userID); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -170,7 +170,7 @@ func (h *DocumentHandler) SetPublicStatus(c *gin.Context) {
 	}
 	doc, err := h.docService.SetPublicStatus(c.Request.Context(), docID, userID, body.IsPublic)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, doc)
@@ -192,7 +192,7 @@ func (h *DocumentHandler) Reorder(c *gin.Context) {
 		return
 	}
 	if err := h.docService.ReorderDocuments(c.Request.Context(), userID, body.IDs); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -209,7 +209,7 @@ func (h *DocumentHandler) Headings(c *gin.Context) {
 	docID := c.Param("id")
 	doc, err := h.docService.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	sections := core.ParseHeadings(doc.Content)
@@ -223,7 +223,7 @@ func (h *DocumentHandler) ListPublicByWorkspace(c *gin.Context) {
 	workspaceID := c.Param("id")
 	docs, err := h.docService.ListPublicDocumentsByWorkspace(c.Request.Context(), workspaceID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, docs)

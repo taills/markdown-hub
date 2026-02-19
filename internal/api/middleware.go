@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lib/pq"
 
 	"markdownhub/internal/core"
 	"markdownhub/internal/store"
@@ -143,4 +144,100 @@ func errStatus(err error) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+type clientErrorInfo struct {
+	status  int
+	key     string
+	message string
+}
+
+var uniqueConstraintErrors = map[string]clientErrorInfo{
+	"workspaces_owner_id_name_key": {
+		status:  http.StatusConflict,
+		key:     "errors.workspaceNameExists",
+		message: "Workspace name already exists.",
+	},
+	"users_username_key": {
+		status:  http.StatusConflict,
+		key:     "errors.usernameExists",
+		message: "Username already exists.",
+	},
+	"users_email_key": {
+		status:  http.StatusConflict,
+		key:     "errors.emailExists",
+		message: "Email already exists.",
+	},
+	"workspace_members_workspace_id_user_id_key": {
+		status:  http.StatusConflict,
+		key:     "errors.workspaceMemberExists",
+		message: "User already exists in this workspace.",
+	},
+	"document_permissions_document_id_user_id_key": {
+		status:  http.StatusConflict,
+		key:     "errors.documentPermissionExists",
+		message: "Collaborator already exists for this document.",
+	},
+	"heading_permissions_document_id_user_id_heading_anchor_key": {
+		status:  http.StatusConflict,
+		key:     "errors.headingPermissionExists",
+		message: "Heading permission already exists for this user.",
+	},
+	"attachments_document_id_file_path_key": {
+		status:  http.StatusConflict,
+		key:     "errors.attachmentExists",
+		message: "Attachment already exists.",
+	},
+}
+
+func dbErrorInfo(err error) (clientErrorInfo, bool) {
+	var pqErr *pq.Error
+	if !errors.As(err, &pqErr) {
+		return clientErrorInfo{}, false
+	}
+
+	switch pqErr.Code {
+	case "23505":
+		if info, ok := uniqueConstraintErrors[pqErr.Constraint]; ok {
+			return info, true
+		}
+		return clientErrorInfo{
+			status:  http.StatusConflict,
+			key:     "errors.duplicate",
+			message: "Resource already exists.",
+		}, true
+	case "23503":
+		return clientErrorInfo{
+			status:  http.StatusBadRequest,
+			key:     "errors.invalidReference",
+			message: "Referenced resource does not exist.",
+		}, true
+	case "23502":
+		return clientErrorInfo{
+			status:  http.StatusBadRequest,
+			key:     "errors.missingField",
+			message: "Missing required field.",
+		}, true
+	default:
+		return clientErrorInfo{
+			status:  http.StatusInternalServerError,
+			key:     "errors.database",
+			message: "Database error.",
+		}, true
+	}
+}
+
+func errorResponse(err error) (int, gin.H) {
+	if info, ok := dbErrorInfo(err); ok {
+		return info.status, gin.H{
+			"error":     info.message,
+			"error_key": info.key,
+		}
+	}
+	return errStatus(err), gin.H{"error": err.Error()}
+}
+
+func respondError(c *gin.Context, err error) {
+	status, payload := errorResponse(err)
+	c.JSON(status, payload)
 }

@@ -38,7 +38,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 	docID := c.Param("id")
 	doc, err := h.docSvc.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -94,7 +94,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 	if err != nil {
 		// Clean up file if database operation fails
 		os.Remove(filePath)
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -113,13 +113,13 @@ func (h *AttachmentHandler) List(c *gin.Context) {
 	docID := c.Param("id")
 	doc, err := h.docSvc.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
 	attachments, err := h.attachSvc.ListAttachments(c.Request.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -140,20 +140,20 @@ func (h *AttachmentHandler) Delete(c *gin.Context) {
 
 	doc, err := h.docSvc.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
 	// Get attachment to get file path for deletion
 	attachment, err := h.attachSvc.GetAttachment(c.Request.Context(), attachmentID, userID, doc.OwnerID, docID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
 	// Delete from database first
 	if err := h.attachSvc.DeleteAttachment(c.Request.Context(), attachmentID, userID, doc.OwnerID, docID); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -178,13 +178,13 @@ func (h *AttachmentHandler) GetUnreferenced(c *gin.Context) {
 	docID := c.Param("id")
 	doc, err := h.docSvc.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
 	attachments, err := h.attachSvc.GetUnreferencedAttachments(c.Request.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *AttachmentHandler) Download(c *gin.Context) {
 
 	attachment, err := h.attachSvc.GetAttachmentForDownload(c.Request.Context(), attachmentID, userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 

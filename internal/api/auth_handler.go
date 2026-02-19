@@ -32,7 +32,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 	user, err := h.authService.Register(c.Request.Context(), body.Username, body.Email, body.Password)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	token, err := generateToken(user.ID)
@@ -83,7 +83,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	}
 	user, err := h.authService.GetUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, user)

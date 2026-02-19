@@ -26,6 +26,7 @@ import { SnapshotPanel } from '@/components/SnapshotPanel';
 import { PermissionsPanel } from '@/components/PermissionsPanel';
 import { AttachmentPanel } from '@/components/AttachmentPanel';
 import { WorkspaceSettingsPanel } from '@/components/WorkspaceSettingsPanel';
+import { ErrorModal } from '@/components/ErrorModal';
 import { applyLinePatch, createLinePatch } from '@/utils/linePatch';
 import type { Attachment, DocumentListItem, Workspace, WSMessage } from '@/types';
 
@@ -196,6 +197,16 @@ export function NotesLayout() {
   const [titleError, setTitleError] = useState('');
   const [publicToggling, setPublicToggling] = useState(false);
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
+  const [dismissedDocError, setDismissedDocError] = useState<string | null>(null);
+
+  const docErrorToShow = documentError && documentError !== dismissedDocError ? documentError : '';
+  const modalError = titleError || workspaceError || createDocError || docErrorToShow;
+  const handleCloseError = () => {
+    if (documentError) setDismissedDocError(documentError);
+    setTitleError('');
+    setWorkspaceError('');
+    setCreateDocError('');
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -706,7 +717,6 @@ export function NotesLayout() {
               </button>
             )}
           </div>
-          {titleError && <span className="doc-title-error">{titleError}</span>}
         </div>
 
         <div className="topbar-center">
@@ -814,7 +824,6 @@ export function NotesLayout() {
                 <p className="muted">{t('workspace.folders')}</p>
               </div>
             </div>
-            {workspaceError && <p className="error">{workspaceError}</p>}
             <div className="workspace-list">
               <button
                 className={`workspace-item ${showAllWorkspaces ? 'active' : ''}`}
@@ -895,7 +904,6 @@ export function NotesLayout() {
                 {creatingDocument ? t('doc.creating') : t('doc.create')}
               </button>
             </div>
-            {createDocError && <p className="error">{createDocError}</p>}
             <div className="document-list">
               <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDocumentDragEnd}>
                 <SortableContext items={(filteredDocuments ?? []).map((d) => d.id)} strategy={verticalListSortingStrategy}>
@@ -929,7 +937,6 @@ export function NotesLayout() {
         {mode === 'edit' && (
           <main className="notes-column editor-column">
             {docLoading && <div className="loading-inline">{t('common.loading')}</div>}
-            {!docLoading && documentError && <div className="error">{documentError}</div>}
             {!docLoading && !document && (
               <div className="empty-state">
                 {t('doc.pickPrompt')}
@@ -1011,6 +1018,8 @@ export function NotesLayout() {
           </section>
         )}
       </div>
+
+      <ErrorModal message={modalError} onClose={handleCloseError} />
     </div>
   );
 }

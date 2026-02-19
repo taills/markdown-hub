@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { userService } from '@/services/api';
 import { languageOptions, type SupportedLanguage } from '@/i18n';
+import { ErrorModal } from '@/components/ErrorModal';
 import type { UserStats } from '@/types';
 
 export function PersonalCenter() {
@@ -26,6 +27,12 @@ export function PersonalCenter() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  const modalError = passwordError || loadError;
+  const handleCloseError = () => {
+    setPasswordError('');
+    setLoadError('');
+  };
 
   useEffect(() => {
     let active = true;
@@ -142,7 +149,6 @@ export function PersonalCenter() {
       <section className="profile-section">
         <h3>{t('profile.stats')}</h3>
         {loading && <p className="muted">{t('common.loading')}</p>}
-        {loadError && <p className="error">{loadError}</p>}
         {!loading && !loadError && (
           <div className="stats-grid">
             {statsItems.map((item) => (
@@ -208,7 +214,6 @@ export function PersonalCenter() {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </label>
-          {passwordError && <p className="error">{passwordError}</p>}
           {passwordSuccess && <p className="success">{passwordSuccess}</p>}
           <button
             className="primary"
@@ -219,6 +224,8 @@ export function PersonalCenter() {
           </button>
         </div>
       </section>
+
+      <ErrorModal message={modalError} onClose={handleCloseError} />
     </div>
   );
 }

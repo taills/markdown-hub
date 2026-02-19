@@ -28,7 +28,7 @@ func (h *UserHandler) Stats(c *gin.Context) {
 	}
 	stats, err := h.userService.GetStats(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, stats)
@@ -51,7 +51,7 @@ func (h *UserHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 	if err := h.userService.UpdatePassword(c.Request.Context(), userID, body.CurrentPassword, body.NewPassword); err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -74,7 +74,7 @@ func (h *UserHandler) UpdatePreferences(c *gin.Context) {
 	}
 	user, err := h.userService.UpdatePreferredLanguage(c.Request.Context(), userID, body.PreferredLanguage)
 	if err != nil {
-		c.JSON(errStatus(err), gin.H{"error": err.Error()})
+		respondError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, user)

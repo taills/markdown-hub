@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/google/uuid"
+
 	"markdownhub/internal/models"
 	"markdownhub/internal/store"
 )
@@ -40,12 +42,44 @@ func (s *AttachmentService) UploadAttachment(
 		return nil, fmt.Errorf("%w: invalid file size", ErrInvalidInput)
 	}
 
+	wsUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid workspace ID: %w", err)
+	}
+	docUUID, err := uuid.Parse(documentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid document ID: %w", err)
+	}
+	uploaderUUID, err := uuid.Parse(uploaderID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid uploader ID: %w", err)
+	}
+
 	// Create attachment record
-	attachment, err := s.db.CreateAttachment(ctx, workspaceID, &documentID, uploaderID, filename, fileType, fileSize, filePath)
+	attachment, err := s.db.CreateAttachment(ctx, store.CreateAttachmentParams{
+		WorkspaceID: wsUUID,
+		DocumentID:  uuid.NullUUID{UUID: docUUID, Valid: true},
+		UploadBy:    uploaderUUID,
+		Filename:    filename,
+		FileType:    fileType,
+		FileSize:    fileSize,
+		FilePath:    filePath,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create attachment: %w", err)
 	}
-	return attachment, nil
+
+	return &models.Attachment{
+		ID:          attachment.ID.String(),
+		WorkspaceID: attachment.WorkspaceID.String(),
+		DocumentID:  func() *string { s := attachment.DocumentID.UUID.String(); return &s }(),
+		UploadBy:    attachment.UploadBy.String(),
+		Filename:    attachment.Filename,
+		FileType:    attachment.FileType,
+		FileSize:    attachment.FileSize,
+		FilePath:    attachment.FilePath,
+		CreatedAt:   attachment.CreatedAt,
+	}, nil
 }
 
 // UploadWorkspaceAttachment uploads an attachment directly to a workspace.
@@ -64,11 +98,40 @@ func (s *AttachmentService) UploadWorkspaceAttachment(
 	if fileSize <= 0 {
 		return nil, fmt.Errorf("%w: invalid file size", ErrInvalidInput)
 	}
-	attachment, err := s.db.CreateAttachment(ctx, workspaceID, nil, uploaderID, filename, fileType, fileSize, filePath)
+
+	wsUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid workspace ID: %w", err)
+	}
+	uploaderUUID, err := uuid.Parse(uploaderID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid uploader ID: %w", err)
+	}
+
+	attachment, err := s.db.CreateAttachment(ctx, store.CreateAttachmentParams{
+		WorkspaceID: wsUUID,
+		DocumentID:  uuid.NullUUID{Valid: false},
+		UploadBy:    uploaderUUID,
+		Filename:    filename,
+		FileType:    fileType,
+		FileSize:    fileSize,
+		FilePath:    filePath,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create attachment: %w", err)
 	}
-	return attachment, nil
+
+	return &models.Attachment{
+		ID:          attachment.ID.String(),
+		WorkspaceID: attachment.WorkspaceID.String(),
+		DocumentID:  nil,
+		UploadBy:    attachment.UploadBy.String(),
+		Filename:    attachment.Filename,
+		FileType:    attachment.FileType,
+		FileSize:    attachment.FileSize,
+		FilePath:    attachment.FilePath,
+		CreatedAt:   attachment.CreatedAt,
+	}, nil
 }
 
 // GetAttachment retrieves an attachment. The caller must have read permission on the document.
@@ -77,14 +140,36 @@ func (s *AttachmentService) GetAttachment(
 	attachmentID, userID, ownerID string,
 	documentID string,
 ) (*models.Attachment, error) {
-	attachment, err := s.db.GetAttachmentByID(ctx, attachmentID)
+	attUUID, err := uuid.Parse(attachmentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid attachment ID: %w", err)
+	}
+
+	attachment, err := s.db.GetAttachmentByID(ctx, attUUID)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID, documentID, userID, ownerID, models.PermissionRead); err != nil {
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID.String(), documentID, userID, ownerID, models.PermissionRead); err != nil {
 		return nil, err
 	}
-	return attachment, nil
+
+	return &models.Attachment{
+		ID:          attachment.ID.String(),
+		WorkspaceID: attachment.WorkspaceID.String(),
+		DocumentID: func() *string {
+			if attachment.DocumentID.Valid {
+				s := attachment.DocumentID.UUID.String()
+				return &s
+			}
+			return nil
+		}(),
+		UploadBy:  attachment.UploadBy.String(),
+		Filename:  attachment.Filename,
+		FileType:  attachment.FileType,
+		FileSize:  attachment.FileSize,
+		FilePath:  attachment.FilePath,
+		CreatedAt: attachment.CreatedAt,
+	}, nil
 }
 
 // GetAttachmentForDownload retrieves an attachment after validating read permission.
@@ -92,24 +177,46 @@ func (s *AttachmentService) GetAttachmentForDownload(
 	ctx context.Context,
 	attachmentID, userID string,
 ) (*models.Attachment, error) {
-	attachment, err := s.db.GetAttachmentByID(ctx, attachmentID)
+	attUUID, err := uuid.Parse(attachmentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid attachment ID: %w", err)
+	}
+
+	attachment, err := s.db.GetAttachmentByID(ctx, attUUID)
 	if err != nil {
 		return nil, err
 	}
-	if attachment.DocumentID != nil {
-		doc, err := s.db.GetDocumentByID(ctx, *attachment.DocumentID)
+	if attachment.DocumentID.Valid {
+		doc, err := s.db.GetDocumentByID(ctx, attachment.DocumentID.UUID)
 		if err != nil {
 			return nil, err
 		}
-		if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID, *attachment.DocumentID, userID, doc.OwnerID, models.PermissionRead); err != nil {
+		if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID.String(), attachment.DocumentID.UUID.String(), userID, doc.OwnerID.String(), models.PermissionRead); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := s.permService.RequireWorkspacePermission(ctx, attachment.WorkspaceID, userID, models.PermissionRead); err != nil {
+		if err := s.permService.RequireWorkspacePermission(ctx, attachment.WorkspaceID.String(), userID, models.PermissionRead); err != nil {
 			return nil, err
 		}
 	}
-	return attachment, nil
+
+	return &models.Attachment{
+		ID:          attachment.ID.String(),
+		WorkspaceID: attachment.WorkspaceID.String(),
+		DocumentID: func() *string {
+			if attachment.DocumentID.Valid {
+				s := attachment.DocumentID.UUID.String()
+				return &s
+			}
+			return nil
+		}(),
+		UploadBy:  attachment.UploadBy.String(),
+		Filename:  attachment.Filename,
+		FileType:  attachment.FileType,
+		FileSize:  attachment.FileSize,
+		FilePath:  attachment.FilePath,
+		CreatedAt: attachment.CreatedAt,
+	}, nil
 }
 
 // ListAttachments returns all attachments for a document.
@@ -120,7 +227,38 @@ func (s *AttachmentService) ListAttachments(
 	if err := s.requireWorkspaceOrDocumentPermission(ctx, workspaceID, documentID, userID, ownerID, models.PermissionRead); err != nil {
 		return nil, err
 	}
-	return s.db.ListDocumentAttachments(ctx, documentID)
+
+	docUUID, err := uuid.Parse(documentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid document ID: %w", err)
+	}
+
+	atts, err := s.db.ListDocumentAttachments(ctx, uuid.NullUUID{UUID: docUUID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*models.Attachment, len(atts))
+	for i, att := range atts {
+		result[i] = &models.Attachment{
+			ID:          att.ID.String(),
+			WorkspaceID: att.WorkspaceID.String(),
+			DocumentID: func() *string {
+				if att.DocumentID.Valid {
+					s := att.DocumentID.UUID.String()
+					return &s
+				}
+				return nil
+			}(),
+			UploadBy:  att.UploadBy.String(),
+			Filename:  att.Filename,
+			FileType:  att.FileType,
+			FileSize:  att.FileSize,
+			FilePath:  att.FilePath,
+			CreatedAt: att.CreatedAt,
+		}
+	}
+	return result, nil
 }
 
 // ListWorkspaceAttachments returns workspace-level attachments (not tied to a document).
@@ -131,7 +269,38 @@ func (s *AttachmentService) ListWorkspaceAttachments(
 	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionRead); err != nil {
 		return nil, err
 	}
-	return s.db.ListWorkspaceAttachments(ctx, workspaceID)
+
+	wsUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid workspace ID: %w", err)
+	}
+
+	atts, err := s.db.ListWorkspaceAttachments(ctx, wsUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*models.Attachment, len(atts))
+	for i, att := range atts {
+		result[i] = &models.Attachment{
+			ID:          att.ID.String(),
+			WorkspaceID: att.WorkspaceID.String(),
+			DocumentID: func() *string {
+				if att.DocumentID.Valid {
+					s := att.DocumentID.UUID.String()
+					return &s
+				}
+				return nil
+			}(),
+			UploadBy:  att.UploadBy.String(),
+			Filename:  att.Filename,
+			FileType:  att.FileType,
+			FileSize:  att.FileSize,
+			FilePath:  att.FilePath,
+			CreatedAt: att.CreatedAt,
+		}
+	}
+	return result, nil
 }
 
 // DeleteAttachment removes an attachment. The caller must have manage permission.
@@ -139,20 +308,25 @@ func (s *AttachmentService) DeleteAttachment(
 	ctx context.Context,
 	attachmentID, userID, ownerID, documentID string,
 ) error {
-	attachment, err := s.db.GetAttachmentByID(ctx, attachmentID)
+	attUUID, err := uuid.Parse(attachmentID)
+	if err != nil {
+		return fmt.Errorf("invalid attachment ID: %w", err)
+	}
+
+	attachment, err := s.db.GetAttachmentByID(ctx, attUUID)
 	if err != nil {
 		return err
 	}
-	if attachment.DocumentID != nil {
-		if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID, *attachment.DocumentID, userID, ownerID, models.PermissionManage); err != nil {
+	if attachment.DocumentID.Valid {
+		if err := s.requireWorkspaceOrDocumentPermission(ctx, attachment.WorkspaceID.String(), attachment.DocumentID.UUID.String(), userID, ownerID, models.PermissionManage); err != nil {
 			return err
 		}
 	} else {
-		if err := s.permService.RequireWorkspacePermission(ctx, attachment.WorkspaceID, userID, models.PermissionManage); err != nil {
+		if err := s.permService.RequireWorkspacePermission(ctx, attachment.WorkspaceID.String(), userID, models.PermissionManage); err != nil {
 			return err
 		}
 	}
-	return s.db.DeleteAttachment(ctx, attachmentID)
+	return s.db.DeleteAttachment(ctx, attUUID)
 }
 
 // GetUnreferencedAttachments returns attachments in a document that are not referenced in the content.
@@ -164,14 +338,19 @@ func (s *AttachmentService) GetUnreferencedAttachments(
 		return nil, err
 	}
 
+	docUUID, err := uuid.Parse(documentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid document ID: %w", err)
+	}
+
 	// Get document content
-	doc, err := s.db.GetDocumentByID(ctx, documentID)
+	doc, err := s.db.GetDocumentByID(ctx, docUUID)
 	if err != nil {
 		return nil, fmt.Errorf("get document: %w", err)
 	}
 
 	// Get all attachments for this document
-	allAttachments, err := s.db.ListDocumentAttachments(ctx, documentID)
+	allAttachments, err := s.db.ListDocumentAttachments(ctx, uuid.NullUUID{UUID: docUUID, Valid: true})
 	if err != nil {
 		return nil, fmt.Errorf("list attachments: %w", err)
 	}
@@ -184,7 +363,23 @@ func (s *AttachmentService) GetUnreferencedAttachments(
 	for _, att := range allAttachments {
 		baseName := filepath.Base(att.FilePath)
 		if !contains(referencedFilenames, baseName) {
-			unreferenced = append(unreferenced, att)
+			unreferenced = append(unreferenced, &models.Attachment{
+				ID:          att.ID.String(),
+				WorkspaceID: att.WorkspaceID.String(),
+				DocumentID: func() *string {
+					if att.DocumentID.Valid {
+						s := att.DocumentID.UUID.String()
+						return &s
+					}
+					return nil
+				}(),
+				UploadBy:  att.UploadBy.String(),
+				Filename:  att.Filename,
+				FileType:  att.FileType,
+				FileSize:  att.FileSize,
+				FilePath:  att.FilePath,
+				CreatedAt: att.CreatedAt,
+			})
 		}
 	}
 	return unreferenced, nil
@@ -196,7 +391,31 @@ func (s *AttachmentService) CreateReference(
 	attachmentID, documentID string,
 	referencedAt int,
 ) (*models.AttachmentReference, error) {
-	return s.db.CreateAttachmentReference(ctx, attachmentID, documentID, referencedAt)
+	attUUID, err := uuid.Parse(attachmentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid attachment ID: %w", err)
+	}
+	docUUID, err := uuid.Parse(documentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid document ID: %w", err)
+	}
+
+	ref, err := s.db.CreateAttachmentReference(ctx, store.CreateAttachmentReferenceParams{
+		AttachmentID: attUUID,
+		DocumentID:   docUUID,
+		ReferencedAt: int32(referencedAt),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.AttachmentReference{
+		ID:           ref.ID.String(),
+		AttachmentID: ref.AttachmentID.String(),
+		DocumentID:   ref.DocumentID.String(),
+		ReferencedAt: int(ref.ReferencedAt),
+		CreatedAt:    ref.CreatedAt,
+	}, nil
 }
 
 func (s *AttachmentService) requireWorkspaceOrDocumentPermission(

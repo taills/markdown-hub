@@ -3,13 +3,13 @@ package core
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
 	"markdownhub/internal/models"
@@ -47,14 +47,37 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 	}
 
 	var user *models.User
-	err = s.db.WithTransaction(ctx, func(tx *sql.Tx) error {
-		// Create user
-		u, err := s.db.CreateUserTx(ctx, tx, username, email, string(hash))
+	err = s.db.WithTransaction(ctx, func(qtx *store.Queries) error {
+		// Check if this is the first user
+		count, err := qtx.CountUsers(ctx)
+		if err != nil {
+			return fmt.Errorf("count users: %w", err)
+		}
+
+		// First user becomes admin
+		isAdmin := count == 0
+
+		// Create user within transaction
+		row, err := qtx.CreateUserWithAdmin(ctx, store.CreateUserWithAdminParams{
+			Username:     username,
+			Email:        email,
+			PasswordHash: string(hash),
+			IsAdmin:      isAdmin,
+		})
 		if err != nil {
 			return fmt.Errorf("create user: %w", err)
 		}
 
-		user = u
+		user = &models.User{
+			ID:                row.ID.String(),
+			Username:          row.Username,
+			Email:             row.Email,
+			PasswordHash:      row.PasswordHash,
+			PreferredLanguage: row.PreferredLanguage,
+			IsAdmin:           row.IsAdmin,
+			CreatedAt:         row.CreatedAt,
+			UpdatedAt:         row.UpdatedAt,
+		}
 		return nil
 	})
 	if err != nil {
@@ -77,12 +100,38 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 		return nil, fmt.Errorf("%w: invalid credentials", ErrUnauthorized)
 	}
 
-	return user, nil
+	return &models.User{
+		ID:                user.ID.String(),
+		Username:          user.Username,
+		Email:             user.Email,
+		PasswordHash:      user.PasswordHash,
+		PreferredLanguage: user.PreferredLanguage,
+		IsAdmin:           user.IsAdmin,
+		CreatedAt:         user.CreatedAt,
+		UpdatedAt:         user.UpdatedAt,
+	}, nil
 }
 
 // GetUser retrieves a user by ID.
 func (s *AuthService) GetUser(ctx context.Context, userID string) (*models.User, error) {
-	return s.db.GetUserByID(ctx, userID)
+	uuid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+	user, err := s.db.GetUserByID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	return &models.User{
+		ID:                user.ID.String(),
+		Username:          user.Username,
+		Email:             user.Email,
+		PasswordHash:      user.PasswordHash,
+		PreferredLanguage: user.PreferredLanguage,
+		IsAdmin:           user.IsAdmin,
+		CreatedAt:         user.CreatedAt,
+		UpdatedAt:         user.UpdatedAt,
+	}, nil
 }
 
 // -------------------------------------------------------------------------

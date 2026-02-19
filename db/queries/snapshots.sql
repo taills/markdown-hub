@@ -17,3 +17,6 @@ SELECT * FROM snapshots
 WHERE document_id = $1
 ORDER BY created_at DESC
 LIMIT 1;
+
+-- name: CountSnapshotsAuthored :one
+SELECT COUNT(*) FROM snapshots WHERE author_id = $1;

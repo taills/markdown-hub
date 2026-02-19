@@ -21,7 +21,7 @@ func main() {
 	addr := getEnv("ADDR", ":8080")
 	jwtSecret := []byte(getEnv("JWT_SECRET", "change-me-in-production"))
 
-	db, err := store.New(dsn)
+	db, err := store.NewDB(dsn)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}

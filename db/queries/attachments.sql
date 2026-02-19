@@ -1,6 +1,6 @@
 -- name: CreateAttachment :one
-INSERT INTO attachments (document_id, upload_by, filename, file_type, file_size, file_path)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO attachments (workspace_id, document_id, upload_by, filename, file_type, file_size, file_path)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetAttachmentByID :one
@@ -8,6 +8,9 @@ SELECT * FROM attachments WHERE id = $1;
 
 -- name: ListDocumentAttachments :many
 SELECT * FROM attachments WHERE document_id = $1 ORDER BY created_at DESC;
+
+-- name: ListWorkspaceAttachments :many
+SELECT * FROM attachments WHERE workspace_id = $1 ORDER BY created_at DESC;
 
 -- name: DeleteAttachment :exec
 DELETE FROM attachments WHERE id = $1;
@@ -32,3 +35,6 @@ WHERE a.document_id = $1 AND ar.id IS NULL;
 
 -- name: DeleteAttachmentReference :exec
 DELETE FROM attachment_references WHERE attachment_id = $1 AND document_id = $2;
+
+-- name: CountAttachmentsUploaded :one
+SELECT COUNT(*) FROM attachments WHERE upload_by = $1;

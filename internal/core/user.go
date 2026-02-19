@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,8 @@ import (
 
 	"markdownhub/internal/models"
 	"markdownhub/internal/store"
+
+	"github.com/google/uuid"
 )
 
 // UserService handles account preferences and stats.
@@ -29,20 +32,36 @@ func (s *UserService) UpdatePassword(ctx context.Context, userID, currentPasswor
 	if len(newPassword) < 8 {
 		return fmt.Errorf("%w: password must be at least 8 characters", ErrInvalidInput)
 	}
-	user, err := s.db.GetUserByID(ctx, userID)
+
+	userUUID, err := uuid.Parse(userID)
 	if err != nil {
+		return fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	user, err := s.db.GetUserByID(ctx, userUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return store.ErrNotFound
+		}
 		return err
 	}
+
 	if err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
 		return fmt.Errorf("%w: invalid credentials", ErrUnauthorized)
 	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}
-	if err := s.db.UpdateUserPassword(ctx, userID, string(hash)); err != nil {
+
+	if err := s.db.UpdateUserPassword(ctx, store.UpdateUserPasswordParams{
+		ID:           userUUID,
+		PasswordHash: string(hash),
+	}); err != nil {
 		return fmt.Errorf("update password: %w", err)
 	}
+
 	return nil
 }
 
@@ -52,41 +71,61 @@ func (s *UserService) UpdatePreferredLanguage(ctx context.Context, userID, langu
 	if lang == "" {
 		return nil, fmt.Errorf("%w: unsupported language", ErrInvalidInput)
 	}
-	user, err := s.db.UpdateUserPreferredLanguage(ctx, userID, lang)
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	user, err := s.db.UpdateUserPreferredLanguage(ctx, store.UpdateUserPreferredLanguageParams{
+		ID:                userUUID,
+		PreferredLanguage: lang,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("update language: %w", err)
 	}
-	return user, nil
+
+	return storeUserToModel(&user), nil
 }
 
 // GetStats aggregates user statistics.
 func (s *UserService) GetStats(ctx context.Context, userID string) (*models.UserStats, error) {
-	accessible, err := s.db.CountAccessibleDocuments(ctx, userID)
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	accessible, err := s.db.CountAccessibleDocuments(ctx, userUUID)
 	if err != nil {
 		return nil, err
 	}
-	owned, err := s.db.CountOwnedDocuments(ctx, userID)
+
+	owned, err := s.db.CountOwnedDocuments(ctx, userUUID)
 	if err != nil {
 		return nil, err
 	}
-	workspaces, err := s.db.CountWorkspacesByUser(ctx, userID)
+
+	workspaces, err := s.db.CountWorkspacesByUser(ctx, userUUID)
 	if err != nil {
 		return nil, err
 	}
-	attachments, err := s.db.CountAttachmentsUploaded(ctx, userID)
+
+	attachments, err := s.db.CountAttachmentsUploaded(ctx, userUUID)
 	if err != nil {
 		return nil, err
 	}
-	snapshots, err := s.db.CountSnapshotsAuthored(ctx, userID)
+
+	snapshots, err := s.db.CountSnapshotsAuthored(ctx, uuid.NullUUID{UUID: userUUID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
+
 	return &models.UserStats{
-		AccessibleDocuments: accessible,
-		OwnedDocuments:      owned,
-		Workspaces:          workspaces,
-		AttachmentsUploaded: attachments,
-		SnapshotsAuthored:   snapshots,
+		AccessibleDocuments: int(accessible),
+		OwnedDocuments:      int(owned),
+		Workspaces:          int(workspaces),
+		AttachmentsUploaded: int(attachments),
+		SnapshotsAuthored:   int(snapshots),
 	}, nil
 }
 
@@ -104,5 +143,23 @@ func normalizeLanguage(lang string) string {
 		return "zh-TW"
 	default:
 		return ""
+	}
+}
+
+// -------------------------------------------------------------------------
+// Type Conversion Helpers
+// -------------------------------------------------------------------------
+
+// storeUserToModel converts a store.User to *models.User
+func storeUserToModel(u *store.User) *models.User {
+	return &models.User{
+		ID:                u.ID.String(),
+		Username:          u.Username,
+		Email:             u.Email,
+		PasswordHash:      u.PasswordHash,
+		PreferredLanguage: u.PreferredLanguage,
+		IsAdmin:           u.IsAdmin,
+		CreatedAt:         u.CreatedAt,
+		UpdatedAt:         u.UpdatedAt,
 	}
 }

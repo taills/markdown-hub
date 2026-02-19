@@ -52,7 +52,8 @@ JOIN workspace_members wm ON w.id = wm.workspace_id
 WHERE wm.user_id = $1
 ORDER BY w.updated_at DESC;
 
--- name: ListDocumentsByWorkspace :many
-SELECT * FROM documents 
-WHERE workspace_id = $1
-ORDER BY updated_at DESC;
+-- name: CountWorkspacesByUser :one
+SELECT COUNT(*) FROM workspace_members WHERE user_id = $1;
+
+-- name: UpdateWorkspaceSortOrder :exec
+UPDATE workspaces SET sort_order = $2, updated_at = NOW() WHERE id = $1;

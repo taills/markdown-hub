@@ -14,7 +14,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
+  pgadmin:
+    image: dpage/pgadmin4:9
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: Admin123..
+    ports:
+      - "8081:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
   migrate:
     image: migrate/migrate:latest
     depends_on:
@@ -43,3 +55,4 @@ services:
 
 volumes:
   pgdata:
+  pgadmin_data:

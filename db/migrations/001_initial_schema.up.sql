@@ -8,6 +8,7 @@ CREATE TABLE users (
     email       TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     preferred_language TEXT NOT NULL DEFAULT 'zh-CN',
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -68,7 +69,7 @@ CREATE TABLE attachment_references (
 CREATE TABLE snapshots (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    author_id   UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    author_id   UUID REFERENCES users(id) ON DELETE SET NULL,
     content     TEXT NOT NULL,
     message     TEXT NOT NULL DEFAULT '',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()

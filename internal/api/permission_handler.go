@@ -2,7 +2,8 @@ package api
 
 import (
 	"net/http"
-	"strings"
+
+	"github.com/gin-gonic/gin"
 
 	"markdownhub/internal/core"
 	"markdownhub/internal/models"
@@ -21,133 +22,123 @@ func NewPermissionHandler(permService *core.PermissionService, docService *core.
 
 // List godoc
 // GET /api/documents/{id}/permissions
-func (h *PermissionHandler) List(w http.ResponseWriter, r *http.Request) {
-	callerID, ok := userIDFromContext(r.Context())
+func (h *PermissionHandler) List(c *gin.Context) {
+	callerID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	docID := pathParam(r, "id")
-	if _, err := h.docService.GetDocument(r.Context(), docID, callerID); err != nil {
-		writeError(w, errStatus(err), err.Error())
+	docID := c.Param("id")
+	if _, err := h.docService.GetDocument(c.Request.Context(), docID, callerID); err != nil {
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	perms, err := h.permService.ListPermissions(r.Context(), docID)
+	perms, err := h.permService.ListPermissions(c.Request.Context(), docID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, perms)
+	c.JSON(http.StatusOK, perms)
 }
 
 // Set godoc
 // PUT /api/documents/{id}/permissions
 // Request body: { "username": "john", "level": "edit" }
-func (h *PermissionHandler) Set(w http.ResponseWriter, r *http.Request) {
-	callerID, ok := userIDFromContext(r.Context())
+func (h *PermissionHandler) Set(c *gin.Context) {
+	callerID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	docID := pathParam(r, "id")
+	docID := c.Param("id")
 
 	var body struct {
 		Username string `json:"username"`
 		Level    string `json:"level"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON")
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
 		return
 	}
 
 	if body.Username == "" {
-		writeError(w, http.StatusBadRequest, "username is required")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username is required"})
 		return
 	}
 
 	level := models.PermissionLevel(body.Level)
 	if level != models.PermissionRead && level != models.PermissionEdit && level != models.PermissionManage {
-		writeError(w, http.StatusBadRequest, "level must be read, edit, or manage")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "level must be read, edit, or manage"})
 		return
 	}
 
-	doc, err := h.docService.GetDocument(r.Context(), docID, callerID)
+	doc, err := h.docService.GetDocument(c.Request.Context(), docID, callerID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	perm, err := h.permService.SetDocumentPermissionByUsername(r.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, body.Username, level)
+	perm, err := h.permService.SetDocumentPermissionByUsername(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, body.Username, level)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, perm)
+	c.JSON(http.StatusOK, perm)
 }
 
 // Delete godoc
 // DELETE /api/documents/{id}/permissions/{userID}
-func (h *PermissionHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	callerID, ok := userIDFromContext(r.Context())
+func (h *PermissionHandler) Delete(c *gin.Context) {
+	callerID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	docID := pathParam(r, "id")
-	targetUserID := pathParamAt(r.URL.Path, 4)
+	docID := c.Param("id")
+	targetUserID := c.Param("userId")
 
-	doc, err := h.docService.GetDocument(r.Context(), docID, callerID)
+	doc, err := h.docService.GetDocument(c.Request.Context(), docID, callerID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.permService.RemoveDocumentPermission(r.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID); err != nil {
-		writeError(w, errStatus(err), err.Error())
+	if err := h.permService.RemoveDocumentPermission(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID); err != nil {
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
 // SetHeading godoc
 // PUT /api/documents/{id}/permissions/{userID}/headings/{anchor}
-func (h *PermissionHandler) SetHeading(w http.ResponseWriter, r *http.Request) {
-	callerID, ok := userIDFromContext(r.Context())
+func (h *PermissionHandler) SetHeading(c *gin.Context) {
+	callerID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	docID := pathParam(r, "id")
-	targetUserID := pathParamAt(r.URL.Path, 4)
-	headingAnchor := pathParamAt(r.URL.Path, 6)
+	docID := c.Param("id")
+	targetUserID := c.Param("userId")
+	headingAnchor := c.Param("anchor")
 
 	var body struct {
 		Level string `json:"level"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON")
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
 		return
 	}
 	level := models.PermissionLevel(body.Level)
 
-	doc, err := h.docService.GetDocument(r.Context(), docID, callerID)
+	doc, err := h.docService.GetDocument(c.Request.Context(), docID, callerID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	perm, err := h.permService.SetHeadingPermission(r.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID, headingAnchor, level)
+	perm, err := h.permService.SetHeadingPermission(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID, headingAnchor, level)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, perm)
-}
-
-// pathParamAt extracts the segment at position idx (0-indexed, after splitting
-// the path by "/") from a URL path.
-func pathParamAt(path string, idx int) string {
-	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
-	if idx < len(parts) {
-		return parts[idx]
-	}
-	return ""
+	c.JSON(http.StatusOK, perm)
 }

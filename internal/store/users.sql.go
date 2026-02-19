@@ -7,6 +7,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -34,9 +35,20 @@ type CreateUserParams struct {
 	PasswordHash string `json:"password_hash"`
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+type CreateUserRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.Email, arg.PasswordHash)
-	var i User
+	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
@@ -63,14 +75,25 @@ type CreateUserWithAdminParams struct {
 	IsAdmin      bool   `json:"is_admin"`
 }
 
-func (q *Queries) CreateUserWithAdmin(ctx context.Context, arg CreateUserWithAdminParams) (User, error) {
+type CreateUserWithAdminRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) CreateUserWithAdmin(ctx context.Context, arg CreateUserWithAdminParams) (CreateUserWithAdminRow, error) {
 	row := q.db.QueryRowContext(ctx, createUserWithAdmin,
 		arg.Username,
 		arg.Email,
 		arg.PasswordHash,
 		arg.IsAdmin,
 	)
-	var i User
+	var i CreateUserWithAdminRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
@@ -97,9 +120,20 @@ const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at FROM users WHERE email = $1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+type GetUserByEmailRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
-	var i User
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
@@ -117,9 +151,20 @@ const getUserByID = `-- name: GetUserByID :one
 SELECT id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at FROM users WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+type GetUserByIDRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
@@ -137,9 +182,20 @@ const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at FROM users WHERE username = $1
 `
 
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+type GetUserByUsernameRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
-	var i User
+	var i GetUserByUsernameRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,
@@ -157,15 +213,26 @@ const listUsers = `-- name: ListUsers :many
 SELECT id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at FROM users ORDER BY created_at DESC
 `
 
-func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
+type ListUsersRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
 	rows, err := q.db.QueryContext(ctx, listUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []User{}
+	items := []ListUsersRow{}
 	for rows.Next() {
-		var i User
+		var i ListUsersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Username,
@@ -187,6 +254,84 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserActive = `-- name: UpdateUserActive :one
+UPDATE users SET is_active = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, username, email, password_hash, preferred_language, is_admin, is_active, created_at, updated_at
+`
+
+type UpdateUserActiveParams struct {
+	ID       uuid.UUID `json:"id"`
+	IsActive bool      `json:"is_active"`
+}
+
+type UpdateUserActiveRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	IsActive          bool      `json:"is_active"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserActive(ctx context.Context, arg UpdateUserActiveParams) (UpdateUserActiveRow, error) {
+	row := q.db.QueryRowContext(ctx, updateUserActive, arg.ID, arg.IsActive)
+	var i UpdateUserActiveRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.PreferredLanguage,
+		&i.IsAdmin,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUserIsAdmin = `-- name: UpdateUserIsAdmin :one
+UPDATE users SET is_admin = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at
+`
+
+type UpdateUserIsAdminParams struct {
+	ID      uuid.UUID `json:"id"`
+	IsAdmin bool      `json:"is_admin"`
+}
+
+type UpdateUserIsAdminRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserIsAdmin(ctx context.Context, arg UpdateUserIsAdminParams) (UpdateUserIsAdminRow, error) {
+	row := q.db.QueryRowContext(ctx, updateUserIsAdmin, arg.ID, arg.IsAdmin)
+	var i UpdateUserIsAdminRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.PreferredLanguage,
+		&i.IsAdmin,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateUserPassword = `-- name: UpdateUserPassword :exec
@@ -214,9 +359,20 @@ type UpdateUserPreferredLanguageParams struct {
 	PreferredLanguage string    `json:"preferred_language"`
 }
 
-func (q *Queries) UpdateUserPreferredLanguage(ctx context.Context, arg UpdateUserPreferredLanguageParams) (User, error) {
+type UpdateUserPreferredLanguageRow struct {
+	ID                uuid.UUID `json:"id"`
+	Username          string    `json:"username"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"password_hash"`
+	PreferredLanguage string    `json:"preferred_language"`
+	IsAdmin           bool      `json:"is_admin"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserPreferredLanguage(ctx context.Context, arg UpdateUserPreferredLanguageParams) (UpdateUserPreferredLanguageRow, error) {
 	row := q.db.QueryRowContext(ctx, updateUserPreferredLanguage, arg.ID, arg.PreferredLanguage)
-	var i User
+	var i UpdateUserPreferredLanguageRow
 	err := row.Scan(
 		&i.ID,
 		&i.Username,

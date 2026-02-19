@@ -135,3 +135,18 @@ type WorkspaceMember struct {
 	CreatedAt   time.Time       `json:"created_at"`
 	Username    string          `json:"username,omitempty"`
 }
+
+// AdminLog records administrative operations for audit trail.
+type AdminLog struct {
+	ID             string                 `json:"id"`
+	AdminID        string                 `json:"admin_id"`
+	Action         string                 `json:"action"`
+	TargetType     string                 `json:"target_type"`
+	TargetID       string                 `json:"target_id,omitempty"`
+	TargetUsername string                 `json:"target_username,omitempty"`
+	Details        map[string]interface{} `json:"details,omitempty"`
+	IpAddress      string                 `json:"ip_address,omitempty"`
+	UserAgent      string                 `json:"user_agent,omitempty"`
+	CreatedAt      time.Time              `json:"created_at"`
+	AdminUsername  string                 `json:"admin_username,omitempty"`
+}

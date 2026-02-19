@@ -5,11 +5,13 @@
 package store
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type PermissionLevel string
@@ -53,6 +55,19 @@ func (ns NullPermissionLevel) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.PermissionLevel), nil
+}
+
+type AdminLog struct {
+	ID             uuid.UUID             `json:"id"`
+	AdminID        uuid.UUID             `json:"admin_id"`
+	Action         string                `json:"action"`
+	TargetType     string                `json:"target_type"`
+	TargetID       uuid.NullUUID         `json:"target_id"`
+	TargetUsername sql.NullString        `json:"target_username"`
+	Details        pqtype.NullRawMessage `json:"details"`
+	IpAddress      sql.NullString        `json:"ip_address"`
+	UserAgent      sql.NullString        `json:"user_agent"`
+	CreatedAt      time.Time             `json:"created_at"`
 }
 
 type Attachment struct {
@@ -122,6 +137,7 @@ type User struct {
 	IsAdmin           bool      `json:"is_admin"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
+	IsActive          bool      `json:"is_active"`
 }
 
 type Workspace struct {

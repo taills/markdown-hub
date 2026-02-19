@@ -1,4 +1,4 @@
-import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats } from '@/types';
+import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats, User, AdminLog } from '@/types';
 
 const API_BASE_URL = '/api';
 
@@ -279,3 +279,17 @@ export const workspaceAttachmentService = {
     });
   },
 };
+
+// ---- Admin ----
+
+export const adminService = {
+  listUsers: () => request<User[]>('/admin/users'),
+  setUserAdmin: (id: string, isAdmin: boolean) =>
+    request<User>(`/admin/users/${id}/admin`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_admin: isAdmin }),
+    }),
+  deleteUser: (id: string) =>
+    request<void>(`/admin/users/${id}`, { method: 'DELETE' }),
+  listAdminLogs: (limit: number = 100, offset: number = 0) =>
+    request<AdminLog[]>(`/admin/logs?limit=${limit}&offset=${offset}`),};

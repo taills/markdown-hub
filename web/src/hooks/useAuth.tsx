@@ -22,18 +22,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token) {
+      console.log('[AuthProvider] No token found');
       setIsLoading(false);
       return;
     }
+    console.log('[AuthProvider] Fetching user with token:', token.slice(0, 20) + '...');
     authService
       .me()
       .then((data) => {
+        console.log('[AuthProvider] User loaded:', {
+          id: data?.id,
+          email: data?.email,
+          isAdmin: data?.is_admin,
+          username: data?.username,
+        });
         setUser(data);
         if (data?.preferred_language) {
           setLanguage(data.preferred_language as SupportedLanguage);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[AuthProvider] Failed to fetch user:', err);
         localStorage.removeItem('mh_token');
         setToken(null);
       })

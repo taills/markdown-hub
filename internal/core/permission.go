@@ -36,18 +36,29 @@ func levelValue(l models.PermissionLevel) int {
 
 // RequireWorkspacePermission returns ErrUnauthorized if userID does not have
 // at least the requested level on workspaceID. The workspace owner always passes.
+// Admin users are treated as superusers and always pass.
 func (s *PermissionService) RequireWorkspacePermission(
 	ctx context.Context,
 	workspaceID, userID string,
 	required models.PermissionLevel,
 ) error {
-	wsUUID, err := uuid.Parse(workspaceID)
-	if err != nil {
-		return fmt.Errorf("invalid workspace ID: %w", err)
-	}
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	// Check if user is admin (superuser); if so, grant access
+	user, err := s.db.GetUserByID(ctx, userUUID)
+	if err == nil && user.IsAdmin {
+		return nil
+	}
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return fmt.Errorf("check admin status: %w", err)
+	}
+
+	wsUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return fmt.Errorf("invalid workspace ID: %w", err)
 	}
 
 	ws, err := s.db.GetWorkspaceByID(ctx, wsUUID)
@@ -78,6 +89,7 @@ func (s *PermissionService) RequireWorkspacePermission(
 
 // RequireDocumentPermission returns ErrUnauthorized if userID does not have
 // at least the requested level on documentID. The owner always passes.
+// Admin users are treated as superusers and always pass.
 func (s *PermissionService) RequireDocumentPermission(
 	ctx context.Context,
 	documentID, userID, ownerID string,
@@ -86,13 +98,24 @@ func (s *PermissionService) RequireDocumentPermission(
 	if userID == ownerID {
 		return nil
 	}
-	docUUID, err := uuid.Parse(documentID)
-	if err != nil {
-		return fmt.Errorf("invalid document ID: %w", err)
-	}
+
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	// Check if user is admin (superuser); if so, grant access
+	user, err := s.db.GetUserByID(ctx, userUUID)
+	if err == nil && user.IsAdmin {
+		return nil
+	}
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return fmt.Errorf("check admin status: %w", err)
+	}
+
+	docUUID, err := uuid.Parse(documentID)
+	if err != nil {
+		return fmt.Errorf("invalid document ID: %w", err)
 	}
 
 	perm, err := s.db.GetDocumentPermission(ctx, store.GetDocumentPermissionParams{
@@ -113,6 +136,7 @@ func (s *PermissionService) RequireDocumentPermission(
 
 // ValidateHeadingEdits checks whether the user is allowed to edit all the
 // sections that differ between oldContent and newContent.
+// Admin users are treated as superusers and always pass.
 func (s *PermissionService) ValidateHeadingEdits(
 	ctx context.Context,
 	documentID, userID, ownerID, oldContent, newContent string,
@@ -121,13 +145,23 @@ func (s *PermissionService) ValidateHeadingEdits(
 		return nil
 	}
 
-	docUUID, err := uuid.Parse(documentID)
-	if err != nil {
-		return fmt.Errorf("invalid document ID: %w", err)
-	}
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	// Check if user is admin (superuser); if so, grant access
+	user, err := s.db.GetUserByID(ctx, userUUID)
+	if err == nil && user.IsAdmin {
+		return nil
+	}
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return fmt.Errorf("check admin status: %w", err)
+	}
+
+	docUUID, err := uuid.Parse(documentID)
+	if err != nil {
+		return fmt.Errorf("invalid document ID: %w", err)
 	}
 
 	oldSections := ParseHeadings(oldContent)

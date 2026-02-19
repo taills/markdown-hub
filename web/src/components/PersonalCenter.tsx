@@ -7,7 +7,7 @@ import { languageOptions, type SupportedLanguage } from '@/i18n';
 import type { UserStats } from '@/types';
 
 export function PersonalCenter() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -51,10 +51,16 @@ export function PersonalCenter() {
   }, [t]);
 
   useEffect(() => {
+    console.log('[PersonalCenter] Auth state:', {
+      user,
+      isAdmin: user?.is_admin,
+      authLoading,
+      userEmail: user?.email,
+    });
     if (user?.preferred_language) {
       setLanguageState(user.preferred_language as SupportedLanguage);
     }
-  }, [user?.preferred_language]);
+  }, [user?.preferred_language, user, authLoading]);
 
   const statsItems = useMemo(() => {
     if (!stats) return [];
@@ -102,6 +108,13 @@ export function PersonalCenter() {
     }
   };
 
+  if (authLoading) {
+    console.log('[PersonalCenter] Still loading auth...');
+    return <div className="profile-page"><p>{t('common.loading')}</p></div>;
+  }
+
+  console.log('[PersonalCenter] Rendering with user:', { user, isAdmin: user?.is_admin, authLoading });
+
   return (
     <div className="profile-page">
       <header className="profile-header">
@@ -109,10 +122,21 @@ export function PersonalCenter() {
           <h2>{t('profile.title')}</h2>
           <p className="muted">{user?.email}</p>
         </div>
-        <button className="secondary" onClick={() => navigate('/')}
-        >
-          {t('nav.backToEdit')}
-        </button>
+        <div className="profile-header-buttons">
+          {user?.is_admin && (
+            <>
+              <button className="secondary" onClick={() => navigate('/admin/users')}>
+                {t('nav.admin')}
+              </button>
+              <button className="secondary" onClick={() => navigate('/admin/logs')}>
+                {t('nav.adminLogs')}
+              </button>
+            </>
+          )}
+          <button className="secondary" onClick={() => navigate('/')}>
+            {t('nav.backToEdit')}
+          </button>
+        </div>
       </header>
 
       <section className="profile-section">

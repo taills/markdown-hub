@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
 	"markdownhub/internal/core"
@@ -26,34 +27,29 @@ func NewWorkspaceAttachmentHandler(attachSvc *core.AttachmentService) *Workspace
 // Upload godoc
 // POST /api/workspaces/{id}/attachments
 // Content-Type: multipart/form-data
-func (h *WorkspaceAttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *WorkspaceAttachmentHandler) Upload(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	workspaceID := pathParamAt(r.URL.Path, 2)
+	workspaceID := c.Param("id")
 	if workspaceID == "" {
-		writeError(w, http.StatusBadRequest, "missing workspace id")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing workspace id"})
 		return
 	}
 
-	if err := r.ParseMultipartForm(100 * 1024 * 1024); err != nil {
-		writeError(w, http.StatusBadRequest, "failed to parse form")
-		return
-	}
-
-	file, fileHeader, err := r.FormFile("file")
+	file, fileHeader, err := c.Request.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "missing file")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing file"})
 		return
 	}
 	defer file.Close()
 
 	fileData, err := io.ReadAll(file)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to read file")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read file"})
 		return
 	}
 
@@ -67,17 +63,17 @@ func (h *WorkspaceAttachmentHandler) Upload(w http.ResponseWriter, r *http.Reque
 
 	uploadDir := filepath.Dir(filePath)
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create upload directory")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload directory"})
 		return
 	}
 
 	if err := os.WriteFile(filePath, fileData, 0644); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to save file")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
 		return
 	}
 
 	attachment, err := h.attachSvc.UploadWorkspaceAttachment(
-		r.Context(),
+		c.Request.Context(),
 		workspaceID,
 		userID,
 		fileName,
@@ -87,60 +83,60 @@ func (h *WorkspaceAttachmentHandler) Upload(w http.ResponseWriter, r *http.Reque
 	)
 	if err != nil {
 		os.Remove(filePath)
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, attachment)
+	c.JSON(http.StatusCreated, attachment)
 }
 
 // List godoc
 // GET /api/workspaces/{id}/attachments
-func (h *WorkspaceAttachmentHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *WorkspaceAttachmentHandler) List(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	workspaceID := pathParamAt(r.URL.Path, 2)
+	workspaceID := c.Param("id")
 	if workspaceID == "" {
-		writeError(w, http.StatusBadRequest, "missing workspace id")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing workspace id"})
 		return
 	}
 
-	attachments, err := h.attachSvc.ListWorkspaceAttachments(r.Context(), workspaceID, userID)
+	attachments, err := h.attachSvc.ListWorkspaceAttachments(c.Request.Context(), workspaceID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, attachments)
+	c.JSON(http.StatusOK, attachments)
 }
 
 // Delete godoc
 // DELETE /api/workspaces/{id}/attachments/{attachmentID}
-func (h *WorkspaceAttachmentHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *WorkspaceAttachmentHandler) Delete(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	attachmentID := pathParamAt(r.URL.Path, 4)
+	attachmentID := c.Param("attachmentId")
 	if attachmentID == "" {
-		writeError(w, http.StatusBadRequest, "missing attachment id")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing attachment id"})
 		return
 	}
 
-	attachment, err := h.attachSvc.GetAttachmentForDownload(r.Context(), attachmentID, userID)
+	attachment, err := h.attachSvc.GetAttachmentForDownload(c.Request.Context(), attachmentID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.attachSvc.DeleteAttachment(r.Context(), attachmentID, userID, "", ""); err != nil {
-		writeError(w, errStatus(err), err.Error())
+	if err := h.attachSvc.DeleteAttachment(c.Request.Context(), attachmentID, userID, "", ""); err != nil {
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -148,37 +144,37 @@ func (h *WorkspaceAttachmentHandler) Delete(w http.ResponseWriter, r *http.Reque
 		fmt.Printf("warning: failed to delete file %s: %v\n", attachment.FilePath, err)
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
 // Download godoc
 // GET /api/workspace-attachments/{id}/download
-func (h *WorkspaceAttachmentHandler) Download(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *WorkspaceAttachmentHandler) Download(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	attachmentID := pathParamAt(r.URL.Path, 2)
+	attachmentID := c.Param("id")
 	if attachmentID == "" {
-		writeError(w, http.StatusBadRequest, "missing attachment id")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing attachment id"})
 		return
 	}
 
-	attachment, err := h.attachSvc.GetAttachmentForDownload(r.Context(), attachmentID, userID)
+	attachment, err := h.attachSvc.GetAttachmentForDownload(c.Request.Context(), attachmentID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
 	if attachment.FileType != "" {
-		w.Header().Set("Content-Type", attachment.FileType)
+		c.Header("Content-Type", attachment.FileType)
 	}
 
 	encodedFilename := url.QueryEscape(attachment.Filename)
 	disposition := fmt.Sprintf("attachment; filename*=UTF-8''%s", encodedFilename)
-	w.Header().Set("Content-Disposition", disposition)
+	c.Header("Content-Disposition", disposition)
 
-	http.ServeFile(w, r, attachment.FilePath)
+	c.File(attachment.FilePath)
 }

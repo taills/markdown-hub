@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
 	"markdownhub/internal/core"
@@ -27,30 +28,24 @@ func NewAttachmentHandler(attachSvc *core.AttachmentService, docSvc *core.Docume
 // Upload godoc
 // POST /api/documents/{id}/attachments
 // Content-Type: multipart/form-data
-func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *AttachmentHandler) Upload(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	docID := pathParam(r, "id")
-	doc, err := h.docSvc.GetDocument(r.Context(), docID, userID)
+	docID := c.Param("id")
+	doc, err := h.docSvc.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
-		return
-	}
-
-	// Parse multipart form with max 100MB files
-	if err := r.ParseMultipartForm(100 * 1024 * 1024); err != nil {
-		writeError(w, http.StatusBadRequest, "failed to parse form")
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
 	// Get uploaded file
-	file, fileHeader, err := r.FormFile("file")
+	file, fileHeader, err := c.Request.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "missing file")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing file"})
 		return
 	}
 	defer file.Close()
@@ -58,7 +53,7 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	// Read file content
 	fileData, err := io.ReadAll(file)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to read file")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read file"})
 		return
 	}
 
@@ -74,19 +69,19 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	// Ensure upload directory exists
 	uploadDir := filepath.Dir(filePath)
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create upload directory")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload directory"})
 		return
 	}
 
 	// Write file to disk
 	if err := os.WriteFile(filePath, fileData, 0644); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to save file")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
 		return
 	}
 
 	// Create attachment record in database
 	attachment, err := h.attachSvc.UploadAttachment(
-		r.Context(),
+		c.Request.Context(),
 		doc.WorkspaceID,
 		docID,
 		userID,
@@ -99,66 +94,66 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Clean up file if database operation fails
 		os.Remove(filePath)
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, attachment)
+	c.JSON(http.StatusCreated, attachment)
 }
 
 // List godoc
 // GET /api/documents/{id}/attachments
-func (h *AttachmentHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *AttachmentHandler) List(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	docID := pathParam(r, "id")
-	doc, err := h.docSvc.GetDocument(r.Context(), docID, userID)
+	docID := c.Param("id")
+	doc, err := h.docSvc.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	attachments, err := h.attachSvc.ListAttachments(r.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
+	attachments, err := h.attachSvc.ListAttachments(c.Request.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, attachments)
+	c.JSON(http.StatusOK, attachments)
 }
 
 // Delete godoc
 // DELETE /api/documents/{id}/attachments/{attachmentID}
-func (h *AttachmentHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *AttachmentHandler) Delete(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	docID := pathParam(r, "id")
-	attachmentID := pathParamAt(r.URL.Path, 4) // /api/documents/{id}/attachments/{attachmentID}
+	docID := c.Param("id")
+	attachmentID := c.Param("attachmentId")
 
-	doc, err := h.docSvc.GetDocument(r.Context(), docID, userID)
+	doc, err := h.docSvc.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
 	// Get attachment to get file path for deletion
-	attachment, err := h.attachSvc.GetAttachment(r.Context(), attachmentID, userID, doc.OwnerID, docID)
+	attachment, err := h.attachSvc.GetAttachment(c.Request.Context(), attachmentID, userID, doc.OwnerID, docID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
 	// Delete from database first
-	if err := h.attachSvc.DeleteAttachment(r.Context(), attachmentID, userID, doc.OwnerID, docID); err != nil {
-		writeError(w, errStatus(err), err.Error())
+	if err := h.attachSvc.DeleteAttachment(c.Request.Context(), attachmentID, userID, doc.OwnerID, docID); err != nil {
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -168,64 +163,64 @@ func (h *AttachmentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("warning: failed to delete file %s: %v\n", attachment.FilePath, err)
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
 // GetUnreferenced godoc
 // GET /api/documents/{id}/attachments/unreferenced
-func (h *AttachmentHandler) GetUnreferenced(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *AttachmentHandler) GetUnreferenced(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	docID := pathParam(r, "id")
-	doc, err := h.docSvc.GetDocument(r.Context(), docID, userID)
+	docID := c.Param("id")
+	doc, err := h.docSvc.GetDocument(c.Request.Context(), docID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	attachments, err := h.attachSvc.GetUnreferencedAttachments(r.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
+	attachments, err := h.attachSvc.GetUnreferencedAttachments(c.Request.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, attachments)
+	c.JSON(http.StatusOK, attachments)
 }
 
 // Download godoc
 // GET /api/attachments/{id}/download
-func (h *AttachmentHandler) Download(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *AttachmentHandler) Download(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
 
-	attachmentID := pathParamAt(r.URL.Path, 2) // /api/attachments/{id}/download
+	attachmentID := c.Param("id")
 	if attachmentID == "" {
-		writeError(w, http.StatusBadRequest, "missing attachment id")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing attachment id"})
 		return
 	}
 
-	attachment, err := h.attachSvc.GetAttachmentForDownload(r.Context(), attachmentID, userID)
+	attachment, err := h.attachSvc.GetAttachmentForDownload(c.Request.Context(), attachmentID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
 	if attachment.FileType != "" {
-		w.Header().Set("Content-Type", attachment.FileType)
+		c.Header("Content-Type", attachment.FileType)
 	}
 
 	// Set Content-Disposition with RFC 5987 encoding for filename*
 	// This ensures the correct original filename is used when downloading
 	encodedFilename := url.QueryEscape(attachment.Filename)
 	disposition := fmt.Sprintf("attachment; filename*=UTF-8''%s", encodedFilename)
-	w.Header().Set("Content-Disposition", disposition)
+	c.Header("Content-Disposition", disposition)
 
-	http.ServeFile(w, r, attachment.FilePath)
+	c.File(attachment.FilePath)
 }

@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { LoginPage } from '@/components/LoginPage';
 import { NotesLayout } from '@/components/NotesLayout';
 import { PersonalCenter } from '@/components/PersonalCenter';
+import { AdminUsers } from '@/components/AdminUsers';
+import { AdminLogs } from '@/components/AdminLogs';
 import { PublicDocumentView } from '@/components/PublicDocumentView';
 import { PublicWorkspaceView } from '@/components/PublicWorkspaceView';
 import type { ReactNode } from 'react';
@@ -51,6 +53,22 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <PersonalCenter />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <RequireAuth>
+            <AdminUsers />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/logs"
+        element={
+          <RequireAuth>
+            <AdminLogs />
           </RequireAuth>
         }
       />

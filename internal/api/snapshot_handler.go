@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
+
 	"markdownhub/internal/core"
 )
 
@@ -19,103 +21,97 @@ func NewSnapshotHandler(snapshotService *core.SnapshotService) *SnapshotHandler 
 
 // Create godoc
 // POST /api/documents/{id}/snapshots
-func (h *SnapshotHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *SnapshotHandler) Create(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	docID := pathParam(r, "id")
+	docID := c.Param("id")
 	var body struct {
 		Message string `json:"message"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON")
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
 		return
 	}
-	snap, err := h.snapshotService.CreateSnapshot(r.Context(), docID, userID, body.Message)
+	snap, err := h.snapshotService.CreateSnapshot(c.Request.Context(), docID, userID, body.Message)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusCreated, snap)
+	c.JSON(http.StatusCreated, snap)
 }
 
 // List godoc
 // GET /api/documents/{id}/snapshots?limit=20&offset=0
-func (h *SnapshotHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *SnapshotHandler) List(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	docID := pathParam(r, "id")
-	limit := queryInt(r, "limit", 20)
-	offset := queryInt(r, "offset", 0)
-	snaps, err := h.snapshotService.ListSnapshots(r.Context(), docID, userID, limit, offset)
+	docID := c.Param("id")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if limit <= 0 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	snaps, err := h.snapshotService.ListSnapshots(c.Request.Context(), docID, userID, limit, offset)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, snaps)
+	c.JSON(http.StatusOK, snaps)
 }
 
 // Restore godoc
 // POST /api/snapshots/{id}/restore
-func (h *SnapshotHandler) Restore(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *SnapshotHandler) Restore(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	snapID := pathParam(r, "id")
-	doc, err := h.snapshotService.RestoreSnapshot(r.Context(), snapID, userID)
+	snapID := c.Param("id")
+	doc, err := h.snapshotService.RestoreSnapshot(c.Request.Context(), snapID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, doc)
+	c.JSON(http.StatusOK, doc)
 }
 
 // Diff godoc
 // GET /api/snapshots/{id}/diff?compare={otherId}
-func (h *SnapshotHandler) Diff(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *SnapshotHandler) Diff(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	snapID := pathParam(r, "id")
-	compareID := r.URL.Query().Get("compare")
+	snapID := c.Param("id")
+	compareID := c.Query("compare")
 
-	snap, err := h.snapshotService.GetSnapshot(r.Context(), snapID, userID)
+	snap, err := h.snapshotService.GetSnapshot(c.Request.Context(), snapID, userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
 	var compareContent string
 	if compareID != "" {
-		other, err := h.snapshotService.GetSnapshot(r.Context(), compareID, userID)
+		other, err := h.snapshotService.GetSnapshot(c.Request.Context(), compareID, userID)
 		if err != nil {
-			writeError(w, errStatus(err), err.Error())
+			c.JSON(errStatus(err), gin.H{"error": err.Error()})
 			return
 		}
 		compareContent = other.Content
 	}
 
 	diff := core.DiffSnapshots(compareContent, snap.Content)
-	writeJSON(w, http.StatusOK, diff)
-}
-
-func queryInt(r *http.Request, key string, defaultVal int) int {
-	s := r.URL.Query().Get(key)
-	if s == "" {
-		return defaultVal
-	}
-	v, err := strconv.Atoi(s)
-	if err != nil {
-		return defaultVal
-	}
-	return v
+	c.JSON(http.StatusOK, diff)
 }

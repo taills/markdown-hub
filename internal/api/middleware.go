@@ -2,13 +2,12 @@
 package api
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
 	"markdownhub/internal/core"
@@ -58,90 +57,76 @@ func parseToken(tokenString string) (*claims, error) {
 }
 
 // authMiddleware extracts the JWT from the Authorization header or cookie
-// and stores the user ID in the request context.
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// and stores the user ID in the Gin context.
+func authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		tokenString := ""
 		// Try Authorization: Bearer <token>
-		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		if auth := c.GetHeader("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 			tokenString = strings.TrimPrefix(auth, "Bearer ")
 		}
 		// Fall back to cookie.
 		if tokenString == "" {
-			if c, err := r.Cookie(jwtCookieName); err == nil {
-				tokenString = c.Value
+			if cookie, err := c.Cookie(jwtCookieName); err == nil {
+				tokenString = cookie
 			}
 		}
 		if tokenString == "" {
-			writeError(w, http.StatusUnauthorized, "missing token")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+			c.Abort()
 			return
 		}
-		c, err := parseToken(tokenString)
+		cl, err := parseToken(tokenString)
 		if err != nil {
-			writeError(w, http.StatusUnauthorized, "invalid token")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.Abort()
 			return
 		}
-		ctx := context.WithValue(r.Context(), ctxKeyUserID, c.UserID)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-type contextKey string
-
-const ctxKeyUserID contextKey = "user_id"
-
-// userIDFromContext extracts the authenticated user ID.
-func userIDFromContext(ctx context.Context) (string, bool) {
-	id, ok := ctx.Value(ctxKeyUserID).(string)
-	return id, ok
+		c.Set("user_id", cl.UserID)
+		c.Next()
+	}
 }
 
 // optionalAuthMiddleware extracts the JWT if present but doesn't require it.
 // This allows anonymous access to public resources while still identifying
 // authenticated users.
-func optionalAuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func optionalAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		tokenString := ""
 		// Try Authorization: Bearer <token>
-		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+		if auth := c.GetHeader("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 			tokenString = strings.TrimPrefix(auth, "Bearer ")
 		}
 		// Fall back to cookie.
 		if tokenString == "" {
-			if c, err := r.Cookie(jwtCookieName); err == nil {
-				tokenString = c.Value
+			if cookie, err := c.Cookie(jwtCookieName); err == nil {
+				tokenString = cookie
 			}
 		}
 		// If token exists and is valid, add user ID to context
 		if tokenString != "" {
-			if c, err := parseToken(tokenString); err == nil {
-				ctx := context.WithValue(r.Context(), ctxKeyUserID, c.UserID)
-				next.ServeHTTP(w, r.WithContext(ctx))
-				return
+			if cl, err := parseToken(tokenString); err == nil {
+				c.Set("user_id", cl.UserID)
 			}
 		}
-		// Otherwise, continue without user ID (anonymous access)
-		next.ServeHTTP(w, r)
-	})
+		// Continue regardless of auth status
+		c.Next()
+	}
+}
+
+// getUserID extracts the authenticated user ID from Gin context.
+func getUserID(c *gin.Context) (string, bool) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		return "", false
+	}
+	id, ok := userID.(string)
+	return id, ok
 }
 
 // -------------------------------------------------------------------------
-// JSON helpers
+// Error helpers
 // -------------------------------------------------------------------------
-
-func writeJSON(w http.ResponseWriter, status int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
-}
-
-func decodeJSON(r *http.Request, v interface{}) error {
-	return json.NewDecoder(r.Body).Decode(v)
-}
 
 func isUnauthorized(err error) bool { return errors.Is(err, core.ErrUnauthorized) }
 func isInvalidInput(err error) bool { return errors.Is(err, core.ErrInvalidInput) }

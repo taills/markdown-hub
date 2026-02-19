@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+
 	"markdownhub/internal/core"
 )
 
@@ -18,27 +20,27 @@ func NewAuthHandler(authService *core.AuthService) *AuthHandler {
 
 // Register godoc
 // POST /api/auth/register
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Register(c *gin.Context) {
 	var body struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON")
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
 		return
 	}
-	user, err := h.authService.Register(r.Context(), body.Username, body.Email, body.Password)
+	user, err := h.authService.Register(c.Request.Context(), body.Username, body.Email, body.Password)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 	token, err := generateToken(user.ID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not generate token")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]interface{}{
+	c.JSON(http.StatusCreated, gin.H{
 		"user":  user,
 		"token": token,
 	})
@@ -46,26 +48,26 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 // Login godoc
 // POST /api/auth/login
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Login(c *gin.Context) {
 	var body struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	if err := decodeJSON(r, &body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON")
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
 		return
 	}
-	user, err := h.authService.Login(r.Context(), body.Email, body.Password)
+	user, err := h.authService.Login(c.Request.Context(), body.Email, body.Password)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "invalid credentials")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 	token, err := generateToken(user.ID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not generate token")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{
+	c.JSON(http.StatusOK, gin.H{
 		"user":  user,
 		"token": token,
 	})
@@ -73,16 +75,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 // Me godoc
 // GET /api/auth/me
-func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r.Context())
+func (h *AuthHandler) Me(c *gin.Context) {
+	userID, ok := getUserID(c)
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
-	user, err := h.authService.GetUser(r.Context(), userID)
+	user, err := h.authService.GetUser(c.Request.Context(), userID)
 	if err != nil {
-		writeError(w, errStatus(err), err.Error())
+		c.JSON(errStatus(err), gin.H{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, user)
+	c.JSON(http.StatusOK, user)
 }

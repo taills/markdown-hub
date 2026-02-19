@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
 	"markdownhub/internal/core"
@@ -140,35 +141,35 @@ func (h *Hub) broadcast(sender *client, msg WSMessage) {
 
 // ServeWS upgrades the HTTP connection and starts read/write pumps.
 // GET /ws?document_id=<id>&token=<jwt>
-func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
-	tokenString := r.URL.Query().Get("token")
+func (h *Hub) ServeWS(c *gin.Context) {
+	tokenString := c.Query("token")
 	if tokenString == "" {
-		writeError(w, http.StatusUnauthorized, "missing token")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
 		return
 	}
-	c, err := parseToken(tokenString)
+	claims, err := parseToken(tokenString)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "invalid token")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 		return
 	}
-	documentID := r.URL.Query().Get("document_id")
+	documentID := c.Query("document_id")
 	if documentID == "" {
-		writeError(w, http.StatusBadRequest, "missing document_id")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing document_id"})
 		return
 	}
 
 	// Verify the user has at least read access.
-	doc, err := h.docSvc.GetDocument(r.Context(), documentID, c.UserID)
+	doc, err := h.docSvc.GetDocument(c.Request.Context(), documentID, claims.UserID)
 	if errors.Is(err, core.ErrUnauthorized) {
-		writeError(w, http.StatusForbidden, "no access")
+		c.JSON(http.StatusForbidden, gin.H{"error": "no access"})
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "document error")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "document error"})
 		return
 	}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("ws upgrade error: %v", err)
 		return
@@ -177,7 +178,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	cl := &client{
 		conn:       conn,
 		send:       make(chan WSMessage, 64),
-		userID:     c.UserID,
+		userID:     claims.UserID,
 		documentID: documentID,
 	}
 	h.register(cl)

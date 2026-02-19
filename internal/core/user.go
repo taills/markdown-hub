@@ -85,7 +85,17 @@ func (s *UserService) UpdatePreferredLanguage(ctx context.Context, userID, langu
 		return nil, fmt.Errorf("update language: %w", err)
 	}
 
-	return storeUserToModel(&user), nil
+	// Convert UpdateUserPreferredLanguageRow to models.User
+	return &models.User{
+		ID:                user.ID.String(),
+		Username:          user.Username,
+		Email:             user.Email,
+		PasswordHash:      user.PasswordHash,
+		PreferredLanguage: user.PreferredLanguage,
+		IsAdmin:           user.IsAdmin,
+		CreatedAt:         user.CreatedAt,
+		UpdatedAt:         user.UpdatedAt,
+	}, nil
 }
 
 // GetStats aggregates user statistics.

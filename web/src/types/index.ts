@@ -141,3 +141,16 @@ export interface WSMessage {
   payload?: LinePatch;
   timestamp: number;
 }
+export interface AdminLog {
+  id: string;
+  admin_id: string;
+  action: string;
+  target_type: string;
+  target_id?: string;
+  target_username?: string;
+  details?: Record<string, unknown>;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+  admin_username?: string;
+}

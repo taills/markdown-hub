@@ -33,3 +33,13 @@ RETURNING id, username, email, password_hash, preferred_language, is_admin, crea
 
 -- name: CountUsers :one
 SELECT COUNT(*) FROM users;
+
+-- name: UpdateUserIsAdmin :one
+UPDATE users SET is_admin = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at;
+
+-- name: UpdateUserActive :one
+UPDATE users SET is_active = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, username, email, password_hash, preferred_language, is_admin, is_active, created_at, updated_at;

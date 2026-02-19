@@ -24,6 +24,7 @@ export interface Document {
   title: string;
   content: string;
   is_public: boolean;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +36,7 @@ export interface DocumentListItem {
   title: string;
   content: string;
   is_public: boolean;
+  sort_order: number;
   created_at: string;
   updated_at: string;
   permission?: PermissionLevel; // only present if not owner
@@ -92,6 +94,7 @@ export interface Workspace {
   owner_id: string;
   name: string;
   is_public: boolean;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }

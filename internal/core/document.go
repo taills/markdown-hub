@@ -226,6 +226,14 @@ func (s *DocumentService) SetPublicStatus(ctx context.Context, documentID, userI
 	return s.db.UpdateDocumentPublicStatus(ctx, documentID, isPublic)
 }
 
+// ReorderDocuments persists a new sort order for the given document IDs.
+func (s *DocumentService) ReorderDocuments(ctx context.Context, userID string, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return s.db.BulkUpdateDocumentSortOrder(ctx, ids)
+}
+
 func (s *DocumentService) requireWorkspaceOrDocumentPermission(
 	ctx context.Context,
 	doc *models.Document,

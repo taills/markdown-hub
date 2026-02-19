@@ -76,6 +76,10 @@ func NewServer(
 			docH.ListPublicByWorkspace(w, r)
 
 		// ── Protected document routes ─────────────────────────────────────────
+		case r.Method == http.MethodPatch && r.URL.Path == "/api/documents/reorder":
+			if requireAuth() {
+				docH.Reorder(w, r)
+			}
 		case r.Method == http.MethodGet && r.URL.Path == "/api/documents":
 			if requireAuth() {
 				docH.List(w, r)
@@ -164,6 +168,10 @@ func NewServer(
 			}
 
 		// ── Protected workspace routes ────────────────────────────────────────
+		case r.Method == http.MethodPatch && r.URL.Path == "/api/workspaces/reorder":
+			if requireAuth() {
+				workspaceH.Reorder(w, r)
+			}
 		case r.Method == http.MethodGet && r.URL.Path == "/api/workspaces":
 			if requireAuth() {
 				workspaceH.List(w, r)

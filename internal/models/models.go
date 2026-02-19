@@ -41,6 +41,7 @@ type Document struct {
 	Title       string    `json:"title"`
 	Content     string    `json:"content"`
 	IsPublic    bool      `json:"is_public"`
+	SortOrder   int       `json:"sort_order"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -119,6 +120,7 @@ type Workspace struct {
 	OwnerID   string    `json:"owner_id"`
 	Name      string    `json:"name"`
 	IsPublic  bool      `json:"is_public"`
+	SortOrder int       `json:"sort_order"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

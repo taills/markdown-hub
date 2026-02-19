@@ -41,5 +41,5 @@ export function useDocumentList() {
 
   useEffect(reload, []);
 
-  return { documents, isLoading, error, reload };
+  return { documents, setDocuments, isLoading, error, reload };
 }

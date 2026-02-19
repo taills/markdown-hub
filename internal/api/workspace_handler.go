@@ -185,3 +185,25 @@ func (h *WorkspaceHandler) SetPublicStatus(w http.ResponseWriter, r *http.Reques
 	}
 	writeJSON(w, http.StatusOK, ws)
 }
+
+// Reorder godoc
+// PATCH /api/workspaces/reorder
+func (h *WorkspaceHandler) Reorder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	var body struct {
+		IDs []string `json:"ids"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	if err := h.workspaceSvc.ReorderWorkspaces(r.Context(), userID, body.IDs); err != nil {
+		writeError(w, errStatus(err), err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

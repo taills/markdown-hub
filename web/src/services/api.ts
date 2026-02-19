@@ -98,6 +98,11 @@ export const documentService = {
   delete: (id: string) =>
     request<void>(`/documents/${id}`, { method: 'DELETE' }),
   headings: (id: string) => request<HeadingSection[]>(`/documents/${id}/headings`),
+  reorder: (ids: string[]) =>
+    request<void>('/documents/reorder', {
+      method: 'PATCH',
+      body: JSON.stringify({ ids }),
+    }),
 };
 
 // ---- Workspaces ----
@@ -145,6 +150,11 @@ export const workspaceService = {
     }),
   removeMember: (workspaceId: string, userId: string) =>
     request<void>(`/workspaces/${workspaceId}/members/${userId}`, { method: 'DELETE' }),
+  reorder: (ids: string[]) =>
+    request<void>('/workspaces/reorder', {
+      method: 'PATCH',
+      body: JSON.stringify({ ids }),
+    }),
 };
 
 // ---- Snapshots ----

@@ -516,6 +516,28 @@ body.is-resizing * {
   color: var(--text);
 }
 
+/* Drag handle shared by workspace and document items */
+.drag-handle {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: grab;
+  padding: 0.2rem 0.3rem;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  touch-action: none;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle:hover {
+  color: var(--text);
+}
+
 .workspace-badge {
   font-size: 0.7rem;
   color: #9a3412;

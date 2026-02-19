@@ -129,3 +129,12 @@ func (s *WorkspaceService) SetPublicStatus(ctx context.Context, workspaceID, use
 	}
 	return s.db.UpdateWorkspacePublicStatus(ctx, workspaceID, isPublic)
 }
+
+// ReorderWorkspaces persists a new sort order for the given workspace IDs.
+// The caller must own/be a member of the workspaces; the store updates sort_order = index.
+func (s *WorkspaceService) ReorderWorkspaces(ctx context.Context, userID string, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return s.db.BulkUpdateWorkspaceSortOrder(ctx, ids)
+}

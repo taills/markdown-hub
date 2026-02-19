@@ -176,6 +176,28 @@ func (h *DocumentHandler) SetPublicStatus(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, doc)
 }
 
+// Reorder godoc
+// PATCH /api/documents/reorder
+func (h *DocumentHandler) Reorder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	var body struct {
+		IDs []string `json:"ids"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	if err := h.docService.ReorderDocuments(r.Context(), userID, body.IDs); err != nil {
+		writeError(w, errStatus(err), err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // Headings godoc
 // GET /api/documents/{id}/headings
 func (h *DocumentHandler) Headings(w http.ResponseWriter, r *http.Request) {

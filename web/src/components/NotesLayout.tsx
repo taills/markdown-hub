@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '@/hooks/useAuth';
 import { useDocument, useDocumentList } from '@/hooks/useDocument';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -13,6 +28,109 @@ import { AttachmentPanel } from '@/components/AttachmentPanel';
 import { WorkspaceSettingsPanel } from '@/components/WorkspaceSettingsPanel';
 import { applyLinePatch, createLinePatch } from '@/utils/linePatch';
 import type { Attachment, DocumentListItem, Workspace, WSMessage } from '@/types';
+
+// ---------------------------------------------------------------------------
+// Sortable sub-components
+// ---------------------------------------------------------------------------
+
+function SortableWorkspaceItem({
+  ws,
+  isActive,
+  onSelect,
+  onSettings,
+  settingsLabel,
+}: {
+  ws: Workspace;
+  isActive: boolean;
+  onSelect: () => void;
+  onSettings: () => void;
+  settingsLabel: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ws.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`workspace-item ${isActive ? 'active' : ''}`}
+    >
+      <button
+        className="drag-handle"
+        {...attributes}
+        {...listeners}
+        tabIndex={-1}
+        aria-label="drag to reorder"
+      >
+        ⠿
+      </button>
+      <button className="workspace-main" onClick={onSelect}>
+        <span>{ws.name}</span>
+      </button>
+      <button className="workspace-settings-btn" title={settingsLabel} onClick={onSettings}>
+        ⚙️
+      </button>
+    </div>
+  );
+}
+
+function SortableDocumentItem({
+  doc,
+  isActive,
+  isOwner,
+  workspaceName,
+  locale,
+  onNavigate,
+  onDelete,
+}: {
+  doc: DocumentListItem;
+  isActive: boolean;
+  isOwner: boolean;
+  workspaceName: string;
+  locale: string;
+  onNavigate: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: doc.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`document-item ${isActive ? 'active' : ''}`}
+    >
+      <button
+        className="drag-handle"
+        {...attributes}
+        {...listeners}
+        tabIndex={-1}
+        aria-label="drag to reorder"
+      >
+        ⠿
+      </button>
+      <button className="doc-main" onClick={onNavigate}>
+        <span className="doc-title">{doc.title}</span>
+        <span className="doc-meta">
+          {workspaceName} · {new Date(doc.updated_at).toLocaleDateString(locale)}
+        </span>
+      </button>
+      {isOwner && (
+        <button className="doc-delete" onClick={onDelete}>
+          🗑
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 type Panel = 'preview' | 'history' | 'permissions' | 'attachments';
 
@@ -33,7 +151,7 @@ export function NotesLayout() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { user, logout, token } = useAuth();
-  const { documents, isLoading: docsLoading, reload } = useDocumentList();
+  const { documents, setDocuments, isLoading: docsLoading, reload } = useDocumentList();
   const { document, setDocument, isLoading: docLoading, error: documentError } = useDocument(id ?? '');
 
   const [content, setContent] = useState('');
@@ -316,6 +434,49 @@ export function NotesLayout() {
       setCreatingWorkspace(false);
     }
   };
+
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  const handleWorkspaceDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setWorkspaces((prev) => {
+      const oldIndex = prev.findIndex((ws) => ws.id === active.id);
+      const newIndex = prev.findIndex((ws) => ws.id === over.id);
+      const reordered = arrayMove(prev, oldIndex, newIndex);
+      workspaceService.reorder(reordered.map((ws) => ws.id)).catch(() => null);
+      return reordered;
+    });
+  }, []);
+
+  const handleDocumentDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const visibleIds = (filteredDocuments ?? []).map((d) => d.id);
+    const oldIndex = visibleIds.indexOf(String(active.id));
+    const newIndex = visibleIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reorderedIds = arrayMove(visibleIds, oldIndex, newIndex);
+    // Optimistic update: reorder documents state to match the new order
+    setDocuments((prev) => {
+      const idOrder = new Map(reorderedIds.map((id, i) => [id, i]));
+      const visible = new Set(reorderedIds);
+      const rest = prev.filter((d) => !visible.has(d.id));
+      const reordered = reorderedIds.map((id) => prev.find((d) => d.id === id)!);
+      // Place reordered visible docs at their original positions among all docs
+      const result = [...prev];
+      const positions = prev
+        .map((d, i) => (visible.has(d.id) ? i : -1))
+        .filter((i) => i !== -1);
+      reordered.forEach((doc, i) => {
+        result[positions[i]] = { ...doc, sort_order: i };
+      });
+      void rest; void idOrder;
+      return result;
+    });
+    documentService.reorder(reorderedIds).catch(() => null);
+  }, [filteredDocuments, setDocuments]);
+
 
   const saveTitle = async () => {
     if (!document || titleSaving) return;
@@ -661,34 +822,28 @@ export function NotesLayout() {
               >
                 {t('workspace.all')}
               </button>
-              {workspaces.map((ws) => (
-                <div
-                  key={ws.id}
-                  className={`workspace-item ${!showAllWorkspaces && selectedWorkspaceId === ws.id ? 'active' : ''}`}
-                >
-                  <button
-                    className="workspace-main"
-                    onClick={() => {
-                      setMode('edit');
-                      setShowAllWorkspaces(false);
-                      setSelectedWorkspaceId(ws.id);
-                    }}
-                  >
-                    <span>{ws.name}</span>
-                  </button>
-                  <button
-                    className="workspace-settings-btn"
-                    title={t('workspace.settings')}
-                    onClick={() => {
-                      setShowAllWorkspaces(false);
-                      setSelectedWorkspaceId(ws.id);
-                      setMode('settings');
-                    }}
-                  >
-                    ⚙️
-                  </button>
-                </div>
-              ))}
+              <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleWorkspaceDragEnd}>
+                <SortableContext items={workspaces.map((ws) => ws.id)} strategy={verticalListSortingStrategy}>
+                  {workspaces.map((ws) => (
+                    <SortableWorkspaceItem
+                      key={ws.id}
+                      ws={ws}
+                      isActive={!showAllWorkspaces && selectedWorkspaceId === ws.id}
+                      onSelect={() => {
+                        setMode('edit');
+                        setShowAllWorkspaces(false);
+                        setSelectedWorkspaceId(ws.id);
+                      }}
+                      onSettings={() => {
+                        setShowAllWorkspaces(false);
+                        setSelectedWorkspaceId(ws.id);
+                        setMode('settings');
+                      }}
+                      settingsLabel={t('workspace.settings')}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
               {workspaces.length === 0 && !workspaceLoading && (
                 <div className="empty">{t('workspace.none')}</div>
               )}
@@ -742,24 +897,22 @@ export function NotesLayout() {
             </div>
             {createDocError && <p className="error">{createDocError}</p>}
             <div className="document-list">
-              {(filteredDocuments ?? []).map((doc) => (
-                <div
-                  key={doc.id}
-                  className={`document-item ${id === doc.id ? 'active' : ''}`}
-                >
-                  <button className="doc-main" onClick={() => navigate(`/documents/${doc.id}`)}>
-                    <span className="doc-title">{doc.title}</span>
-                    <span className="doc-meta">
-                      {workspaceMap.get(doc.workspace_id)?.name ?? t('nav.workspace')} · {new Date(doc.updated_at).toLocaleDateString(i18n.language)}
-                    </span>
-                  </button>
-                  {doc.owner_id === user?.id && (
-                    <button className="doc-delete" onClick={() => handleDeleteDocument(doc)}>
-                      {t('workspace.delete')}
-                    </button>
-                  )}
-                </div>
-              ))}
+              <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDocumentDragEnd}>
+                <SortableContext items={(filteredDocuments ?? []).map((d) => d.id)} strategy={verticalListSortingStrategy}>
+                  {(filteredDocuments ?? []).map((doc) => (
+                    <SortableDocumentItem
+                      key={doc.id}
+                      doc={doc}
+                      isActive={id === doc.id}
+                      isOwner={doc.owner_id === user?.id}
+                      workspaceName={workspaceMap.get(doc.workspace_id)?.name ?? t('nav.workspace')}
+                      locale={i18n.language}
+                      onNavigate={() => navigate(`/documents/${doc.id}`)}
+                      onDelete={() => handleDeleteDocument(doc)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
               {filteredDocuments?.length === 0 && <div className="empty">{t('doc.empty')}</div>}
             </div>
           </aside>

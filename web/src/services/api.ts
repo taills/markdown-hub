@@ -39,10 +39,10 @@ export const authService = {
       method: 'POST',
       body: JSON.stringify({ username, email, password }),
     }),
-  login: (email: string, password: string) =>
+  login: (username: string, password: string) =>
     request<AuthResponse>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     }),
   me: () => request<AuthResponse['user']>('/auth/me'),
 };

@@ -85,11 +85,17 @@ func (s *UserService) UpdatePreferredLanguage(ctx context.Context, userID, langu
 		return nil, fmt.Errorf("update language: %w", err)
 	}
 
+	// Convert sql.NullString Email to string
+	emailStr := ""
+	if user.Email.Valid {
+		emailStr = user.Email.String
+	}
+
 	// Convert UpdateUserPreferredLanguageRow to models.User
 	return &models.User{
 		ID:                user.ID.String(),
 		Username:          user.Username,
-		Email:             user.Email,
+		Email:             emailStr,
 		PasswordHash:      user.PasswordHash,
 		PreferredLanguage: user.PreferredLanguage,
 		IsAdmin:           user.IsAdmin,
@@ -162,10 +168,16 @@ func normalizeLanguage(lang string) string {
 
 // storeUserToModel converts a store.User to *models.User
 func storeUserToModel(u *store.User) *models.User {
+	// Convert sql.NullString Email to string
+	emailStr := ""
+	if u.Email.Valid {
+		emailStr = u.Email.String
+	}
+
 	return &models.User{
 		ID:                u.ID.String(),
 		Username:          u.Username,
-		Email:             u.Email,
+		Email:             emailStr,
 		PasswordHash:      u.PasswordHash,
 		PreferredLanguage: u.PreferredLanguage,
 		IsAdmin:           u.IsAdmin,

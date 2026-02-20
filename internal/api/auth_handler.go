@@ -23,7 +23,7 @@ func NewAuthHandler(authService *core.AuthService) *AuthHandler {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var body struct {
 		Username string `json:"username"`
-		Email    string `json:"email"`
+		Email    string `json:"email"` // Optional
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -50,14 +50,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // POST /api/auth/login
 func (h *AuthHandler) Login(c *gin.Context) {
 	var body struct {
-		Email    string `json:"email"`
+		Username string `json:"username"`
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
 		return
 	}
-	user, err := h.authService.Login(c.Request.Context(), body.Email, body.Password)
+	user, err := h.authService.Login(c.Request.Context(), body.Username, body.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return

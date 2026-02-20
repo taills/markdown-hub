@@ -1,11 +1,11 @@
 -- name: CreateUser :one
 INSERT INTO users (username, email, password_hash)
-VALUES ($1, $2, $3)
+VALUES ($1, sqlc.narg('email'), $2)
 RETURNING id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at;
 
 -- name: CreateUserWithAdmin :one
 INSERT INTO users (username, email, password_hash, is_admin)
-VALUES ($1, $2, $3, $4)
+VALUES ($1, sqlc.narg('email'), $2, $3)
 RETURNING id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at;
 
 -- name: GetUserByID :one

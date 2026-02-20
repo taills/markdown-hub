@@ -69,11 +69,16 @@ func (s *AdminService) ListUsers(ctx context.Context) ([]*models.User, error) {
 
 	var result []*models.User
 	for _, u := range users {
+		// Convert sql.NullString Email to string
+		emailStr := ""
+		if u.Email.Valid {
+			emailStr = u.Email.String
+		}
 		// Convert ListUsersRow to models.User
 		result = append(result, &models.User{
 			ID:                u.ID.String(),
 			Username:          u.Username,
-			Email:             u.Email,
+			Email:             emailStr,
 			PasswordHash:      u.PasswordHash,
 			PreferredLanguage: u.PreferredLanguage,
 			IsAdmin:           u.IsAdmin,
@@ -109,11 +114,17 @@ func (s *AdminService) SetUserAdmin(ctx context.Context, callerID, targetUserID 
 	}
 	_ = s.logOperation(ctx, callerID, "SET_ADMIN", "USER", targetUserID, u.Username, details, ipAddress, userAgent)
 
+	// Convert sql.NullString Email to string
+	emailStr := ""
+	if u.Email.Valid {
+		emailStr = u.Email.String
+	}
+
 	// Convert UpdateUserIsAdminRow to models.User
 	return &models.User{
 		ID:                u.ID.String(),
 		Username:          u.Username,
-		Email:             u.Email,
+		Email:             emailStr,
 		PasswordHash:      u.PasswordHash,
 		PreferredLanguage: u.PreferredLanguage,
 		IsAdmin:           u.IsAdmin,
@@ -232,11 +243,17 @@ func (s *AdminService) RestoreUser(ctx context.Context, callerID, targetUserID s
 	}
 	_ = s.logOperation(ctx, callerID, "RESTORE_USER", "USER", targetUserID, u.Username, details, "", "")
 
+	// Convert sql.NullString Email to string
+	emailStr := ""
+	if u.Email.Valid {
+		emailStr = u.Email.String
+	}
+
 	// Convert UpdateUserActiveRow to models.User
 	return &models.User{
 		ID:                u.ID.String(),
 		Username:          u.Username,
-		Email:             u.Email,
+		Email:             emailStr,
 		PasswordHash:      u.PasswordHash,
 		PreferredLanguage: u.PreferredLanguage,
 		IsAdmin:           u.IsAdmin,

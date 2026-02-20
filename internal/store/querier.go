@@ -6,6 +6,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
@@ -42,7 +43,7 @@ type Querier interface {
 	GetLatestSnapshot(ctx context.Context, documentID uuid.UUID) (Snapshot, error)
 	GetSnapshotByID(ctx context.Context, id uuid.UUID) (Snapshot, error)
 	GetUnreferencedAttachments(ctx context.Context, documentID uuid.NullUUID) ([]Attachment, error)
-	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
+	GetUserByEmail(ctx context.Context, email sql.NullString) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error)
 	GetWorkspaceByID(ctx context.Context, id uuid.UUID) (Workspace, error)

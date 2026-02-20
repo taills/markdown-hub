@@ -3,6 +3,7 @@ package core
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"regexp"
@@ -37,13 +38,20 @@ func NewAuthService(db *store.DB) *AuthService {
 }
 
 // Register creates a new user account.
+// email is optional and can be empty string.
 func (s *AuthService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
-	if username == "" || email == "" || password == "" {
-		return nil, fmt.Errorf("%w: username, email, and password are required", ErrInvalidInput)
+	if username == "" || password == "" {
+		return nil, fmt.Errorf("%w: username and password are required", ErrInvalidInput)
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
+	}
+
+	// Convert email to sql.NullString
+	var emailNull sql.NullString
+	if email != "" {
+		emailNull = sql.NullString{String: email, Valid: true}
 	}
 
 	var user *models.User
@@ -60,7 +68,7 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 		// Create user within transaction
 		row, err := qtx.CreateUserWithAdmin(ctx, store.CreateUserWithAdminParams{
 			Username:     username,
-			Email:        email,
+			Email:        emailNull,
 			PasswordHash: string(hash),
 			IsAdmin:      isAdmin,
 		})
@@ -68,10 +76,16 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 			return fmt.Errorf("create user: %w", err)
 		}
 
+		// Convert sql.NullString to string for model
+		emailStr := ""
+		if row.Email.Valid {
+			emailStr = row.Email.String
+		}
+
 		user = &models.User{
 			ID:                row.ID.String(),
 			Username:          row.Username,
-			Email:             row.Email,
+			Email:             emailStr,
 			PasswordHash:      row.PasswordHash,
 			PreferredLanguage: row.PreferredLanguage,
 			IsAdmin:           row.IsAdmin,
@@ -88,8 +102,9 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 }
 
 // Login verifies credentials and returns the user on success.
-func (s *AuthService) Login(ctx context.Context, email, password string) (*models.User, error) {
-	user, err := s.db.GetUserByEmail(ctx, email)
+// Uses username instead of email for authentication.
+func (s *AuthService) Login(ctx context.Context, username, password string) (*models.User, error) {
+	user, err := s.db.GetUserByUsername(ctx, username)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, fmt.Errorf("%w: invalid credentials", ErrUnauthorized)
 	}
@@ -100,10 +115,16 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 		return nil, fmt.Errorf("%w: invalid credentials", ErrUnauthorized)
 	}
 
+	// Convert sql.NullString to string for model
+	emailStr := ""
+	if user.Email.Valid {
+		emailStr = user.Email.String
+	}
+
 	return &models.User{
 		ID:                user.ID.String(),
 		Username:          user.Username,
-		Email:             user.Email,
+		Email:             emailStr,
 		PasswordHash:      user.PasswordHash,
 		PreferredLanguage: user.PreferredLanguage,
 		IsAdmin:           user.IsAdmin,
@@ -122,10 +143,17 @@ func (s *AuthService) GetUser(ctx context.Context, userID string) (*models.User,
 	if err != nil {
 		return nil, err
 	}
+
+	// Convert sql.NullString to string for model
+	emailStr := ""
+	if user.Email.Valid {
+		emailStr = user.Email.String
+	}
+
 	return &models.User{
 		ID:                user.ID.String(),
 		Username:          user.Username,
-		Email:             user.Email,
+		Email:             emailStr,
 		PasswordHash:      user.PasswordHash,
 		PreferredLanguage: user.PreferredLanguage,
 		IsAdmin:           user.IsAdmin,

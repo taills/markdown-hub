@@ -6,7 +6,7 @@ import { setLanguage, type SupportedLanguage } from '@/i18n';
 interface AuthContextValue {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUser: (user: User) => void;
@@ -49,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, [token]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await authService.login(email, password);
+  const login = useCallback(async (username: string, password: string) => {
+    const res = await authService.login(username, password);
     localStorage.setItem('mh_token', res.token);
     setToken(res.token);
     setUser(res.user);

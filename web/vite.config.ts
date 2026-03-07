@@ -22,6 +22,18 @@ export default defineConfig({
   build: {
     outDir: '../cmd/dist',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'i18n-vendor': ['i18next', 'react-i18next'],
+          'dnd-vendor': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'highlight': ['highlight.js'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
   },
   test: {
     globals: true,

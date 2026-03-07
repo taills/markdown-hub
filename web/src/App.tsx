@@ -1,33 +1,57 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
-import { LoginPage } from '@/components/LoginPage';
-import { NotesLayout } from '@/components/NotesLayout';
-import { PersonalCenter } from '@/components/PersonalCenter';
-import { AdminUsers } from '@/components/AdminUsers';
-import { AdminLogs } from '@/components/AdminLogs';
-import { PublicDocumentView } from '@/components/PublicDocumentView';
-import { PublicWorkspaceView } from '@/components/PublicWorkspaceView';
 import type { ReactNode } from 'react';
 
-function RequireAuth({ children }: { children: ReactNode }) {
+// Lazy load components for code splitting
+const LoginPage = lazy(() => import('@/components/LoginPage').then(m => ({ default: m.LoginPage })));
+const NotesLayout = lazy(() => import('@/components/NotesLayout').then(m => ({ default: m.NotesLayout })));
+const PersonalCenter = lazy(() => import('@/components/PersonalCenter').then(m => ({ default: m.PersonalCenter })));
+const AdminUsers = lazy(() => import('@/components/AdminUsers').then(m => ({ default: m.AdminUsers })));
+const AdminLogs = lazy(() => import('@/components/AdminLogs').then(m => ({ default: m.AdminLogs })));
+const PublicDocumentView = lazy(() => import('@/components/PublicDocumentView').then(m => ({ default: m.PublicDocumentView })));
+const PublicWorkspaceView = lazy(() => import('@/components/PublicWorkspaceView').then(m => ({ default: m.PublicWorkspaceView })));
+
+function LoadingFallback() {
   const { t } = useTranslation();
+  return (
+    <div className="loading" style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      fontSize: '1.2rem'
+    }}>
+      {t('common.loading')}
+    </div>
+  );
+}
+
+function RequireAuth({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
-  if (isLoading) return <div className="loading">{t('common.loading')}</div>;
+  if (isLoading) return <LoadingFallback />;
   if (!user) return <Navigate to="/login" replace />;
-  return <>{children}</>;
+  return <Suspense fallback={<LoadingFallback />}>{children}</Suspense>;
 }
 
 function AppRoutes() {
-  const { t } = useTranslation();
   const { user, isLoading } = useAuth();
-  if (isLoading) return <div className="loading">{t('common.loading')}</div>;
+  if (isLoading) return <LoadingFallback />;
 
   return (
     <Routes>
       <Route
         path="/login"
-        element={user ? <Navigate to="/" replace /> : <LoginPage />}
+        element={
+          user ? (
+            <Navigate to="/" replace />
+          ) : (
+            <Suspense fallback={<LoadingFallback />}>
+              <LoginPage />
+            </Suspense>
+          )
+        }
       />
       <Route
         path="/"
@@ -46,8 +70,22 @@ function AppRoutes() {
         }
       />
       {/* Public routes — accessible without login */}
-      <Route path="/documents/:id/view" element={<PublicDocumentView />} />
-      <Route path="/workspaces/:id/view" element={<PublicWorkspaceView />} />
+      <Route
+        path="/documents/:id/view"
+        element={
+          <Suspense fallback={<LoadingFallback />}>
+            <PublicDocumentView />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/workspaces/:id/view"
+        element={
+          <Suspense fallback={<LoadingFallback />}>
+            <PublicWorkspaceView />
+          </Suspense>
+        }
+      />
       <Route
         path="/me"
         element={

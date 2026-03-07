@@ -12,27 +12,27 @@ import (
 	"markdownhub/internal/store"
 )
 
-// Snapshot heuristic thresholds.
-const (
-	snapshotLineThreshold = 20
-	snapshotByteThreshold = 2048
-	snapshotTimeThreshold = 5 * time.Minute
-)
-
 // DocumentService manages document lifecycle and snapshot creation.
 type DocumentService struct {
-	db           *store.DB
-	permService  *PermissionService
-	lastSaveTime map[string]time.Time // documentID -> last snapshot time
+	db             *store.DB
+	permService    *PermissionService
+	lastSaveTime   map[string]time.Time // documentID -> last snapshot time
+	snapshotConfig SnapshotConfig
 }
 
 // NewDocumentService constructs a DocumentService.
 func NewDocumentService(db *store.DB, permService *PermissionService) *DocumentService {
 	return &DocumentService{
-		db:           db,
-		permService:  permService,
-		lastSaveTime: make(map[string]time.Time),
+		db:             db,
+		permService:    permService,
+		lastSaveTime:   make(map[string]time.Time),
+		snapshotConfig: DefaultSnapshotConfig(),
 	}
+}
+
+// SetSnapshotConfig updates the snapshot configuration.
+func (s *DocumentService) SetSnapshotConfig(config SnapshotConfig) {
+	s.snapshotConfig = config
 }
 
 // CreateDocument creates a new document in a workspace owned by ownerID.
@@ -421,14 +421,10 @@ func (s *DocumentService) requireWorkspaceOrDocumentPermission(
 // shouldSnapshot returns true when the diff crosses heuristic thresholds.
 func (s *DocumentService) shouldSnapshot(documentID, oldContent, newContent string) bool {
 	lastTime, ok := s.lastSaveTime[documentID]
-	if !ok || time.Since(lastTime) > snapshotTimeThreshold {
-		return true
+	if !ok {
+		lastTime = time.Time{} // Zero time ensures first save triggers snapshot
 	}
-	oldLines := countLines(oldContent)
-	newLines := countLines(newContent)
-	lineDiff := abs(newLines - oldLines)
-	byteDiff := abs(len(newContent) - len(oldContent))
-	return lineDiff >= snapshotLineThreshold || byteDiff >= snapshotByteThreshold
+	return s.snapshotConfig.ShouldCreateSnapshot(lastTime, oldContent, newContent)
 }
 
 func countLines(s string) int {

@@ -53,6 +53,11 @@ func (s *DB) Close() error {
 	return s.db.Close()
 }
 
+// Ping verifies a connection to the database is still alive.
+func (s *DB) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
+}
+
 // -------------------------------------------------------------------------
 // Transaction Support
 // -------------------------------------------------------------------------

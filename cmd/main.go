@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io/fs"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,19 +12,33 @@ import (
 
 	"markdownhub/internal/api"
 	"markdownhub/internal/core"
+	"markdownhub/internal/logger"
 	"markdownhub/internal/store"
 )
 
 func main() {
+	// Initialize structured logger
+	logLevel := getEnv("LOG_LEVEL", "info")
+	logPretty := getEnv("LOG_PRETTY", "true") == "true"
+
+	logger.Init(logger.Config{
+		Level:  logLevel,
+		Pretty: logPretty,
+	})
+
+	logger.Info("Starting MarkdownHub").Send()
+
 	dsn := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/markdownhub?sslmode=disable")
 	addr := getEnv("ADDR", ":8080")
 	jwtSecret := []byte(getEnv("JWT_SECRET", "change-me-in-production"))
 
 	db, err := store.NewDB(dsn)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		logger.Fatal("Failed to connect to database").Err(err).Send()
 	}
 	defer db.Close()
+
+	logger.Info("Database connected").Send()
 
 	// Wire services.
 	permSvc := core.NewPermissionService(db)
@@ -59,19 +72,20 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		log.Printf("MarkdownHub listening on %s", addr)
+		logger.Info("HTTP server starting").Str("addr", addr).Send()
 		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("http server error: %v", err)
+			logger.Fatal("HTTP server error").Err(err).Send()
 		}
 	}()
 
 	<-quit
-	log.Println("shutting down…")
+	logger.Info("Shutdown signal received").Send()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(ctx); err != nil {
-		log.Printf("shutdown error: %v", err)
+		logger.Error("Shutdown error").Err(err).Send()
 	}
+	logger.Info("Server shutdown complete").Send()
 }
 
 func getEnv(key, fallback string) string {

@@ -41,7 +41,13 @@ func NewServer(
 
 	router := gin.New()
 	router.Use(gin.Recovery())
-	router.Use(gin.Logger())
+	router.Use(LoggerMiddleware()) // Use structured logging middleware
+
+	// Health check endpoints (no auth required)
+	healthH := NewHealthHandler(db)
+	router.GET("/health", healthH.Health)
+	router.GET("/ready", healthH.Ready)
+	router.GET("/metrics", healthH.Metrics)
 
 	// Initialize handlers
 	authH := NewAuthHandler(authSvc)

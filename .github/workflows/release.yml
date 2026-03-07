@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [linux, darwin, windows]
+        arch: [amd64, arm64]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install frontend dependencies
+        run: cd web && pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: cd web && pnpm build
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.platform }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+          VERSION: ${{ github.ref_name }}
+          BUILD_TIME: ${{ github.run_timestamp }}
+        run: |
+          EXT=""
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            EXT=".exe"
+          fi
+          LDFLAGS="-s -w -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME}"
+          go build -ldflags="${LDFLAGS}" -o releases/markdownhub-${GOOS}-${GOARCH}${EXT} ./cmd/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: markdownhub-${{ matrix.platform }}-${{ matrix.arch }}
+          path: releases/markdownhub-${{ matrix.platform }}-${{ matrix.arch }}*
+          retention-days: 1
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: releases
+
+      - name: List downloaded files
+        run: ls -la releases/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: releases/**/*
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

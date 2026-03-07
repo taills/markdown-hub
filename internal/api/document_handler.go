@@ -75,7 +75,7 @@ func (h *DocumentHandler) Get(c *gin.Context) {
 
 // GetRaw godoc
 // GET /api/documents/{id}/raw
-// Returns the raw markdown content with text/plain content type
+// Returns the raw markdown content with text/markdown content type
 func (h *DocumentHandler) GetRaw(c *gin.Context) {
 	userID, _ := getUserID(c) // Optional authentication
 	docID := c.Param("id")
@@ -84,7 +84,7 @@ func (h *DocumentHandler) GetRaw(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
-	c.Header("Content-Type", "text/plain; charset=utf-8")
+	c.Header("Content-Type", "text/markdown; charset=utf-8")
 	c.String(http.StatusOK, doc.Content)
 }
 

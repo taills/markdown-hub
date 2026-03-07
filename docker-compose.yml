@@ -25,29 +25,18 @@ services:
     depends_on:
       db:
         condition: service_healthy
-  migrate:
-    image: migrate/migrate:latest
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./db/migrations:/migrations
-    command:
-      - "-path=/migrations"
-      - "-database=postgres://postgres:postgres@db:5432/markdownhub?sslmode=disable"
-      - "up"
-
   app:
     build: .
     volumes:
       - ./uploads:/uploads:rw
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      db:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/markdownhub?sslmode=disable
       ADDR: :8080
       JWT_SECRET: change-me-in-production
+      MIGRATIONS_PATH: /app/db/migrations
     ports:
       - "8080:8080"
 

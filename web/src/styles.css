@@ -72,6 +72,16 @@ body {
 .auth-form button { background: var(--accent); border: none; border-radius: 6px; padding: 0.6rem; color: #000; font-weight: 600; cursor: pointer; }
 .auth-form button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ---- App Footer ---- */
+.app-footer {
+  text-align: center;
+  padding: 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
 /* ---- Document list ---- */
 .document-list-page { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
 header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }

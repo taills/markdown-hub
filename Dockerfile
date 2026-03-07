@@ -1,5 +1,5 @@
 # --- Build stage: frontend ---
-FROM node:20-alpine AS web-builder
+FROM node:22-alpine AS web-builder
 WORKDIR /app/web
 COPY web/package.json web/pnpm-lock.yaml* ./
 RUN npm install -g pnpm && pnpm install --frozen-lockfile

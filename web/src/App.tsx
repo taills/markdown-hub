@@ -35,6 +35,14 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <Suspense fallback={<LoadingFallback />}>{children}</Suspense>;
 }
 
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingFallback />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!user.is_admin) return <Navigate to="/" replace />;
+  return <Suspense fallback={<LoadingFallback />}>{children}</Suspense>;
+}
+
 function AppRoutes() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <LoadingFallback />;
@@ -97,17 +105,17 @@ function AppRoutes() {
       <Route
         path="/admin/users"
         element={
-          <RequireAuth>
+          <RequireAdmin>
             <AdminUsers />
-          </RequireAuth>
+          </RequireAdmin>
         }
       />
       <Route
         path="/admin/logs"
         element={
-          <RequireAuth>
+          <RequireAdmin>
             <AdminLogs />
-          </RequireAuth>
+          </RequireAdmin>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />

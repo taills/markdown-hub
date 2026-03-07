@@ -13,7 +13,14 @@ import (
 	"markdownhub/internal/api"
 	"markdownhub/internal/core"
 	"markdownhub/internal/logger"
+	"markdownhub/internal/migrator"
 	"markdownhub/internal/store"
+)
+
+// 构建时通过 ldflags 注入
+var (
+	version    = "dev"
+	buildTime  = "unknown"
 )
 
 func main() {
@@ -26,7 +33,10 @@ func main() {
 		Pretty: logPretty,
 	})
 
-	logger.Info("Starting MarkdownHub").Send()
+	logger.Info("Starting MarkdownHub").
+		Str("version", version).
+		Str("build_time", buildTime).
+		Send()
 
 	dsn := getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/markdownhub?sslmode=disable")
 	addr := getEnv("ADDR", ":8080")
@@ -39,6 +49,12 @@ func main() {
 	defer db.Close()
 
 	logger.Info("Database connected").Send()
+
+	// 执行数据库迁移
+	migrationsPath := getEnv("MIGRATIONS_PATH", "db/migrations")
+	if err := migrator.Run(context.Background(), dsn, migrationsPath); err != nil {
+		logger.Fatal("Database migration failed").Err(err).Send()
+	}
 
 	// Wire services.
 	permSvc := core.NewPermissionService(db)

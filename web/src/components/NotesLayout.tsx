@@ -1020,6 +1020,10 @@ export function NotesLayout() {
       </div>
 
       <ErrorModal message={modalError} onClose={handleCloseError} />
+
+      <footer className="app-footer">
+        © {new Date().getFullYear()} 太乙实验室. All rights reserved.
+      </footer>
     </div>
   );
 }

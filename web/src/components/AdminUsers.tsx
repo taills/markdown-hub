@@ -1,17 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/hooks/useAuth';
 import { adminService } from '@/services/api';
 import { ErrorModal } from '@/components/ErrorModal';
 import type { User } from '@/types';
 
 export function AdminUsers() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionInProgress, setActionInProgress] = useState(false);
+
+  // Frontend permission check as additional protection
+  useEffect(() => {
+    if (!user?.is_admin) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleCloseError = () => setError('');
 

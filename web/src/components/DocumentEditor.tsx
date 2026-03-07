@@ -61,7 +61,7 @@ export function DocumentEditor() {
     }
   }, [setContentFromServer, user?.id]);
 
-  const { send, connectionState: wsState } = useWebSocket({
+  const { send, connectionState: wsState, reconnect } = useWebSocket({
     documentId: id ?? '',
     token: token ?? '',
     onMessage: handleWSMessage,
@@ -212,7 +212,18 @@ export function DocumentEditor() {
             {document.is_public ? '🌐 Public' : '🔒 Private'}
           </button>
           <button onClick={viewRaw}>📄 Raw</button>
-          <span className={`ws-status ws-${connectionState}`}>{connectionState}</span>
+          <span className={`ws-status ws-${connectionState}`}>
+            {connectionState}
+          </span>
+          {(connectionState === 'error' || connectionState === 'disconnected') && (
+            <button
+              onClick={reconnect}
+              className="reconnect-btn"
+              title="Manually reconnect WebSocket"
+            >
+              🔄 Reconnect
+            </button>
+          )}
           {collaborators.length > 0 && (
             <span className="collaborators">{collaborators.length} online</span>
           )}

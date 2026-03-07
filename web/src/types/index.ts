@@ -131,7 +131,7 @@ export interface AuthResponse {
 }
 
 // WebSocket message types
-export type WSMessageType = 'init' | 'update' | 'patch' | 'cursor' | 'error' | 'close';
+export type WSMessageType = 'init' | 'update' | 'patch' | 'cursor' | 'error' | 'close' | 'ping' | 'pong';
 
 export interface WSMessage {
   type: WSMessageType;

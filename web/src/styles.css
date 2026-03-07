@@ -125,8 +125,18 @@ header h1 { font-size: 1.5rem; }
 .toolbar button { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.75rem; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; }
 .toolbar button.active { color: var(--accent); border-color: var(--accent); }
 .ws-status { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--border); }
-.ws-connected { background: var(--success); color: #000; }
+.ws-connected { background: var(--success); color: #fff; }
+.ws-connecting { background: var(--accent); color: #000; animation: pulse 1.5s ease-in-out infinite; }
+.ws-reconnecting { background: var(--warn); color: #fff; animation: pulse 1.5s ease-in-out infinite; }
 .ws-disconnected, .ws-error { background: var(--danger); color: #fff; }
+.reconnect-btn { background: var(--accent) !important; color: #000 !important; font-weight: 600; }
+.reconnect-btn:hover { opacity: 0.9; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 .collaborators { font-size: 0.8rem; color: var(--text-muted); }
 .editor-body { flex: 1; display: flex; overflow: hidden; }
 .editor-textarea { flex: 1; background: var(--bg); color: var(--text); border: none; border-right: 1px solid var(--border); padding: 1rem; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.9rem; line-height: 1.6; resize: none; outline: none; }

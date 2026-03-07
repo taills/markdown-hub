@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { User } from '@/types';
-import { authService } from '@/services/api';
+import { authService, fetchCsrfToken } from '@/services/api';
 import { setLanguage, type SupportedLanguage } from '@/i18n';
 
 interface AuthContextValue {
@@ -22,27 +22,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!token) {
-      console.log('[AuthProvider] No token found');
       setIsLoading(false);
       return;
     }
-    console.log('[AuthProvider] Fetching user with token:', token.slice(0, 20) + '...');
     authService
       .me()
       .then((data) => {
-        console.log('[AuthProvider] User loaded:', {
-          id: data?.id,
-          email: data?.email,
-          isAdmin: data?.is_admin,
-          username: data?.username,
-        });
         setUser(data);
         if (data?.preferred_language) {
           setLanguage(data.preferred_language as SupportedLanguage);
         }
+        // Fetch CSRF token after successful authentication
+        fetchCsrfToken();
       })
-      .catch((err) => {
-        console.error('[AuthProvider] Failed to fetch user:', err);
+      .catch(() => {
         localStorage.removeItem('mh_token');
         setToken(null);
       })
@@ -57,9 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (res.user?.preferred_language) {
       setLanguage(res.user.preferred_language as SupportedLanguage);
     }
+    // Fetch CSRF token after successful login
+    await fetchCsrfToken();
   }, []);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
+    // Fetch CSRF token before registration (user not authenticated yet)
+    await fetchCsrfToken();
     const res = await authService.register(username, email, password);
     localStorage.setItem('mh_token', res.token);
     setToken(res.token);

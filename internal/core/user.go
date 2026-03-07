@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -31,6 +32,10 @@ func (s *UserService) UpdatePassword(ctx context.Context, userID, currentPasswor
 	}
 	if len(newPassword) < 8 {
 		return fmt.Errorf("%w: password must be at least 8 characters", ErrInvalidInput)
+	}
+	// Validate password complexity
+	if err := validatePasswordComplexity(newPassword); err != nil {
+		return err
 	}
 
 	userUUID, err := uuid.Parse(userID)
@@ -184,4 +189,28 @@ func storeUserToModel(u *store.User) *models.User {
 		CreatedAt:         u.CreatedAt,
 		UpdatedAt:         u.UpdatedAt,
 	}
+}
+
+// validatePasswordComplexity checks that the password meets complexity requirements.
+func validatePasswordComplexity(password string) error {
+	hasUpper := false
+	hasLower := false
+	hasDigit := false
+
+	for _, c := range password {
+		switch {
+		case unicode.IsUpper(c):
+			hasUpper = true
+		case unicode.IsLower(c):
+			hasLower = true
+		case unicode.IsDigit(c):
+			hasDigit = true
+		}
+	}
+
+	if !hasUpper || !hasLower || !hasDigit {
+		return fmt.Errorf("%w: password must contain uppercase, lowercase, and digit", ErrInvalidInput)
+	}
+
+	return nil
 }

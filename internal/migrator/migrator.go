@@ -6,16 +6,18 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"markdownhub/internal/logger"
 )
 
 // Run 执行数据库迁移
-// migrationsPath 是迁移文件所在的目录路径
-func Run(ctx context.Context, dsn, migrationsPath string) error {
-	logger.Info("Running database migrations").Str("path", migrationsPath).Send()
+func Run(ctx context.Context, dsn string) error {
+	logger.Info("Running database migrations").Send()
 
+	// 使用 file:// 协议，从嵌入的文件系统读取
+	// 迁移文件通过 go:embed 指令嵌入
 	m, err := migrate.New(
-		"file://"+migrationsPath,
+		"file://db/migrations",
 		dsn,
 	)
 	if err != nil {

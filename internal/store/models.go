@@ -119,6 +119,14 @@ type HeadingPermission struct {
 	CreatedAt     time.Time       `json:"created_at"`
 }
 
+type Setting struct {
+	Key         string         `json:"key"`
+	Value       string         `json:"value"`
+	Description sql.NullString `json:"description"`
+	CreatedAt   sql.NullTime   `json:"created_at"`
+	UpdatedAt   sql.NullTime   `json:"updated_at"`
+}
+
 type Snapshot struct {
 	ID         uuid.UUID     `json:"id"`
 	DocumentID uuid.UUID     `json:"document_id"`

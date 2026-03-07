@@ -1,11 +1,15 @@
 package api
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"markdownhub/internal/logger"
 )
+
+// MaxUserAgentLength limits the User-Agent length to prevent log injection
+const MaxUserAgentLength = 500
 
 // LoggerMiddleware logs HTTP requests with structured logging
 func LoggerMiddleware() gin.HandlerFunc {
@@ -24,6 +28,15 @@ func LoggerMiddleware() gin.HandlerFunc {
 		statusCode := c.Writer.Status()
 		bodySize := c.Writer.Size()
 
+		// Sanitize User-Agent to prevent log injection
+		userAgent := c.Request.UserAgent()
+		if len(userAgent) > MaxUserAgentLength {
+			userAgent = userAgent[:MaxUserAgentLength] + " [truncated]"
+		}
+		// Remove newlines and carriage returns from User-Agent
+		userAgent = strings.ReplaceAll(userAgent, "\n", " ")
+		userAgent = strings.ReplaceAll(userAgent, "\r", "")
+
 		// Build log event
 		event := logger.Logger.Info().
 			Str("method", c.Request.Method).
@@ -32,7 +45,7 @@ func LoggerMiddleware() gin.HandlerFunc {
 			Dur("latency", latency).
 			Int("size", bodySize).
 			Str("ip", c.ClientIP()).
-			Str("user_agent", c.Request.UserAgent())
+			Str("user_agent", userAgent)
 
 		if raw != "" {
 			event.Str("query", raw)

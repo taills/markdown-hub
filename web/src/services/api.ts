@@ -3,6 +3,27 @@ import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermis
 
 const API_BASE_URL = '/api';
 
+// CSRF Token management
+let csrfToken = '';
+
+export async function fetchCsrfToken(): Promise<string> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/csrf`);
+    if (res.ok) {
+      const data = await res.json() as { token: string };
+      csrfToken = data.token;
+    }
+  } catch {
+    // CSRF endpoint might not be available (e.g., before login)
+    console.warn('Failed to fetch CSRF token');
+  }
+  return csrfToken;
+}
+
+export function getCsrfToken(): string {
+  return csrfToken;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('mh_token');
   const headers: HeadersInit = {
@@ -10,6 +31,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers ?? {}),
   };
+
+  // Add CSRF token for state-changing methods
+  if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method?.toUpperCase() ?? '')) {
+    (headers as Record<string, string>)['X-CSRF-Token'] = csrfToken;
+  }
 
   const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   if (!res.ok) {

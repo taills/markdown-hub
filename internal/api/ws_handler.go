@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -27,7 +28,42 @@ const (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin:     func(r *http.Request) bool { return true }, // configure per-origin in production
+	CheckOrigin:     checkOrigin,
+}
+
+// checkOrigin validates the WebSocket origin for security.
+// In production, configure allowed origins via ALLOWED_ORIGINS environment variable.
+func checkOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		// No origin header, allow (same-origin request)
+		return true
+	}
+
+	// Get allowed origins from environment variable
+	allowedOrigins := getAllowedOrigins()
+	if len(allowedOrigins) == 0 {
+		// No allowed origins configured, allow all (development mode)
+		return true
+	}
+
+	// Check if origin is in allowed list
+	for _, allowed := range allowedOrigins {
+		if origin == allowed {
+			return true
+		}
+	}
+
+	return false
+}
+
+// getAllowedOrigins returns the list of allowed origins from environment variable.
+func getAllowedOrigins() []string {
+	origins := os.Getenv("ALLOWED_ORIGINS")
+	if origins == "" {
+		return nil
+	}
+	return strings.Split(origins, ",")
 }
 
 // WSMessage is the envelope for all WebSocket messages.

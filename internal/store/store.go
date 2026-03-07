@@ -67,6 +67,21 @@ func (s *DB) BeginTx(ctx context.Context) (*sql.Tx, error) {
 	return s.db.BeginTx(ctx, nil)
 }
 
+// GetAllSettings returns all settings from the database
+func (s *DB) GetAllSettings(ctx context.Context) ([]Setting, error) {
+	return s.Queries.GetAllSettings(ctx)
+}
+
+// GetSettingByKey returns a setting by key
+func (s *DB) GetSettingByKey(ctx context.Context, key string) (Setting, error) {
+	return s.Queries.GetSettingByKey(ctx, key)
+}
+
+// UpsertSetting inserts or updates a setting
+func (s *DB) UpsertSetting(ctx context.Context, arg UpsertSettingParams) error {
+	return s.Queries.UpsertSetting(ctx, arg)
+}
+
 // WithTransaction executes a function within a database transaction.
 // If the function returns an error, the transaction is rolled back.
 // Otherwise, the transaction is committed.

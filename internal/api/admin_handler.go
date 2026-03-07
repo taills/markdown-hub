@@ -214,10 +214,11 @@ func (h *AdminHandler) ListLogs(c *gin.Context) {
 	}
 
 	// Parse query parameters for pagination
+	const maxLimit = 1000
 	limit := 100
 	offset := 0
 	if limitStr := c.Query("limit"); limitStr != "" {
-		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= maxLimit {
 			limit = l
 		}
 	}

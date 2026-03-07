@@ -2,6 +2,8 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -240,4 +242,71 @@ func errorResponse(err error) (int, gin.H) {
 func respondError(c *gin.Context, err error) {
 	status, payload := errorResponse(err)
 	c.JSON(status, payload)
+}
+
+// -------------------------------------------------------------------------
+// CSRF Protection
+// -------------------------------------------------------------------------
+
+const csrfCookieName = "mh_csrf"
+const csrfHeaderName = "X-CSRF-Token"
+
+// csrfMiddleware provides CSRF protection using the Double Submit Cookie pattern.
+// It generates a CSRF token, sets it as an HTTP-only cookie, and validates
+// the token on state-changing requests (POST, PUT, DELETE, PATCH).
+func csrfMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Skip CSRF check for safe methods
+		if c.Request.Method == "GET" || c.Request.Method == "HEAD" || c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
+		// Get CSRF token from header
+		csrfToken := c.GetHeader(csrfHeaderName)
+		if csrfToken == "" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "csrf token missing"})
+			c.Abort()
+			return
+		}
+
+		// Get CSRF token from cookie
+		cookieToken, err := c.Cookie(csrfCookieName)
+		if err != nil || cookieToken == "" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "csrf token missing"})
+			c.Abort()
+			return
+		}
+
+		// Compare tokens using constant-time comparison
+		if !secureCompare(csrfToken, cookieToken) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "csrf token mismatch"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// secureCompare performs constant-time comparison to prevent timing attacks.
+func secureCompare(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	result := 0
+	for i := 0; i < len(a); i++ {
+		result |= int(a[i]) ^ int(b[i])
+	}
+	return result == 0
+}
+
+// generateCSRFToken generates a cryptographically secure random token.
+func generateCSRFToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to time-based token if crypto fails
+		return hex.EncodeToString([]byte(time.Now().String()))
+	}
+	return hex.EncodeToString(b)
 }

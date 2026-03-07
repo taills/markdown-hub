@@ -74,8 +74,14 @@ function renderMarkdown(md: string): string {
   // Images (must be processed before links)
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />');
 
-  // Links
-  html = html.replace(/\[([^\]]+)]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  // Links - add rel="noopener noreferrer" for security
+  html = html.replace(/\[([^\]]+)]\(([^)]+)\)/g, (_match, text, url) => {
+    const isExternal = url.startsWith('http://') || url.startsWith('https://');
+    if (isExternal) {
+      return `<a href="${url}" rel="noopener noreferrer" target="_blank">${text}</a>`;
+    }
+    return `<a href="${url}">${text}</a>`;
+  });
 
   // Horizontal rules
   html = html.replace(/^---+$/gm, '<hr />');

@@ -35,12 +35,14 @@ type Querier interface {
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteWorkspace(ctx context.Context, id uuid.UUID) error
 	DeleteWorkspaceMember(ctx context.Context, arg DeleteWorkspaceMemberParams) error
+	GetAllSettings(ctx context.Context) ([]Setting, error)
 	GetAttachmentByID(ctx context.Context, id uuid.UUID) (Attachment, error)
 	GetDocumentByID(ctx context.Context, id uuid.UUID) (Document, error)
 	GetDocumentPermission(ctx context.Context, arg GetDocumentPermissionParams) (DocumentPermission, error)
 	GetDocumentPermissionByUsername(ctx context.Context, arg GetDocumentPermissionByUsernameParams) (DocumentPermission, error)
 	GetHeadingPermission(ctx context.Context, arg GetHeadingPermissionParams) (HeadingPermission, error)
 	GetLatestSnapshot(ctx context.Context, documentID uuid.UUID) (Snapshot, error)
+	GetSettingByKey(ctx context.Context, key string) (Setting, error)
 	GetSnapshotByID(ctx context.Context, id uuid.UUID) (Snapshot, error)
 	GetUnreferencedAttachments(ctx context.Context, documentID uuid.NullUUID) ([]Attachment, error)
 	GetUserByEmail(ctx context.Context, email sql.NullString) (GetUserByEmailRow, error)
@@ -78,6 +80,7 @@ type Querier interface {
 	UpdateWorkspaceSortOrder(ctx context.Context, arg UpdateWorkspaceSortOrderParams) error
 	UpsertDocumentPermission(ctx context.Context, arg UpsertDocumentPermissionParams) (DocumentPermission, error)
 	UpsertHeadingPermission(ctx context.Context, arg UpsertHeadingPermissionParams) (HeadingPermission, error)
+	UpsertSetting(ctx context.Context, arg UpsertSettingParams) error
 	UpsertWorkspaceMember(ctx context.Context, arg UpsertWorkspaceMemberParams) (WorkspaceMember, error)
 }
 

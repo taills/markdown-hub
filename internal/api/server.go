@@ -1,13 +1,17 @@
 package api
 
 import (
+	"embed"
+	"fmt"
 	"io/fs"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"markdownhub/internal/core"
+	"markdownhub/internal/logger"
 	"markdownhub/internal/store"
 )
 
@@ -30,7 +34,7 @@ func NewServer(
 	attachSvc *core.AttachmentService,
 	adminSvc *core.AdminService,
 	secret []byte,
-	staticFiles fs.FS,
+	staticFiles embed.FS,
 ) *Server {
 	jwtSecret = secret
 
@@ -40,6 +44,9 @@ func NewServer(
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
+	// Disable automatic redirect trailing slash
+	router.RedirectTrailingSlash = false
+	router.RedirectFixedPath = false
 	router.Use(gin.Recovery())
 	router.Use(LoggerMiddleware()) // Use structured logging middleware
 
@@ -48,6 +55,13 @@ func NewServer(
 	router.GET("/health", healthH.Health)
 	router.GET("/ready", healthH.Ready)
 	router.GET("/metrics", healthH.Metrics)
+
+	// CSRF token endpoint - returns a new CSRF token
+	router.GET("/api/csrf", func(c *gin.Context) {
+		token := generateCSRFToken()
+		c.SetCookie(csrfCookieName, token, 3600*24, "/", "", false, true)
+		c.JSON(http.StatusOK, gin.H{"token": token})
+	})
 
 	// Initialize handlers
 	authH := NewAuthHandler(authSvc)
@@ -65,6 +79,7 @@ func NewServer(
 
 	// API routes
 	api := router.Group("/api")
+	api.Use(csrfMiddleware()) // CSRF protection for state-changing operations
 	{
 		// Public auth routes
 		auth := api.Group("/auth")
@@ -188,6 +203,29 @@ func NewServer(
 			}
 
 			if filePath != "" {
+				// Security: validate path to prevent path traversal attacks
+				cleanPath := filepath.Clean(filePath)
+				if strings.Contains(cleanPath, "..") {
+					c.JSON(http.StatusForbidden, gin.H{"error": "invalid path"})
+					return
+				}
+
+				// Ensure path is within uploads directory
+				absPath, err := filepath.Abs(cleanPath)
+				if err != nil {
+					c.JSON(http.StatusForbidden, gin.H{"error": "invalid path"})
+					return
+				}
+				absUploads, err := filepath.Abs("uploads")
+				if err != nil {
+					c.JSON(http.StatusForbidden, gin.H{"error": "invalid path"})
+					return
+				}
+				if !strings.HasPrefix(absPath, absUploads) {
+					c.JSON(http.StatusForbidden, gin.H{"error": "path not allowed"})
+					return
+				}
+
 				c.File(filePath)
 				return
 			}
@@ -204,24 +242,60 @@ func NewServer(
 		}
 
 		// Serve SPA
-		if staticFiles != nil {
-			// Try to serve the file directly
-			trimmedPath := strings.TrimPrefix(path, "/")
-			if trimmedPath == "" {
-				trimmedPath = "index.html"
+		// staticFiles is always non-nil if dist directory existed at build time
+		{
+			logger := logger.Logger.With().Str("path", path).Logger()
+			logger.Info().Msg("Serving SPA")
+
+			// Get the requested path - embed.FS embeds the "dist" directory itself
+			// so we need to prepend "dist/" to the path
+			reqPath := strings.TrimPrefix(path, "/")
+			if reqPath == "" {
+				reqPath = "dist/index.html"
+			} else {
+				reqPath = "dist/" + reqPath
+			}
+			logger.Info().Str("reqPath", reqPath).Msg("Opening file")
+
+			// Try to read the file
+			data, err := staticFiles.ReadFile(reqPath)
+			if err != nil {
+				logger.Error().Err(err).Str("reqPath", reqPath).Msg("Failed to read file, trying dist/index.html")
+				// Fallback to index.html for SPA routing
+				reqPath = "dist/index.html"
+				data, err = staticFiles.ReadFile(reqPath)
+				if err != nil {
+					logger.Error().Err(err).Msg("Failed to serve index.html")
+					c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+					return
+				}
+			}
+			logger.Info().Int("size", len(data)).Msg("File served successfully")
+
+			// Set content type based on file extension
+			contentType := "text/plain; charset=utf-8"
+			if strings.HasSuffix(reqPath, ".html") {
+				contentType = "text/html; charset=utf-8"
+			} else if strings.HasSuffix(reqPath, ".js") {
+				contentType = "application/javascript"
+			} else if strings.HasSuffix(reqPath, ".css") {
+				contentType = "text/css"
+			} else if strings.HasSuffix(reqPath, ".json") {
+				contentType = "application/json"
+			} else if strings.HasSuffix(reqPath, ".png") {
+				contentType = "image/png"
+			} else if strings.HasSuffix(reqPath, ".jpg") || strings.HasSuffix(reqPath, ".jpeg") {
+				contentType = "image/jpeg"
 			}
 
-			if _, err := fs.Stat(staticFiles, trimmedPath); err == nil {
-				// File exists, serve it
-				c.FileFromFS(trimmedPath, http.FS(staticFiles))
-			} else {
-				// File doesn't exist, serve index.html for client-side routing
-				c.FileFromFS("index.html", http.FS(staticFiles))
-			}
+			c.Header("Content-Type", contentType)
+			c.Header("Content-Length", fmt.Sprintf("%d", len(data)))
+
+			// Write the file content
+			c.Writer.WriteHeader(http.StatusOK)
+			c.Writer.Write(data)
 			return
 		}
-
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 	})
 
 	return &Server{engine: router, hub: hub, static: staticFiles}

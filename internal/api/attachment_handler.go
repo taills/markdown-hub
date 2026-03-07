@@ -7,12 +7,28 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
 	"markdownhub/internal/core"
 )
+
+// Allowed file types and their extensions
+var allowedFileTypes = map[string]string{
+	"image/jpeg":        ".jpg",
+	"image/png":         ".png",
+	"image/gif":         ".gif",
+	"image/webp":        ".webp",
+	"image/svg+xml":     ".svg",
+	"text/plain":        ".txt",
+	"text/markdown":     ".md",
+	"application/pdf":   ".pdf",
+}
+
+// Max file size (10MB)
+const maxFileSize = 10 << 20
 
 // AttachmentHandler manages document attachments (uploads, downloads, deletions).
 type AttachmentHandler struct {
@@ -57,13 +73,42 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 		return
 	}
 
+	// Check file size
+	if int64(len(fileData)) > maxFileSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file size exceeds limit of 10MB"})
+		return
+	}
+
 	fileName := fileHeader.Filename
-	fileType := fileHeader.Header.Get("Content-Type")
+
+	// Detect actual file type from content
+	actualType := http.DetectContentType(fileData)
+
+	// Validate file type against whitelist
+	allowedExt, ok := allowedFileTypes[actualType]
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file type not allowed"})
+		return
+	}
+
+	// Validate file extension matches detected type
+	fileExt := filepath.Ext(fileName)
+	if fileExt != allowedExt {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file extension does not match content type"})
+		return
+	}
+
+	// Validate filename doesn't contain path traversal
+	if containsPathTraversal(fileName) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid filename"})
+		return
+	}
+
+	fileType := actualType
 	fileSize := int64(len(fileData))
 
 	// Create unique file path
 	fileID := uuid.New().String()
-	fileExt := filepath.Ext(fileName)
 	filePath := filepath.Join("uploads", docID, fileID+fileExt)
 
 	// Ensure upload directory exists
@@ -223,4 +268,14 @@ func (h *AttachmentHandler) Download(c *gin.Context) {
 	c.Header("Content-Disposition", disposition)
 
 	c.File(attachment.FilePath)
+}
+
+// containsPathTraversal checks if a filename contains path traversal patterns.
+func containsPathTraversal(filename string) bool {
+	// Check for common path traversal patterns
+	filename = strings.ReplaceAll(filename, "\\", "/")
+	return strings.Contains(filename, "..") ||
+		strings.HasPrefix(filename, "/") ||
+		strings.HasPrefix(filename, "../") ||
+		strings.Contains(filename, "/../")
 }

@@ -43,6 +43,14 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 	if username == "" || password == "" {
 		return nil, fmt.Errorf("%w: username and password are required", ErrInvalidInput)
 	}
+	// Validate username length
+	if len(username) < 3 || len(username) > 50 {
+		return nil, fmt.Errorf("%w: username must be 3-50 characters", ErrInvalidInput)
+	}
+	// Validate username format (alphanumeric and underscore only)
+	if !regexp.MustCompile(`^[a-zA-Z0-9_]+$`).MatchString(username) {
+		return nil, fmt.Errorf("%w: username can only contain letters, numbers, and underscores", ErrInvalidInput)
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)

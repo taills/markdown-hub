@@ -58,8 +58,8 @@ make build
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgres://postgres:postgres@localhost:5432/markdownhub?sslmode=disable` |
 | `ADDR` | Server listen address | `:8080` |
-| `JWT_SECRET` | JWT signing key | `change-me-in-production` |
-| `MIGRATIONS_PATH` | Path to migration files | `db/migrations` |
+
+**Note:** Configuration options like `JWT_SECRET`, `LOG_LEVEL`, and `LOG_PRETTY` are now stored in the database's `settings` table. On first run, the application will automatically generate a secure JWT secret if not provided.
 
 ### Development
 
@@ -168,8 +168,8 @@ make build
 |------|------|--------|
 | `DATABASE_URL` | PostgreSQL 连接字符串 | `postgres://postgres:postgres@localhost:5432/markdownhub?sslmode=disable` |
 | `ADDR` | 服务器监听地址 | `:8080` |
-| `JWT_SECRET` | JWT 签名密钥 | `change-me-in-production` |
-| `MIGRATIONS_PATH` | 迁移文件路径 | `db/migrations` |
+
+**注意:** 配置项如 `JWT_SECRET`、`LOG_LEVEL`、`LOG_PRETTY` 现已存储在数据库的 `settings` 表中。首次启动时，如果未提供 JWT_SECRET，程序会自动生成一个安全的密钥。
 
 ### 开发
 

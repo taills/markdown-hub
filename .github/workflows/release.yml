@@ -65,14 +65,23 @@ jobs:
           if [ "${{ matrix.platform }}" = "windows" ]; then
             EXT=".exe"
           fi
+          echo "EXT=${EXT}" >> $GITHUB_ENV
           LDFLAGS="-s -w -X main.version=${VERSION} -X main.buildTime=${BUILD_TIME}"
+          mkdir -p releases
           go build -ldflags="${LDFLAGS}" -o releases/markdownhub-${GOOS}-${GOARCH}${EXT} ./cmd/
+
+      - name: Package binary with README
+        run: |
+          ZIP_NAME="markdownhub-${{ matrix.platform }}-${{ matrix.arch }}.zip"
+          zip -j "releases/${ZIP_NAME}" \
+            "releases/markdownhub-${{ matrix.platform }}-${{ matrix.arch }}${EXT}" \
+            README.md
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: markdownhub-${{ matrix.platform }}-${{ matrix.arch }}
-          path: releases/markdownhub-${{ matrix.platform }}-${{ matrix.arch }}*
+          path: releases/markdownhub-${{ matrix.platform }}-${{ matrix.arch }}.zip
           retention-days: 1
 
   release:

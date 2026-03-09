@@ -330,4 +330,37 @@ export const adminService = {
   deleteUser: (id: string) =>
     request<void>(`/admin/users/${id}`, { method: 'DELETE' }),
   listAdminLogs: (limit: number = 100, offset: number = 0) =>
-    request<AdminLog[]>(`/admin/logs?limit=${limit}&offset=${offset}`),};
+    request<AdminLog[]>(`/admin/logs?limit=${limit}&offset=${offset}`),
+};
+
+// ---- Import ----
+
+export interface ImportResult {
+  document_id: string;
+  title: string;
+  url?: string;
+}
+
+export interface PluginConfig {
+  site_name: string;
+  site_url: string;
+}
+
+export const importService = {
+  importFromURL: (url: string, workspaceId: string, title?: string) =>
+    request<ImportResult>('/import/url', {
+      method: 'POST',
+      body: JSON.stringify({ url, workspace_id: workspaceId, title }),
+    }),
+  importFromContent: (workspaceId: string, html: string, baseUrl?: string, title?: string) =>
+    request<ImportResult>('/import/content', {
+      method: 'POST',
+      body: JSON.stringify({ workspace_id: workspaceId, html, base_url: baseUrl, title }),
+    }),
+};
+
+// ---- Plugin Config ----
+
+export const pluginService = {
+  getConfig: () => request<PluginConfig>('/plugin/config'),
+};

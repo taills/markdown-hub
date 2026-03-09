@@ -33,6 +33,7 @@ func NewServer(
 	workspaceSvc *core.WorkspaceService,
 	attachSvc *core.AttachmentService,
 	adminSvc *core.AdminService,
+	importerSvc *core.ImporterService,
 	secret []byte,
 	staticFiles embed.FS,
 ) *Server {
@@ -73,6 +74,7 @@ func NewServer(
 	workspaceH := NewWorkspaceHandler(workspaceSvc)
 	adminH := NewAdminHandler(adminSvc, authSvc)
 	workspaceAttachH := NewWorkspaceAttachmentHandler(attachSvc)
+	importerH := NewImporterHandler(importerSvc)
 
 	// WebSocket endpoint
 	router.GET("/ws", hub.ServeWS)
@@ -174,6 +176,21 @@ func NewServer(
 			users.PATCH("/password", userH.UpdatePassword)
 			users.PATCH("/preferences", userH.UpdatePreferences)
 		}
+
+		// Import routes
+		importGroup := api.Group("/import").Use(authMiddleware())
+		{
+			importGroup.POST("/url", importerH.ImportFromURL)
+			importGroup.POST("/content", importerH.ImportFromContent)
+		}
+
+		// Plugin config route (public)
+		router.GET("/api/plugin/config", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"site_name": "MarkdownHub",
+				"site_url":  "https://markdownhub.example.com",
+			})
+		})
 
 		// Admin routes
 		admin := api.Group("/admin").Use(authMiddleware())

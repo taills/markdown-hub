@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarkdownHub Importer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      width: 320px;
+      padding: 16px;
+      background: #fff;
+    }
+    h1 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #333;
+    }
+    .status {
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .status.loading {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+    .status.success {
+      background: #e8f5e9;
+      color: #388e3c;
+    }
+    .status.error {
+      background: #ffebee;
+      color: #d32f2f;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    select, input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1976d2;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .hidden {
+      display: none;
+    }
+    .settings {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+    .settings h2 {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    #instanceUrl {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>MarkdownHub Importer</h1>
+
+  <div id="status" class="status hidden"></div>
+
+  <div id="loginForm">
+    <div class="form-group">
+      <label>MarkdownHub Instance URL</label>
+      <input type="url" id="instanceUrl" placeholder="https://markdownhub.example.com">
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="username" placeholder="Username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="Password">
+    </div>
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <div id="importForm" class="hidden">
+    <div class="form-group">
+      <label>Workspace</label>
+      <select id="workspaceSelect">
+        <option value="">Loading workspaces...</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Title (optional)</label>
+      <input type="text" id="titleInput" placeholder="Article title">
+    </div>
+    <button id="importBtn">Import Article</button>
+
+    <div class="settings">
+      <h2>Settings</h2>
+      <div class="form-group">
+        <label>Instance URL</label>
+        <input type="url" id="settingsInstanceUrl" placeholder="https://markdownhub.example.com">
+      </div>
+      <button id="updateSettings">Update Settings</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

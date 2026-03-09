@@ -223,3 +223,54 @@ Backend tests can be run with `go test ./...`. Frontend uses Vitest (`pnpm test`
 - Strict TypeScript mode enabled
 - No `any` types—define proper interfaces
 - Minimize re-renders with `useMemo`/`useCallback` when appropriate
+
+## Article Import Feature
+
+### Backend API
+
+The import feature provides two endpoints for importing articles:
+
+```
+POST /api/import/url
+POST /api/import/content
+```
+
+- **URL Import**: Fetches HTML from a remote URL, converts to Markdown, processes images
+- **Content Import**: Accepts HTML content directly (used by browser extension)
+
+### Importer Service (`internal/core/importer.go`)
+
+The `ImporterService` handles:
+1. Fetching HTML from URLs
+2. Converting HTML to Markdown using `github.com/JohannesKaufmann/html-to-markdown`
+3. Processing remote images - downloading and uploading as workspace attachments
+4. Creating documents with the converted content
+
+### Browser Extension (`extensions/importer/`)
+
+The extension includes:
+- `manifest.json`: Manifest V3 configuration
+- `popup.html/js`: User interface for workspace selection and import
+- `content.js`: Extracts page content, converts images to base64
+- `background.js`: Service worker for handling import logic
+
+### Plugin Configuration
+
+```
+GET /api/plugin/config
+```
+
+Returns:
+```json
+{
+  "site_name": "MarkdownHub",
+  "site_url": "https://markdownhub.example.com"
+}
+```
+
+### API Service
+
+Import API methods in `web/src/services/api.ts`:
+- `importService.importFromURL(url, workspaceId, title?)`
+- `importService.importFromContent(workspaceId, html, baseUrl?, title?)`
+- `pluginService.getConfig()`

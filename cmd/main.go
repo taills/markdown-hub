@@ -129,6 +129,7 @@ For more information, visit: https://github.com/markdownhub/markdownhub
 	workspaceSvc := core.NewWorkspaceService(db, permSvc)
 	attachSvc := core.NewAttachmentService(db, permSvc)
 	adminSvc := core.NewAdminService(db)
+	importerSvc := core.NewImporterService(db, docSvc, attachSvc)
 
 	// Embed the frontend build (dist/) at compile time.
 	// When dist/ is not embedded (dev mode), pass nil so the API still works.
@@ -141,7 +142,7 @@ For more information, visit: https://github.com/markdownhub/markdownhub
 		logger.Info("Static files embedded successfully").Send()
 	}
 
-	srv := api.NewServer(db, authSvc, userSvc, docSvc, snapSvc, permSvc, workspaceSvc, attachSvc, adminSvc, []byte(cfg.GetJWTSecret()), staticFS)
+	srv := api.NewServer(db, authSvc, userSvc, docSvc, snapSvc, permSvc, workspaceSvc, attachSvc, adminSvc, importerSvc, []byte(cfg.GetJWTSecret()), staticFS)
 
 	httpServer := &http.Server{
 		Addr:         *addr,

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDocument } from '@/hooks/useDocument';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuth } from '@/hooks/useAuth';
+import { useSiteTitle } from '@/hooks/useSiteTitle';
 import { useImagePaste } from '@/hooks/useImagePaste';
 import { MarkdownPreview } from '@/components/MarkdownPreview';
 import { SnapshotPanel } from '@/components/SnapshotPanel';
@@ -19,6 +20,7 @@ export function DocumentEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  const { siteTitle } = useSiteTitle();
   const { document, setDocument, isLoading, error } = useDocument(id ?? '');
 
   const [content, setContent] = useState('');
@@ -186,7 +188,7 @@ export function DocumentEditor() {
       <div className="editor-layout">
         <header className="editor-header">
           <button className="back-btn" onClick={() => navigate('/')}>⟵ Documents</button>
-          <h2 className="doc-title">MarkdownHub</h2>
+          <h2 className="doc-title">{siteTitle}</h2>
         </header>
         <ErrorModal
           message={modalError}

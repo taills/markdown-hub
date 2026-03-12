@@ -57,6 +57,24 @@ func NewServer(
 	router.GET("/ready", healthH.Ready)
 	router.GET("/metrics", healthH.Metrics)
 
+	// Home page data - public endpoint for showing public workspaces and documents
+	router.GET("/api/home", func(c *gin.Context) {
+		workspaces, err := workspaceSvc.ListPublicWorkspaces(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch workspaces"})
+			return
+		}
+		documents, err := docSvc.ListGlobalPublicDocuments(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch documents"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"workspaces": workspaces,
+			"documents":  documents,
+		})
+	})
+
 	// CSRF token endpoint - returns a new CSRF token
 	router.GET("/api/csrf", func(c *gin.Context) {
 		token := generateCSRFToken()
@@ -81,8 +99,15 @@ func NewServer(
 
 	// API routes
 	api := router.Group("/api")
-	api.Use(csrfMiddleware()) // CSRF protection for state-changing operations
 	{
+		// Public routes (no CSRF protection needed for read-only)
+		public := api.Group("/public")
+		{
+			public.GET("/site-title", adminH.GetSiteTitlePublic)
+		}
+
+		api.Use(csrfMiddleware()) // CSRF protection for state-changing operations
+
 		// Public auth routes
 		auth := api.Group("/auth")
 		{
@@ -185,12 +210,7 @@ func NewServer(
 		}
 
 		// Plugin config route (public)
-		router.GET("/api/plugin/config", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{
-				"site_name": "MarkdownHub",
-				"site_url":  "https://markdownhub.example.com",
-			})
-		})
+		router.GET("/api/plugin/config", adminH.GetPluginConfig)
 
 		// Admin routes
 		admin := api.Group("/admin").Use(authMiddleware())
@@ -199,6 +219,10 @@ func NewServer(
 			admin.PATCH("/users/:id/admin", adminH.SetAdmin)
 			admin.DELETE("/users/:id", adminH.DeleteUser)
 			admin.GET("/logs", adminH.ListLogs)
+
+			// Site settings
+			admin.GET("/settings/site-title", adminH.GetSiteTitle)
+			admin.PUT("/settings/site-title", adminH.UpdateSiteTitle)
 		}
 	}
 

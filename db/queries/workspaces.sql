@@ -55,5 +55,8 @@ ORDER BY w.updated_at DESC;
 -- name: CountWorkspacesByUser :one
 SELECT COUNT(*) FROM workspace_members WHERE user_id = $1;
 
+-- name: ListPublicWorkspaces :many
+SELECT * FROM workspaces WHERE is_public = true ORDER BY updated_at DESC;
+
 -- name: UpdateWorkspaceSortOrder :exec
 UPDATE workspaces SET sort_order = $2, updated_at = NOW() WHERE id = $1;

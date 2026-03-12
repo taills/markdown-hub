@@ -115,6 +115,41 @@ func (q *Queries) GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMember
 	return i, err
 }
 
+const listPublicWorkspaces = `-- name: ListPublicWorkspaces :many
+SELECT id, owner_id, name, is_public, sort_order, created_at, updated_at FROM workspaces WHERE is_public = true ORDER BY updated_at DESC
+`
+
+func (q *Queries) ListPublicWorkspaces(ctx context.Context) ([]Workspace, error) {
+	rows, err := q.db.QueryContext(ctx, listPublicWorkspaces)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Workspace{}
+	for rows.Next() {
+		var i Workspace
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.Name,
+			&i.IsPublic,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspaceMembers = `-- name: ListWorkspaceMembers :many
 SELECT wm.id, wm.workspace_id, wm.user_id, wm.level, wm.created_at, u.username
 FROM workspace_members wm

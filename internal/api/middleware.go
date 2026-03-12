@@ -262,6 +262,13 @@ func csrfMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Skip CSRF check for public auth endpoints (login/register before authentication)
+		path := c.Request.URL.Path
+		if path == "/api/auth/login" || path == "/api/auth/register" {
+			c.Next()
+			return
+		}
+
 		// Get CSRF token from header
 		csrfToken := c.GetHeader(csrfHeaderName)
 		if csrfToken == "" {

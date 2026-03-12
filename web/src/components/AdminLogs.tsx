@@ -48,12 +48,13 @@ export function AdminLogs() {
   };
 
   const formatAction = (action: string) => {
-    const actionMap: Record<string, string> = {
-      SET_ADMIN: '切换管理员权限',
-      DELETE_USER: '删除用户',
-      RESTORE_USER: '恢复用户',
+    const actionMap: Record<string, () => string> = {
+      SET_ADMIN: () => t('admin.setAdmin'),
+      DELETE_USER: () => t('admin.deleteUser'),
+      RESTORE_USER: () => t('admin.restoreUser'),
     };
-    return actionMap[action] || action;
+    const formatter = actionMap[action];
+    return formatter ? formatter() : action;
   };
 
   const formatDetails = (details?: Record<string, unknown>) => {

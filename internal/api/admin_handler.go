@@ -193,6 +193,115 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// SettingResponse represents a setting for API responses.
+type SettingResponse struct {
+	Key         string `json:"key"`
+	Value       string `json:"value"`
+	Description string `json:"description"`
+}
+
+// GetSiteTitle returns the current site title (admin only).
+func (h *AdminHandler) GetSiteTitle(c *gin.Context) {
+	setting, err := h.adminSvc.GetSetting(c.Request.Context(), "SITE_TITLE")
+	if err != nil {
+		if err == store.ErrNotFound {
+			// Return default if not found
+			c.JSON(http.StatusOK, SettingResponse{
+				Key:         "SITE_TITLE",
+				Value:       "MarkdownHub",
+				Description: "Site title displayed on the homepage",
+			})
+			return
+		}
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, SettingResponse{
+		Key:         setting.Key,
+		Value:       setting.Value,
+		Description: setting.Description.String,
+	})
+}
+
+// GetSiteTitlePublic returns the current site title (public, no auth required).
+func (h *AdminHandler) GetSiteTitlePublic(c *gin.Context) {
+	setting, err := h.adminSvc.GetSetting(c.Request.Context(), "SITE_TITLE")
+	if err != nil {
+		if err == store.ErrNotFound {
+			// Return default if not found
+			c.JSON(http.StatusOK, gin.H{
+				"site_title": "MarkdownHub",
+			})
+			return
+		}
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"site_title": setting.Value,
+	})
+}
+
+// GetPluginConfig returns the plugin configuration.
+func (h *AdminHandler) GetPluginConfig(c *gin.Context) {
+	siteTitle := "MarkdownHub"
+	setting, err := h.adminSvc.GetSetting(c.Request.Context(), "SITE_TITLE")
+	if err == nil && setting != nil {
+		siteTitle = setting.Value
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"site_name": siteTitle,
+		"site_url":  "https://markdownhub.example.com",
+	})
+}
+
+// UpdateSiteTitleRequest is the JSON body for updating site title.
+type UpdateSiteTitleRequest struct {
+	Value string `json:"value" binding:"required,min=1,max=255"`
+}
+
+// UpdateSiteTitle updates the site title (admin only).
+func (h *AdminHandler) UpdateSiteTitle(c *gin.Context) {
+	// Verify admin status
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if !user.IsAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: admin required"})
+		return
+	}
+
+	var req UpdateSiteTitleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	err = h.adminSvc.UpdateSetting(c.Request.Context(), "SITE_TITLE", req.Value, "Site title displayed on the homepage")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, SettingResponse{
+		Key:         "SITE_TITLE",
+		Value:       req.Value,
+		Description: "Site title displayed on the homepage",
+	})
+}
+
 // ListLogs returns admin audit logs (admin only).
 func (h *AdminHandler) ListLogs(c *gin.Context) {
 	// Verify admin status

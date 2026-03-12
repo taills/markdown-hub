@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '@/hooks/useAuth';
+import { useSiteTitle } from '@/hooks/useSiteTitle';
 import { useDocument, useDocumentList } from '@/hooks/useDocument';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useImagePaste } from '@/hooks/useImagePaste';
@@ -152,6 +153,7 @@ export function NotesLayout() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { user, logout, token } = useAuth();
+  const { siteTitle } = useSiteTitle();
   const { documents, setDocuments, isLoading: docsLoading, reload } = useDocumentList();
   const { document, setDocument, isLoading: docLoading, error: documentError } = useDocument(id ?? '');
 
@@ -668,7 +670,7 @@ export function NotesLayout() {
     <div className="notes-shell">
       <header className="notes-topbar">
         <div className="topbar-left">
-          <span className="app-title">MarkdownHub</span>
+          <span className="app-title">{siteTitle}</span>
           <div className="doc-title-wrap">
             {!document && <span className="doc-title">{t('doc.noneSelected')}</span>}
             {document && !isEditingTitle && (

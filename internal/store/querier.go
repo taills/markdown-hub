@@ -61,6 +61,8 @@ type Querier interface {
 	ListDocumentsWithPermission(ctx context.Context, userID uuid.UUID) ([]Document, error)
 	ListHeadingPermissions(ctx context.Context, arg ListHeadingPermissionsParams) ([]HeadingPermission, error)
 	ListPermissionsWithUsername(ctx context.Context, documentID uuid.UUID) ([]ListPermissionsWithUsernameRow, error)
+	ListPublicDocuments(ctx context.Context) ([]Document, error)
+	ListPublicWorkspaces(ctx context.Context) ([]Workspace, error)
 	ListSnapshotsByDocument(ctx context.Context, arg ListSnapshotsByDocumentParams) ([]Snapshot, error)
 	ListUsers(ctx context.Context) ([]ListUsersRow, error)
 	ListWorkspaceAttachments(ctx context.Context, workspaceID uuid.UUID) ([]Attachment, error)

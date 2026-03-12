@@ -3,6 +3,24 @@ import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermis
 
 const API_BASE_URL = '/api';
 
+// ---- Home Page ----
+
+export interface HomeData {
+  workspaces: Workspace[];
+  documents: Document[];
+}
+
+export const homeService = {
+  getData: async (): Promise<HomeData> => {
+    const res = await fetch(`${API_BASE_URL}/home`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.json() as Promise<HomeData>;
+  },
+};
+
 // CSRF Token management
 let csrfToken = '';
 
@@ -363,4 +381,28 @@ export const importService = {
 
 export const pluginService = {
   getConfig: () => request<PluginConfig>('/plugin/config'),
+};
+
+// ---- Site Settings ----
+
+export interface SiteTitleResponse {
+  site_title: string;
+}
+
+export const siteService = {
+  getSiteTitle: async (): Promise<string> => {
+    const res = await fetch(`${API_BASE_URL}/public/site-title`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    const data = res.json() as Promise<SiteTitleResponse>;
+    return (await data).site_title;
+  },
+  getAdminSiteTitle: () => request<{ key: string; value: string; description: string }>('/admin/settings/site-title'),
+  updateSiteTitle: (value: string) =>
+    request<{ key: string; value: string; description: string }>('/admin/settings/site-title', {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
+    }),
 };

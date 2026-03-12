@@ -141,6 +141,15 @@ func (s *DocumentService) ListPublicDocumentsByWorkspace(ctx context.Context, wo
 	return public, nil
 }
 
+// ListGlobalPublicDocuments returns all public documents across all workspaces for the home page.
+func (s *DocumentService) ListGlobalPublicDocuments(ctx context.Context) ([]*models.Document, error) {
+	docs, err := s.db.ListPublicDocuments(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list public documents: %w", err)
+	}
+	return storeDocsToModels(docs), nil
+}
+
 // ListAllAccessibleDocuments returns all documents that a user can access,
 // including owned documents and documents with granted permissions.
 func (s *DocumentService) ListAllAccessibleDocuments(ctx context.Context, userID string) ([]*models.Document, error) {

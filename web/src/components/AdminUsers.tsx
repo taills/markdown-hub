@@ -97,6 +97,9 @@ export function AdminUsers() {
           <p className="muted">{t('admin.usersDescription')}</p>
         </div>
         <div className="admin-actions">
+          <button className="secondary" onClick={() => navigate('/admin/settings')}>
+            {t('admin.siteSettings')}
+          </button>
           <button className="secondary" onClick={() => navigate('/admin/logs')}>
             {t('admin.viewLogs')}
           </button>

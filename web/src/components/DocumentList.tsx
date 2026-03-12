@@ -1,14 +1,18 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useDocumentList } from '@/hooks/useDocument';
 import { useAuth } from '@/hooks/useAuth';
+import { useSiteTitle } from '@/hooks/useSiteTitle';
 import { documentService, workspaceService, workspaceAttachmentService } from '@/services/api';
 import { ErrorModal } from '@/components/ErrorModal';
 import type { DocumentListItem, PermissionLevel, Workspace, WorkspaceMember, Attachment } from '@/types';
 
 export function DocumentList() {
+  const { t } = useTranslation();
   const { documents, isLoading, reload } = useDocumentList();
   const { user, logout } = useAuth();
+  const { siteTitle } = useSiteTitle();
   const navigate = useNavigate();
   const [newTitle, setNewTitle] = useState('');
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
@@ -67,7 +71,7 @@ export function DocumentList() {
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
     if (!selectedWorkspaceId) {
-      setError('请先创建或加入工作空间。');
+      setError(t('workspace.createOrJoinFirst'));
       return;
     }
     setCreating(true);
@@ -189,7 +193,7 @@ export function DocumentList() {
   return (
     <div className="document-list-page">
       <header>
-        <h1>MarkdownHub</h1>
+        <h1>{siteTitle}</h1>
         <div className="user-info">
           <span>{user?.username}</span>
           <button onClick={logout}>Sign out</button>

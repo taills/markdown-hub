@@ -176,6 +176,43 @@ func (q *Queries) ListDocumentsByWorkspace(ctx context.Context, workspaceID uuid
 	return items, nil
 }
 
+const listPublicDocuments = `-- name: ListPublicDocuments :many
+SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id FROM documents WHERE is_public = true ORDER BY updated_at DESC LIMIT 20
+`
+
+func (q *Queries) ListPublicDocuments(ctx context.Context) ([]Document, error) {
+	rows, err := q.db.QueryContext(ctx, listPublicDocuments)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Document{}
+	for rows.Next() {
+		var i Document
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.Title,
+			&i.Content,
+			&i.IsPublic,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WorkspaceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateDocumentContent = `-- name: UpdateDocumentContent :one
 UPDATE documents
 SET content = $2, updated_at = NOW()

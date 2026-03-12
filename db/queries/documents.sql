@@ -43,5 +43,8 @@ LEFT JOIN workspace_members wm ON wm.workspace_id = d.workspace_id AND wm.user_i
 LEFT JOIN document_permissions dp ON dp.document_id = d.id AND dp.user_id = $1
 WHERE wm.user_id IS NOT NULL OR dp.user_id IS NOT NULL;
 
+-- name: ListPublicDocuments :many
+SELECT * FROM documents WHERE is_public = true ORDER BY updated_at DESC LIMIT 20;
+
 -- name: UpdateDocumentSortOrder :exec
 UPDATE documents SET sort_order = $2, updated_at = NOW() WHERE id = $1;

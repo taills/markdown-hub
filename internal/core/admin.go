@@ -218,6 +218,32 @@ func (s *AdminService) DeleteUser(ctx context.Context, callerID, targetUserID st
 	return nil
 }
 
+// GetSetting returns a setting by key.
+func (s *AdminService) GetSetting(ctx context.Context, key string) (*store.Setting, error) {
+	setting, err := s.db.GetSettingByKey(ctx, key)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("%w: setting not found", store.ErrNotFound)
+		}
+		return nil, fmt.Errorf("get setting: %w", err)
+	}
+
+	return &setting, nil
+}
+
+// UpdateSetting updates a setting value.
+func (s *AdminService) UpdateSetting(ctx context.Context, key, value, description string) error {
+	err := s.db.UpsertSetting(ctx, store.UpsertSettingParams{
+		Key:         key,
+		Value:       value,
+		Description: sql.NullString{String: description, Valid: description != ""},
+	})
+	if err != nil {
+		return fmt.Errorf("update setting: %w", err)
+	}
+	return nil
+}
+
 // RestoreUser reactivates a soft-deleted user.
 // callerID must be an admin (check enforced at API layer).
 func (s *AdminService) RestoreUser(ctx context.Context, callerID, targetUserID string) (*models.User, error) {

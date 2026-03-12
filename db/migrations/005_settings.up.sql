@@ -10,5 +10,6 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Insert default settings if not exist
 INSERT INTO settings (key, value, description) VALUES
     ('LOG_LEVEL', 'info', 'Logging level: debug, info, warn, error'),
-    ('LOG_PRETTY', 'true', 'Pretty print logs: true, false')
+    ('LOG_PRETTY', 'true', 'Pretty print logs: true, false'),
+    ('SITE_TITLE', 'MarkdownHub', 'Site title displayed on the homepage')
 ON CONFLICT (key) DO NOTHING;

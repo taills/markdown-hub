@@ -2,14 +2,17 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { SiteTitleProvider } from '@/hooks/useSiteTitle';
 import type { ReactNode } from 'react';
 
 // Lazy load components for code splitting
 const LoginPage = lazy(() => import('@/components/LoginPage').then(m => ({ default: m.LoginPage })));
+const HomePage = lazy(() => import('@/components/HomePage').then(m => ({ default: m.HomePage })));
 const NotesLayout = lazy(() => import('@/components/NotesLayout').then(m => ({ default: m.NotesLayout })));
 const PersonalCenter = lazy(() => import('@/components/PersonalCenter').then(m => ({ default: m.PersonalCenter })));
 const AdminUsers = lazy(() => import('@/components/AdminUsers').then(m => ({ default: m.AdminUsers })));
 const AdminLogs = lazy(() => import('@/components/AdminLogs').then(m => ({ default: m.AdminLogs })));
+const AdminSettings = lazy(() => import('@/components/AdminSettings').then(m => ({ default: m.AdminSettings })));
 const PublicDocumentView = lazy(() => import('@/components/PublicDocumentView').then(m => ({ default: m.PublicDocumentView })));
 const PublicWorkspaceView = lazy(() => import('@/components/PublicWorkspaceView').then(m => ({ default: m.PublicWorkspaceView })));
 
@@ -61,8 +64,21 @@ function AppRoutes() {
           )
         }
       />
+      {/* Home route - shows public content for anonymous, notes layout for authenticated */}
       <Route
         path="/"
+        element={
+          user ? (
+            <Navigate to="/documents" replace />
+          ) : (
+            <Suspense fallback={<LoadingFallback />}>
+              <HomePage />
+            </Suspense>
+          )
+        }
+      />
+      <Route
+        path="/documents"
         element={
           <RequireAuth>
             <NotesLayout />
@@ -118,6 +134,14 @@ function AppRoutes() {
           </RequireAdmin>
         }
       />
+      <Route
+        path="/admin/settings"
+        element={
+          <RequireAdmin>
+            <AdminSettings />
+          </RequireAdmin>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -126,9 +150,11 @@ function AppRoutes() {
 export function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <SiteTitleProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </SiteTitleProvider>
     </BrowserRouter>
   );
 }

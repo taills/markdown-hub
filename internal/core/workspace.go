@@ -173,6 +173,15 @@ func (s *WorkspaceService) RemoveWorkspaceMember(ctx context.Context, workspaceI
 	})
 }
 
+// ListPublicWorkspaces returns all public workspaces for the home page.
+func (s *WorkspaceService) ListPublicWorkspaces(ctx context.Context) ([]*models.Workspace, error) {
+	workspaces, err := s.db.ListPublicWorkspaces(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return storeWorkspacesToModels(workspaces), nil
+}
+
 // ListWorkspaceMembers returns all members of a workspace.
 func (s *WorkspaceService) ListWorkspaceMembers(ctx context.Context, workspaceID, userID string) ([]*models.WorkspaceMember, error) {
 	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionRead); err != nil {

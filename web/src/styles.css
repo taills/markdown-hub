@@ -2294,7 +2294,8 @@ body.is-resizing * {
   gap: 1rem;
   padding: 0.5rem 0.9rem;
   border-bottom: 1px solid #f3f4f6;
-  min-height: 3rem;
+  height: 3rem;
+  box-sizing: border-box;
   background: #fafafa;
 }
 

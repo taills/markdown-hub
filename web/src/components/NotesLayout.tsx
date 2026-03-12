@@ -892,6 +892,7 @@ export function NotesLayout() {
               <div>
                 <h3>{t('workspace.title')}</h3>
               </div>
+              <span></span>
             </div>
             <div className="workspace-list">
               <button

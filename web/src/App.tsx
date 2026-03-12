@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { SiteTitleProvider } from '@/hooks/useSiteTitle';
+import { ToastProvider } from '@/components/Toast';
 import type { ReactNode } from 'react';
 
 // Lazy load components for code splitting
@@ -160,12 +161,14 @@ export function App() {
   return (
     <BrowserRouter>
       <SiteTitleProvider>
-        <AuthProvider>
-          <AppRoutes />
-          <footer className="app-footer">
-            © {new Date().getFullYear()} 太乙实验室. All rights reserved.
-          </footer>
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <AppRoutes />
+            <footer className="app-footer">
+              © {new Date().getFullYear()} 太乙实验室. All rights reserved.
+            </footer>
+          </AuthProvider>
+        </ToastProvider>
       </SiteTitleProvider>
     </BrowserRouter>
   );

@@ -21,6 +21,7 @@ import { useSiteTitle } from '@/hooks/useSiteTitle';
 import { useDocument, useDocumentList } from '@/hooks/useDocument';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useImagePaste } from '@/hooks/useImagePaste';
+import { useToast } from '@/components/Toast';
 import { attachmentService, documentService, workspaceService } from '@/services/api';
 import { MarkdownPreview } from '@/components/MarkdownPreview';
 import { SnapshotPanel } from '@/components/SnapshotPanel';
@@ -65,16 +66,18 @@ function SortableWorkspaceItem({
         {...attributes}
         {...listeners}
         tabIndex={-1}
-        aria-label="drag to reorder"
+        aria-label="拖拽排序"
       >
-        ⠿
+        ⋮⋮
       </button>
       <button className="workspace-main" onClick={onSelect}>
-        <span>{ws.name}</span>
+        <span className="workspace-name">{ws.name}</span>
       </button>
-      <button className="workspace-settings-btn" title={settingsLabel} onClick={onSettings}>
-        ⚙️
-      </button>
+      <div className="workspace-actions">
+        <button className="workspace-settings-btn" title={settingsLabel} onClick={onSettings} aria-label={settingsLabel}>
+          ⚙️
+        </button>
+      </div>
     </div>
   );
 }
@@ -113,20 +116,24 @@ function SortableDocumentItem({
         {...attributes}
         {...listeners}
         tabIndex={-1}
-        aria-label="drag to reorder"
+        aria-label="拖拽排序"
       >
-        ⠿
+        ⋮⋮
       </button>
       <button className="doc-main" onClick={onNavigate}>
         <span className="doc-title">{doc.title}</span>
         <span className="doc-meta">
-          {workspaceName} · {new Date(doc.updated_at).toLocaleDateString(locale)}
+          <span>{workspaceName}</span>
+          <span className="doc-meta-sep">·</span>
+          <span>{new Date(doc.updated_at).toLocaleDateString(locale)}</span>
         </span>
       </button>
       {isOwner && (
-        <button className="doc-delete" onClick={onDelete}>
-          🗑
-        </button>
+        <div className="doc-actions">
+          <button className="doc-delete" onClick={onDelete} aria-label="删除文档">
+            🗑️
+          </button>
+        </div>
       )}
     </div>
   );
@@ -154,6 +161,7 @@ export function NotesLayout() {
   const navigate = useNavigate();
   const { user, logout, token } = useAuth();
   const { siteTitle } = useSiteTitle();
+  const { showToast } = useToast();
   const { documents, setDocuments, isLoading: docsLoading, reload } = useDocumentList();
   const { document, setDocument, isLoading: docLoading, error: documentError } = useDocument(id ?? '');
 
@@ -198,7 +206,6 @@ export function NotesLayout() {
   const [titleSaving, setTitleSaving] = useState(false);
   const [titleError, setTitleError] = useState('');
   const [publicToggling, setPublicToggling] = useState(false);
-  const [publicLinkCopied, setPublicLinkCopied] = useState(false);
   const [dismissedDocError, setDismissedDocError] = useState<string | null>(null);
 
   const docErrorToShow = documentError && documentError !== dismissedDocError ? documentError : '';
@@ -417,9 +424,11 @@ export function NotesLayout() {
       const doc = await documentService.create(newTitle.trim(), '', selectedWorkspaceId);
       setNewTitle('');
       reload();
+      showToast(t('doc.createdSuccess'), 'success');
       navigate(`/documents/${doc.id}`);
     } catch (e: unknown) {
       setCreateDocError(e instanceof Error ? e.message : 'Error');
+      showToast(t('doc.createFailed'), 'error');
     } finally {
       setCreatingDocument(false);
     }
@@ -427,7 +436,13 @@ export function NotesLayout() {
 
   const handleDeleteDocument = async (doc: DocumentListItem) => {
     if (!confirm(t('doc.deleteConfirm'))) return;
-    await documentService.delete(doc.id).catch(() => null);
+    await documentService.delete(doc.id)
+      .then(() => {
+        showToast(t('doc.deletedSuccess'), 'success');
+      })
+      .catch(() => {
+        showToast(t('doc.deleteFailed'), 'error');
+      });
     reload();
     if (id === doc.id) navigate('/');
   };
@@ -542,8 +557,9 @@ export function NotesLayout() {
     if (!document) return;
     const link = `${window.location.origin}/documents/${document.id}/view`;
     navigator.clipboard.writeText(link).then(() => {
-      setPublicLinkCopied(true);
-      setTimeout(() => setPublicLinkCopied(false), 2000);
+      showToast(t('doc.linkCopied'), 'success');
+    }).catch(() => {
+      showToast(t('doc.linkCopyFailed'), 'error');
     });
   };
 
@@ -781,40 +797,91 @@ export function NotesLayout() {
             <div className="menu-group doc-visibility-group">
               {canManageDoc && (
                 <button
-                  className={`ghost doc-public-btn ${document.is_public ? 'public' : 'private'}`}
+                  className={`icon-btn ${document.is_public ? 'active' : ''}`}
                   onClick={handleToggleDocPublic}
                   disabled={publicToggling}
                   title={document.is_public ? t('doc.setPrivate') : t('doc.setPublic')}
+                  aria-label={document.is_public ? t('doc.setPrivate') : t('doc.setPublic')}
                 >
-                  {document.is_public ? `🌐 ${t('doc.setPublic')}` : `🔒 ${t('doc.setPrivate')}`}
+                  {document.is_public ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="2" y1="12" x2="22" y2="12"/>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
                 </button>
               )}
               {document.is_public && (
                 <button
-                  className="ghost"
+                  className="icon-btn"
                   onClick={handleCopyPublicLink}
                   title={t('doc.publicLink')}
+                  aria-label={t('doc.publicLink')}
                 >
-                  {publicLinkCopied ? t('doc.publicLinkCopied') : t('doc.publicLink')}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
                 </button>
               )}
-              <button className="ghost" onClick={handleViewRaw} title={t('doc.viewRaw')}>
-                {t('doc.viewRaw')}
+              <button
+                className="icon-btn"
+                onClick={handleViewRaw}
+                title={t('doc.viewRaw')}
+                aria-label={t('doc.viewRaw')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
               </button>
             </div>
           )}
           {id && (
             <span className={`ws-pill ws-${connectionState}`}>
-              {connectionState}
+              {connectionState === 'connected' ? t('common.connected') : connectionState === 'connecting' ? t('common.connecting') : t('common.disconnected')}
             </span>
           )}
           {collaborators.length > 0 && (
-            <span className="collaborators">{collaborators.length} {t('common.online')}</span>
+            <span className="collaborators">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="7" r="4"/>
+                <path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2" fill="none" stroke="currentColor" strokeWidth="2"/>
+              </svg>
+              {collaborators.length} {t('common.online')}
+            </span>
           )}
-          <button className="ghost" onClick={() => navigate('/home')}>{t('nav.home')}</button>
-          <span className="user-chip">{user?.username}</span>
-          <button className="ghost" onClick={() => navigate('/me')}>{t('nav.profile')}</button>
-          <button className="ghost" onClick={logout}>{t('nav.logout')}</button>
+          <button className="ghost" onClick={() => navigate('/home')}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            {t('nav.home')}
+          </button>
+          <div className="user-menu">
+            <button className="user-chip" onClick={() => navigate('/me')}>
+              <span className="user-avatar">{user?.username?.charAt(0).toUpperCase()}</span>
+              <span>{user?.username}</span>
+              {user?.is_admin && <span style={{ color: 'var(--accent)', marginLeft: '2px' }}>★</span>}
+            </button>
+          </div>
+          <button className="ghost" onClick={logout}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            {t('nav.logout')}
+          </button>
         </div>
       </header>
 

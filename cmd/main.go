@@ -6,19 +6,19 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/joho/godotenv"
 	"io/fs"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"markdownhub/internal/api"
 	"markdownhub/internal/config"
 	"markdownhub/internal/core"
 	"markdownhub/internal/logger"
 	"markdownhub/internal/migrator"
 	"markdownhub/internal/store"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 // 构建时通过 ldflags 注入
@@ -67,6 +67,11 @@ For more information, visit: https://github.com/markdownhub/markdownhub
 		fmt.Printf("MarkdownHub %s\n", version)
 		fmt.Printf("Build time: %s\n", buildTime)
 		os.Exit(0)
+	}
+
+	// 加载 .env 文件中的环境变量（如果存在）
+	if err := godotenv.Load(); err != nil {
+		fmt.Printf("加载 .env 文件失败: %v", err)
 	}
 
 	// 从环境变量覆盖命令行参数

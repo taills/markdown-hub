@@ -41,8 +41,8 @@ const resources = {
         admin: 'Admin',
         adminLogs: 'Audit Logs',
         logout: 'Sign out',
-        backToEdit: 'Back to editor',
-        backToProfile: 'Back to profile',
+        editor: 'Editor',
+        backToProfile: 'Profile',
         settings: 'Settings',
       },
       doc: {
@@ -291,8 +291,8 @@ const resources = {
         admin: '管理',
         adminLogs: '审计日志',
         logout: '退出',
-        backToEdit: '返回编辑器',
-        backToProfile: '返回个人中心',
+        editor: '编辑器',
+        backToProfile: '个人中心',
         settings: '设置',
       },
       doc: {
@@ -541,8 +541,8 @@ const resources = {
         admin: '管理',
         adminLogs: '審計日誌',
         logout: '退出',
-        backToEdit: '返回編輯器',
-        backToProfile: '返回個人中心',
+        editor: '編輯器',
+        backToProfile: '個人中心',
         settings: '設定',
       },
       doc: {

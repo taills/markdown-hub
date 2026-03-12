@@ -112,7 +112,7 @@ export function HomePage() {
       <footer className="home-footer">
         {user ? (
           <button className="home-login-link" onClick={() => navigate('/documents')}>
-            {t('home.goToDocuments', '文档编辑')}
+            {t('nav.editor', '编辑器')}
           </button>
         ) : (
           <Link to="/login" className="home-login-link">{t('home.login', '登录')}</Link>

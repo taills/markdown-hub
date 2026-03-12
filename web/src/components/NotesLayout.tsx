@@ -1006,7 +1006,7 @@ export function NotesLayout() {
                 <p className="muted">{t('nav.settings')}</p>
               </div>
               <button className="secondary" onClick={() => setMode('edit')}>
-                {t('nav.backToEdit')}
+                {t('nav.editor')}
               </button>
             </div>
             <div className="settings-body">

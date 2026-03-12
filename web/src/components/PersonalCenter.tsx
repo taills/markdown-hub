@@ -141,7 +141,7 @@ export function PersonalCenter() {
             </>
           )}
           <button className="secondary" onClick={() => navigate('/')}>
-            {t('nav.backToEdit')}
+            {t('nav.editor')}
           </button>
         </div>
       </header>

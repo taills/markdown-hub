@@ -811,6 +811,7 @@ export function NotesLayout() {
           {collaborators.length > 0 && (
             <span className="collaborators">{collaborators.length} {t('common.online')}</span>
           )}
+          <button className="ghost" onClick={() => navigate('/home')}>{t('nav.home')}</button>
           <span className="user-chip">{user?.username}</span>
           <button className="ghost" onClick={() => navigate('/me')}>{t('nav.profile')}</button>
           <button className="ghost" onClick={logout}>{t('nav.logout')}</button>
@@ -1022,10 +1023,6 @@ export function NotesLayout() {
       </div>
 
       <ErrorModal message={modalError} onClose={handleCloseError} />
-
-      <footer className="app-footer">
-        © {new Date().getFullYear()} 太乙实验室. All rights reserved.
-      </footer>
     </div>
   );
 }

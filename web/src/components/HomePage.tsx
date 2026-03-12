@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/hooks/useAuth';
 import { homeService, siteService } from '@/services/api';
 import type { Document, Workspace } from '@/types';
 
@@ -15,6 +16,8 @@ interface HomeData {
  */
 export function HomePage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<HomeData | null>(null);
   const [siteTitle, setSiteTitle] = useState<string>('MarkdownHub');
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +59,6 @@ export function HomePage() {
     <div className="home-page">
       <header className="home-header">
         <h1 className="home-title">{siteTitle}</h1>
-        <p className="home-subtitle">{t('home.subtitle')}</p>
       </header>
 
       {!hasPublicContent ? (
@@ -108,7 +110,13 @@ export function HomePage() {
       )}
 
       <footer className="home-footer">
-        <Link to="/login" className="home-login-link">{t('home.login', '登录')}</Link>
+        {user ? (
+          <button className="home-login-link" onClick={() => navigate('/documents')}>
+            {t('home.goToDocuments', '文档编辑')}
+          </button>
+        ) : (
+          <Link to="/login" className="home-login-link">{t('home.login', '登录')}</Link>
+        )}
       </footer>
     </div>
   );

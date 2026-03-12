@@ -21,6 +21,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  padding-bottom: 3rem;
 }
 
 /* ---- Auth page ---- */
@@ -74,12 +75,17 @@ body {
 
 /* ---- App Footer ---- */
 .app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   text-align: center;
-  padding: 1rem;
+  padding: 0.75rem;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   border-top: 1px solid var(--border);
   background: var(--surface);
+  z-index: 100;
 }
 
 /* ---- Document list ---- */

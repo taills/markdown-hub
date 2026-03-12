@@ -77,6 +77,15 @@ function AppRoutes() {
           )
         }
       />
+      {/* Public home route — accessible for both anonymous and authenticated users */}
+      <Route
+        path="/home"
+        element={
+          <Suspense fallback={<LoadingFallback />}>
+            <HomePage />
+          </Suspense>
+        }
+      />
       <Route
         path="/documents"
         element={
@@ -153,6 +162,9 @@ export function App() {
       <SiteTitleProvider>
         <AuthProvider>
           <AppRoutes />
+          <footer className="app-footer">
+            © {new Date().getFullYear()} 太乙实验室. All rights reserved.
+          </footer>
         </AuthProvider>
       </SiteTitleProvider>
     </BrowserRouter>

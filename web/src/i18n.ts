@@ -29,6 +29,7 @@ const resources = {
         optional: 'optional',
       },
       nav: {
+        home: 'Home',
         workspace: 'Workspace',
         documents: 'Documents',
         previewPanel: 'Preview/Panel',
@@ -251,7 +252,6 @@ const resources = {
         saving: 'Saving…',
       },
       home: {
-        subtitle: 'Public Content',
         noPublicContent: 'No public content available',
         publicWorkspaces: 'Public Workspaces',
         publicDocuments: 'Public Documents',
@@ -279,6 +279,7 @@ const resources = {
         optional: '可选',
       },
       nav: {
+        home: '首页',
         workspace: '工作空间',
         documents: '文档列表',
         previewPanel: '预览/面板',
@@ -501,7 +502,6 @@ const resources = {
         saving: '保存中…',
       },
       home: {
-        subtitle: '公开内容',
         noPublicContent: '暂无公开内容',
         publicWorkspaces: '公开工作空间',
         publicDocuments: '公开文档',
@@ -529,6 +529,7 @@ const resources = {
         optional: '可選',
       },
       nav: {
+        home: '首頁',
         workspace: '工作空間',
         documents: '文件清單',
         previewPanel: '預覽/面板',
@@ -751,7 +752,6 @@ const resources = {
         saving: '儲存中…',
       },
       home: {
-        subtitle: '公開內容',
         noPublicContent: '暫無公開內容',
         publicWorkspaces: '公開工作空間',
         publicDocuments: '公開文件',

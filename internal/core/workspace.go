@@ -16,15 +16,16 @@ import (
 type WorkspaceService struct {
 	db          *store.DB
 	permService *PermissionService
+	adminSvc    *AdminService
 }
 
 // NewWorkspaceService constructs a WorkspaceService.
-func NewWorkspaceService(db *store.DB, permService *PermissionService) *WorkspaceService {
-	return &WorkspaceService{db: db, permService: permService}
+func NewWorkspaceService(db *store.DB, permService *PermissionService, adminSvc *AdminService) *WorkspaceService {
+	return &WorkspaceService{db: db, permService: permService, adminSvc: adminSvc}
 }
 
 // CreateWorkspace creates a new workspace and adds the creator as a manager.
-func (s *WorkspaceService) CreateWorkspace(ctx context.Context, ownerID, name string) (*models.Workspace, error) {
+func (s *WorkspaceService) CreateWorkspace(ctx context.Context, ownerID, name string, ipAddress, userAgent string) (*models.Workspace, error) {
 	if name == "" {
 		return nil, fmt.Errorf("%w: name is required", ErrInvalidInput)
 	}
@@ -61,6 +62,14 @@ func (s *WorkspaceService) CreateWorkspace(ctx context.Context, ownerID, name st
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Log the operation
+	if s.adminSvc != nil {
+		details := map[string]interface{}{
+			"workspace_name": name,
+		}
+		_ = s.adminSvc.LogWorkspaceOperation(ctx, ownerID, "CREATE_WORKSPACE", "WORKSPACE", ws.ID, ws.Name, details, ipAddress, userAgent)
 	}
 
 	return ws, nil
@@ -121,6 +130,7 @@ func (s *WorkspaceService) SetWorkspaceMemberByUsername(
 	ctx context.Context,
 	workspaceID, callerID, username string,
 	level models.PermissionLevel,
+	ipAddress, userAgent string,
 ) (*models.WorkspaceMember, error) {
 	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, callerID, models.PermissionManage); err != nil {
 		return nil, err
@@ -139,6 +149,11 @@ func (s *WorkspaceService) SetWorkspaceMemberByUsername(
 		return nil, fmt.Errorf("invalid workspace ID: %w", err)
 	}
 
+	workspace, err := s.db.GetWorkspaceByID(ctx, workspaceUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get workspace: %w", err)
+	}
+
 	member, err := s.db.UpsertWorkspaceMember(ctx, store.UpsertWorkspaceMemberParams{
 		WorkspaceID: workspaceUUID,
 		UserID:      targetUser.ID,
@@ -148,11 +163,19 @@ func (s *WorkspaceService) SetWorkspaceMemberByUsername(
 		return nil, err
 	}
 
+	// Log the operation
+	if s.adminSvc != nil {
+		details := map[string]interface{}{
+			"level": level,
+		}
+		_ = s.adminSvc.LogWorkspaceOperation(ctx, callerID, "SET_WORKSPACE_MEMBER", "WORKSPACE", workspaceID, workspace.Name, details, ipAddress, userAgent)
+	}
+
 	return storeWorkspaceMemberToModel(&member), nil
 }
 
 // RemoveWorkspaceMember revokes a user's access to the workspace.
-func (s *WorkspaceService) RemoveWorkspaceMember(ctx context.Context, workspaceID, callerID, targetUserID string) error {
+func (s *WorkspaceService) RemoveWorkspaceMember(ctx context.Context, workspaceID, callerID, targetUserID string, ipAddress, userAgent string) error {
 	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, callerID, models.PermissionManage); err != nil {
 		return err
 	}
@@ -167,10 +190,36 @@ func (s *WorkspaceService) RemoveWorkspaceMember(ctx context.Context, workspaceI
 		return fmt.Errorf("invalid user ID: %w", err)
 	}
 
-	return s.db.DeleteWorkspaceMember(ctx, store.DeleteWorkspaceMemberParams{
+	// Get workspace name for logging
+	workspace, err := s.db.GetWorkspaceByID(ctx, workspaceUUID)
+	if err != nil {
+		return fmt.Errorf("get workspace: %w", err)
+	}
+
+	// Get target user info
+	targetUser, err := s.db.GetUserByID(ctx, targetUUID)
+	if err != nil {
+		return fmt.Errorf("get target user: %w", err)
+	}
+
+	err = s.db.DeleteWorkspaceMember(ctx, store.DeleteWorkspaceMemberParams{
 		WorkspaceID: workspaceUUID,
 		UserID:      targetUUID,
 	})
+	if err != nil {
+		return err
+	}
+
+	// Log the operation
+	if s.adminSvc != nil {
+		details := map[string]interface{}{
+			"removed_user_id":   targetUserID,
+			"removed_username":  targetUser.Username,
+		}
+		_ = s.adminSvc.LogWorkspaceOperation(ctx, callerID, "REMOVE_WORKSPACE_MEMBER", "WORKSPACE", workspaceID, workspace.Name, details, ipAddress, userAgent)
+	}
+
+	return nil
 }
 
 // ListPublicWorkspaces returns all public workspaces for the home page.

@@ -34,7 +34,9 @@ func (h *WorkspaceHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
 		return
 	}
-	ws, err := h.workspaceSvc.CreateWorkspace(c.Request.Context(), userID, body.Name)
+	ipAddress := getClientIP(c.Request)
+	userAgent := c.GetHeader("User-Agent")
+	ws, err := h.workspaceSvc.CreateWorkspace(c.Request.Context(), userID, body.Name, ipAddress, userAgent)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -139,7 +141,9 @@ func (h *WorkspaceHandler) SetMember(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "level must be read, edit, or manage"})
 		return
 	}
-	member, err := h.workspaceSvc.SetWorkspaceMemberByUsername(c.Request.Context(), workspaceID, callerID, body.Username, level)
+	ipAddress := getClientIP(c.Request)
+	userAgent := c.GetHeader("User-Agent")
+	member, err := h.workspaceSvc.SetWorkspaceMemberByUsername(c.Request.Context(), workspaceID, callerID, body.Username, level, ipAddress, userAgent)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -157,7 +161,9 @@ func (h *WorkspaceHandler) DeleteMember(c *gin.Context) {
 	}
 	workspaceID := c.Param("id")
 	targetUserID := c.Param("userId")
-	if err := h.workspaceSvc.RemoveWorkspaceMember(c.Request.Context(), workspaceID, callerID, targetUserID); err != nil {
+	ipAddress := getClientIP(c.Request)
+	userAgent := c.GetHeader("User-Agent")
+	if err := h.workspaceSvc.RemoveWorkspaceMember(c.Request.Context(), workspaceID, callerID, targetUserID, ipAddress, userAgent); err != nil {
 		respondError(c, err)
 		return
 	}

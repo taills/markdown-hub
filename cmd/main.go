@@ -129,11 +129,11 @@ For more information, visit: https://github.com/markdownhub/markdownhub
 	permSvc := core.NewPermissionService(db)
 	authSvc := core.NewAuthService(db)
 	userSvc := core.NewUserService(db)
+	adminSvc := core.NewAdminService(db)
 	docSvc := core.NewDocumentService(db, permSvc)
 	snapSvc := core.NewSnapshotService(db, permSvc)
-	workspaceSvc := core.NewWorkspaceService(db, permSvc)
+	workspaceSvc := core.NewWorkspaceService(db, permSvc, adminSvc)
 	attachSvc := core.NewAttachmentService(db, permSvc)
-	adminSvc := core.NewAdminService(db)
 	importerSvc := core.NewImporterService(db, docSvc, attachSvc)
 
 	// Embed the frontend build (dist/) at compile time.

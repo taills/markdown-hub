@@ -60,6 +60,12 @@ func (s *AdminService) logOperation(ctx context.Context, adminID, action, target
 	return nil
 }
 
+// LogWorkspaceOperation records a workspace operation in the audit log.
+// This is used by WorkspaceService to log workspace-related actions.
+func (s *AdminService) LogWorkspaceOperation(ctx context.Context, userID, action, targetType, targetID, targetName string, details map[string]interface{}, ipAddress, userAgent string) error {
+	return s.logOperation(ctx, userID, action, targetType, targetID, targetName, details, ipAddress, userAgent)
+}
+
 // ListUsers returns all active users (caller must be admin, check enforced at API layer).
 func (s *AdminService) ListUsers(ctx context.Context) ([]*models.User, error) {
 	users, err := s.db.ListUsers(ctx)

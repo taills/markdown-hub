@@ -891,7 +891,6 @@ export function NotesLayout() {
             <div className="column-header">
               <div>
                 <h3>{t('workspace.title')}</h3>
-                <p className="muted">{t('workspace.folders')}</p>
               </div>
             </div>
             <div className="workspace-list">
@@ -956,7 +955,6 @@ export function NotesLayout() {
             <div className="column-header">
               <div>
                 <h3>{t('nav.documents')}</h3>
-                <p className="muted">Documents</p>
               </div>
               <button className="secondary" onClick={reload} disabled={docsLoading}>
                 {t('common.refresh')}
@@ -1070,7 +1068,6 @@ export function NotesLayout() {
             <div className="column-header">
               <div>
                 <h3>{t('workspace.settings')}</h3>
-                <p className="muted">{t('nav.settings')}</p>
               </div>
               <button className="secondary" onClick={() => setMode('edit')}>
                 {t('nav.editor')}

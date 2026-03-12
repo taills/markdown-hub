@@ -90,7 +90,7 @@ body {
 
 /* ---- Document list ---- */
 .document-list-page { max-width: 860px; margin: 0 auto; padding: 2rem 1rem; }
-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0px; }
 header h1 { font-size: 1.5rem; }
 .user-info { display: flex; gap: 1rem; align-items: center; color: var(--text-muted); }
 .user-info button { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 0.3rem 0.75rem; color: var(--text-muted); cursor: pointer; }
@@ -503,20 +503,6 @@ body.is-resizing * {
 .workspace-column,
 .document-column {
   background: #f9fafb;
-}
-
-.column-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 0.9rem;
-  border-bottom: 1px solid var(--border);
-  min-height: 4.5rem;
-}
-
-.column-header h3 {
-  font-size: 0.95rem;
 }
 
 .inline-form {
@@ -2306,9 +2292,9 @@ body.is-resizing * {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.875rem 1rem;
+  padding: 0.5rem 0.9rem;
   border-bottom: 1px solid #f3f4f6;
-  min-height: 4.5rem;
+  min-height: 3rem;
   background: #fafafa;
 }
 
@@ -2316,12 +2302,7 @@ body.is-resizing * {
   font-size: 0.9rem;
   font-weight: 600;
   color: #1f2937;
-}
-
-.column-header .muted {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin-top: 0.15rem;
+  margin-bottom: 0.25rem;
 }
 
 /* ============================================

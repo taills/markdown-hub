@@ -390,6 +390,11 @@ export function NotesLayout() {
     );
   }, []);
 
+  const handleWorkspaceDeleted = useCallback(() => {
+    setSelectedWorkspaceId('');
+    setWorkspaces((prev) => prev.filter((ws) => ws.id !== selectedWorkspaceId));
+  }, [selectedWorkspaceId]);
+
   const filteredDocuments = useMemo(() => {
     if (showAllWorkspaces || !selectedWorkspaceId) return documents;
     return (documents ?? []).filter((doc) => doc.workspace_id === selectedWorkspaceId);
@@ -1080,7 +1085,9 @@ export function NotesLayout() {
                 workspaceOwnerId={selectedWorkspace?.owner_id}
                 workspaceName={selectedWorkspace?.name}
                 workspaceIsPublic={selectedWorkspace?.is_public}
+                currentUserId={user?.id}
                 onWorkspaceUpdated={handleWorkspaceUpdated}
+                onWorkspaceDeleted={handleWorkspaceDeleted}
               />
             </div>
           </section>

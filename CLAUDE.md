@@ -170,6 +170,23 @@ web/src/
 
 State management uses React hooks and Context (no external state library).
 
+### Editor-Preview Synchronization
+
+编辑器实现了实时光标同步到预览窗口的功能：
+
+**实现方式:**
+- 直接在 `web/index.html` 中注入纯 JavaScript 脚本
+- 监听 `textarea.editor-textarea` 的 `click` 和 `keyup` 事件
+- 根据光标位置计算当前行号
+- 使用 `data-line-end` 属性定位预览中的对应元素
+- 调用 `scrollIntoView()` 自动滚动预览窗口到目标位置
+
+**技术细节:**
+- 采用 HTML 注入方式绕过 React 编译缓存问题
+- 使用 `behavior: 'auto'` 避免频繁输入时的滚动抖动
+- 元素滚动到视口 `center` 位置以提升可读性
+- 轻量级实现，无需额外依赖
+
 ### Real-time Collaboration (WebSocket)
 
 WebSocket connections are managed in `internal/api/ws_handler.go` with an EventBus pattern for broadcasting changes. Ensure thread-safe writes to WebSocket connections.

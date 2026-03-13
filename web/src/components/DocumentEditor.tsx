@@ -29,6 +29,7 @@ export function DocumentEditor() {
   const [connectionState, setConnectionState] = useState('');
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<{ scrollToLine: (line: number) => void }>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef('');
   const lastSyncedContentRef = useRef('');
@@ -81,6 +82,7 @@ export function DocumentEditor() {
     lastSyncedContentRef.current = contentRef.current;
   }, [id, send]);
 
+  // Listen for input event to sync on typing
   const handleContentChange = useCallback(
     (newContent: string) => {
       setContentLocal(newContent);
@@ -119,7 +121,7 @@ export function DocumentEditor() {
       textarea.selectionStart = cursor;
       textarea.selectionEnd = cursor;
     });
-  }, [content, send]);
+  }, [content, sendPendingPatch, setContentLocal]);
 
   // Handle image paste
   const { attachPasteListener } = useImagePaste({
@@ -265,7 +267,12 @@ export function DocumentEditor() {
           spellCheck={false}
         />
         <div className="editor-panel">
-          {activePanel === 'preview' && <MarkdownPreview content={content} />}
+          {activePanel === 'preview' && (
+            <MarkdownPreview
+              ref={previewRef}
+              content={content}
+            />
+          )}
           {activePanel === 'history' && (
             <SnapshotPanel documentId={document.id} onRestore={(doc) => {
               setDocument(doc);

@@ -43,8 +43,11 @@ DO UPDATE SET level = EXCLUDED.level
 RETURNING *;
 
 -- name: DeleteWorkspaceMember :exec
-DELETE FROM workspace_members 
+DELETE FROM workspace_members
 WHERE workspace_id = $1 AND user_id = $2;
+
+-- name: DeleteAllWorkspaceMembers :exec
+DELETE FROM workspace_members WHERE workspace_id = $1;
 
 -- name: ListWorkspacesByMember :many
 SELECT w.* FROM workspaces w

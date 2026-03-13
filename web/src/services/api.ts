@@ -206,6 +206,8 @@ export const workspaceService = {
     }),
   removeMember: (workspaceId: string, userId: string) =>
     request<void>(`/workspaces/${workspaceId}/members/${userId}`, { method: 'DELETE' }),
+  delete: (workspaceId: string) =>
+    request<void>(`/workspaces/${workspaceId}`, { method: 'DELETE' }),
   reorder: (ids: string[]) =>
     request<void>('/workspaces/reorder', {
       method: 'PATCH',

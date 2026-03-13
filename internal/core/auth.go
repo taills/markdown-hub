@@ -20,6 +20,9 @@ import (
 // ErrUnauthorized is returned when a user lacks the required permission.
 var ErrUnauthorized = errors.New("unauthorized")
 
+// ErrForbidden is returned when user doesn't have permission.
+var ErrForbidden = errors.New("forbidden")
+
 // ErrInvalidInput is returned for malformed request data.
 var ErrInvalidInput = errors.New("invalid input")
 

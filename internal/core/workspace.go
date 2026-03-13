@@ -336,6 +336,49 @@ func (s *WorkspaceService) ReorderWorkspaces(ctx context.Context, userID string,
 	return nil
 }
 
+// DeleteWorkspace deletes a workspace and all its resources.
+func (s *WorkspaceService) DeleteWorkspace(ctx context.Context, workspaceID, callerID string, ipAddress, userAgent string) error {
+	// Get workspace to check ownership
+	workspace, err := s.db.GetWorkspaceByID(ctx, uuid.MustParse(workspaceID))
+	if err != nil {
+		return fmt.Errorf("get workspace: %w", err)
+	}
+
+	// Check if caller is the owner
+	callerUUID, err := uuid.Parse(callerID)
+	if err != nil {
+		return fmt.Errorf("invalid caller ID: %w", err)
+	}
+
+	if workspace.OwnerID != callerUUID {
+		return ErrForbidden
+	}
+
+	workspaceUUID := uuid.MustParse(workspaceID)
+
+	// Delete all workspace members first
+	err = s.db.DeleteAllWorkspaceMembers(ctx, workspaceUUID)
+	if err != nil {
+		return fmt.Errorf("delete workspace members: %w", err)
+	}
+
+	// Delete workspace
+	err = s.db.DeleteWorkspace(ctx, workspaceUUID)
+	if err != nil {
+		return fmt.Errorf("delete workspace: %w", err)
+	}
+
+	// Log the operation
+	if s.adminSvc != nil {
+		details := map[string]interface{}{
+			"workspace_name": workspace.Name,
+		}
+		_ = s.adminSvc.LogWorkspaceOperation(ctx, callerID, "DELETE_WORKSPACE", "WORKSPACE", workspaceID, workspace.Name, details, ipAddress, userAgent)
+	}
+
+	return nil
+}
+
 // -------------------------------------------------------------------------
 // Type Conversion Helpers
 // -------------------------------------------------------------------------

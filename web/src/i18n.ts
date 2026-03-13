@@ -118,6 +118,9 @@ const resources = {
         publicViewDocuments: 'Public documents in this workspace',
         publicViewNoDocuments: 'No public documents in this workspace.',
         createOrJoinFirst: 'Please create or join a workspace first.',
+        deleteWorkspace: 'Delete workspace',
+        deleteWorkspaceConfirm: 'Are you sure you want to delete this workspace? This action cannot be undone.',
+        deleteWorkspaceSuccess: 'Workspace deleted successfully',
       },
       attachments: {
         title: 'Attachments',
@@ -259,6 +262,7 @@ const resources = {
         page: 'Page',
         save: 'Save',
         saving: 'Saving…',
+        deleting: 'Deleting',
       },
       home: {
         noPublicContent: 'No public content available',
@@ -377,6 +381,9 @@ const resources = {
         publicViewDocuments: '此空间中的公开文档',
         publicViewNoDocuments: '此空间暂无公开文档。',
         createOrJoinFirst: '请先创建或加入工作空间。',
+        deleteWorkspace: '删除工作空间',
+        deleteWorkspaceConfirm: '确定要删除此工作空间吗？此操作无法撤销。',
+        deleteWorkspaceSuccess: '工作空间删除成功',
       },
       attachments: {
         title: '附件',
@@ -518,6 +525,7 @@ const resources = {
         page: '第',
         save: '保存',
         saving: '保存中…',
+        deleting: '删除中',
       },
       home: {
         noPublicContent: '暂无公开内容',
@@ -636,6 +644,9 @@ const resources = {
         publicViewDocuments: '此空間中的公開文件',
         publicViewNoDocuments: '此空間暫無公開文件。',
         createOrJoinFirst: '請先建立或加入工作空間。',
+        deleteWorkspace: '刪除工作空間',
+        deleteWorkspaceConfirm: '確定要刪除此工作空間嗎？此操作無法撤銷。',
+        deleteWorkspaceSuccess: '工作空間刪除成功',
       },
       attachments: {
         title: '附件',
@@ -777,6 +788,7 @@ const resources = {
         page: '第',
         save: '儲存',
         saving: '儲存中…',
+        deleting: '刪除中',
       },
       home: {
         noPublicContent: '暫無公開內容',

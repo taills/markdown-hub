@@ -177,6 +177,7 @@ func NewServer(
 			workspaces.PATCH("/reorder", authMiddleware(), workspaceH.Reorder)
 			workspaces.PATCH("/:id", authMiddleware(), workspaceH.Update)
 			workspaces.PATCH("/:id/public", authMiddleware(), workspaceH.SetPublicStatus)
+			workspaces.DELETE("/:id", authMiddleware(), workspaceH.DeleteWorkspace)
 			workspaces.GET("/:id/members", authMiddleware(), workspaceH.ListMembers)
 			workspaces.PUT("/:id/members", authMiddleware(), workspaceH.SetMember)
 			workspaces.DELETE("/:id/members/:userId", authMiddleware(), workspaceH.DeleteMember)

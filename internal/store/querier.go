@@ -27,6 +27,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	CreateUserWithAdmin(ctx context.Context, arg CreateUserWithAdminParams) (CreateUserWithAdminRow, error)
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
+	DeleteAllWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) error
 	DeleteAttachment(ctx context.Context, id uuid.UUID) error
 	DeleteAttachmentReference(ctx context.Context, arg DeleteAttachmentReferenceParams) error
 	DeleteDocument(ctx context.Context, id uuid.UUID) error

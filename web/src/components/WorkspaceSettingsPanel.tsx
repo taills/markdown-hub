@@ -9,7 +9,9 @@ interface WorkspaceSettingsPanelProps {
   workspaceOwnerId?: string;
   workspaceName?: string;
   workspaceIsPublic?: boolean;
+  currentUserId?: string;
   onWorkspaceUpdated?: (workspace: { id: string; name: string; is_public: boolean }) => void;
+  onWorkspaceDeleted?: () => void;
 }
 
 export function WorkspaceSettingsPanel({
@@ -17,7 +19,9 @@ export function WorkspaceSettingsPanel({
   workspaceOwnerId,
   workspaceName,
   workspaceIsPublic,
+  currentUserId,
   onWorkspaceUpdated,
+  onWorkspaceDeleted,
 }: WorkspaceSettingsPanelProps) {
   const { t } = useTranslation();
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
@@ -35,6 +39,23 @@ export function WorkspaceSettingsPanel({
   const [publicToggling, setPublicToggling] = useState(false);
   const [publicError, setPublicError] = useState('');
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  const isOwner = currentUserId && workspaceOwnerId && currentUserId === workspaceOwnerId;
+
+  const handleDeleteWorkspace = async () => {
+    if (!workspaceId || deleting) return;
+    setDeleting(true);
+    try {
+      await workspaceService.delete(workspaceId);
+      onWorkspaceDeleted?.();
+    } catch (e: unknown) {
+      setWorkspaceError(e instanceof Error ? e.message : t('common.error'));
+      setDeleting(false);
+      setDeleteConfirm(false);
+    }
+  };
 
   const modalError = nameError || publicError || workspaceError;
   const handleCloseError = () => {
@@ -318,6 +339,33 @@ export function WorkspaceSettingsPanel({
           </tbody>
         </table>
       </div>
+
+      {isOwner && (
+        <div className="workspace-settings-section danger-zone">
+          {deleteConfirm ? (
+            <div className="delete-confirm">
+              <p className="delete-warning">{t('workspace.deleteWorkspaceConfirm')}</p>
+              <div className="delete-actions">
+                <button className="danger" onClick={handleDeleteWorkspace} disabled={deleting}>
+                  {deleting ? t('common.deleting') + '...' : t('workspace.deleteWorkspace')}
+                </button>
+                <button className="secondary" onClick={() => setDeleteConfirm(false)} disabled={deleting}>
+                  {t('doc.cancel')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="section-header">
+                <h3>{t('workspace.deleteWorkspace')}</h3>
+              </div>
+              <button className="danger-outline" onClick={() => setDeleteConfirm(true)}>
+                {t('workspace.deleteWorkspace')}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <ErrorModal message={modalError} onClose={handleCloseError} />
     </div>

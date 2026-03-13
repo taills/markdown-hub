@@ -215,3 +215,24 @@ func (h *WorkspaceHandler) Reorder(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+// DeleteWorkspace godoc
+// DELETE /api/workspaces/:id
+func (h *WorkspaceHandler) DeleteWorkspace(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+		return
+	}
+	workspaceID := c.Param("id")
+
+	ipAddress := c.ClientIP()
+	userAgent := c.Request.UserAgent()
+
+	err := h.workspaceSvc.DeleteWorkspace(c.Request.Context(), workspaceID, userID, ipAddress, userAgent)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

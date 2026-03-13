@@ -49,6 +49,15 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 	return i, err
 }
 
+const deleteAllWorkspaceMembers = `-- name: DeleteAllWorkspaceMembers :exec
+DELETE FROM workspace_members WHERE workspace_id = $1
+`
+
+func (q *Queries) DeleteAllWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteAllWorkspaceMembers, workspaceID)
+	return err
+}
+
 const deleteWorkspace = `-- name: DeleteWorkspace :exec
 DELETE FROM workspaces WHERE id = $1
 `
@@ -59,7 +68,7 @@ func (q *Queries) DeleteWorkspace(ctx context.Context, id uuid.UUID) error {
 }
 
 const deleteWorkspaceMember = `-- name: DeleteWorkspaceMember :exec
-DELETE FROM workspace_members 
+DELETE FROM workspace_members
 WHERE workspace_id = $1 AND user_id = $2
 `
 

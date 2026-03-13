@@ -344,7 +344,7 @@ const resources = {
         setPublic: '公开',
         setPrivate: '私有',
         togglePublicFailed: '更新可见性失败',
-        viewRaw: 'Raw',
+        viewRaw: '源文件',
         rawTitle: 'Markdown 源码',
         publicLink: '复制公开链接',
         publicLinkCopied: '链接已复制！',

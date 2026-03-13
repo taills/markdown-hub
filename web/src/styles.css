@@ -1300,9 +1300,59 @@ body.is-resizing * {
 }
 
 .public-doc-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 1.25rem 2rem;
+  gap: 1.25rem;
+}
+
+.public-doc-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+}
+
+.public-doc-toolbar-single {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.public-doc-toolbar-document {
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+}
+
+.public-doc-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.public-doc-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.public-doc-nav-link:hover {
+  background: var(--surface);
+  border-color: var(--primary);
+  color: var(--text);
+  transform: translateY(-1px);
 }
 
 .public-doc-title-row {
@@ -1311,12 +1361,31 @@ body.is-resizing * {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.public-doc-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .public-doc-title {
-  font-size: 1.6rem;
-  font-weight: 700;
+  margin: 0;
+  font-size: clamp(1.9rem, 3vw, 2.4rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-weight: 800;
   color: var(--text);
+}
+
+.public-doc-title-centered {
+  text-align: center;
+  margin: 0;
 }
 
 .public-doc-actions {
@@ -1327,11 +1396,23 @@ body.is-resizing * {
 }
 
 .public-badge {
+  width: fit-content;
   font-size: 0.8rem;
   background: #dcfce7;
   color: #166534;
+  border: 1px solid rgba(22, 101, 52, 0.12);
   border-radius: 999px;
-  padding: 0.2rem 0.65rem;
+  padding: 0.28rem 0.75rem;
+  font-weight: 600;
+}
+
+.public-doc-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .public-doc-raw-link {
@@ -1351,7 +1432,7 @@ body.is-resizing * {
 .public-doc-meta {
   font-size: 0.8rem;
   color: var(--text-muted);
-  margin-top: 0.5rem;
+  margin-top: 0;
 }
 
 .public-doc-content {
@@ -1360,6 +1441,10 @@ body.is-resizing * {
   width: 100%;
   margin: 0 auto;
   padding: 2rem;
+}
+
+.public-workspace-content {
+  max-width: 1200px;
 }
 
 .public-doc-error {
@@ -1374,49 +1459,65 @@ body.is-resizing * {
 
 /* Public workspace document list */
 .public-workspace-docs-heading {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .public-workspace-doc-list {
-  list-style: none;
-  padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
 .public-workspace-doc-item {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.65rem 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 2rem;
 }
 
 .public-workspace-doc-link {
-  font-weight: 500;
-  color: var(--text);
-  text-decoration: none;
-  flex: 1;
+  display: inline-block;
 }
 
 .public-workspace-doc-link:hover {
-  color: var(--accent);
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .public-workspace-doc-date {
-  font-size: 0.78rem;
-  color: var(--text-muted);
   white-space: nowrap;
-  flex-shrink: 0;
+}
+
+.public-workspace-doc-title {
+  margin-bottom: 0.75rem;
+}
+
+.public-workspace-doc-excerpt {
+  margin-bottom: 1.5rem;
+}
+
+.public-workspace-section {
+  margin-bottom: 0;
+}
+
+.public-workspace-section-header {
+  margin-bottom: 2rem;
+}
+
+.public-workspace-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+@media (max-width: 900px) {
+  .public-doc-toolbar,
+  .public-doc-toolbar-single,
+  .public-doc-toolbar-document {
+    grid-template-columns: 1fr;
+  }
+
+  .public-doc-nav,
+  .public-doc-toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .public-doc-title-centered {
+    text-align: left;
+  }
 }
 
 /* ---- Raw document view (/documents/:id/raw) ---- */

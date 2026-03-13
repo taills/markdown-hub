@@ -11,8 +11,8 @@ interface HomeData {
 }
 
 /**
- * HomePage — displays public workspaces and documents for anonymous users
- * Accessible at / without authentication
+ * HomePage — 博客风格首页,展示公开工作空间和文档
+ * 未登录用户可访问
  */
 export function HomePage() {
   const { t } = useTranslation();
@@ -24,7 +24,7 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch site title and home data in parallel
+    // 并行获取站点标题和首页数据
     Promise.all([
       homeService.getData(),
       siteService.getSiteTitle().catch(() => 'MarkdownHub'),
@@ -37,18 +37,27 @@ export function HomePage() {
       .finally(() => setIsLoading(false));
   }, []);
 
+  // 提取文档内容前N个字符作为摘要
+  const getExcerpt = (content: string, maxLength: number = 200): string => {
+    if (!content) return '';
+    const stripped = content.replace(/[#*`\[\]()]/g, '').trim();
+    return stripped.length > maxLength
+      ? stripped.substring(0, maxLength) + '...'
+      : stripped;
+  };
+
   if (isLoading) {
     return (
-      <div className="home-page">
-        <div className="loading">{t('common.loading')}</div>
+      <div className="blog-home">
+        <div className="blog-loading">{t('common.loading')}</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="home-page">
-        <div className="home-error">{error}</div>
+      <div className="blog-home">
+        <div className="blog-error">{error}</div>
       </div>
     );
   }
@@ -56,67 +65,177 @@ export function HomePage() {
   const hasPublicContent = (data?.workspaces.length ?? 0) > 0 || (data?.documents.length ?? 0) > 0;
 
   return (
-    <div className="home-page">
-      <header className="home-header">
-        <h1 className="home-title">{siteTitle}</h1>
+    <div className="blog-home">
+      {/* Hero 区域 */}
+      <header className="blog-hero">
+        <div className="blog-hero-content">
+          <h1 className="blog-hero-title">{siteTitle}</h1>
+          <p className="blog-hero-subtitle">
+            {t('home.subtitle', '知识分享 · 协作写作 · Markdown创作平台')}
+          </p>
+          <nav className="blog-nav">
+            {user ? (
+              <button
+                className="blog-nav-btn blog-nav-btn-primary"
+                onClick={() => navigate('/documents')}
+              >
+                {t('nav.editor', '进入编辑器')}
+              </button>
+            ) : (
+              <>
+                <Link to="/login" className="blog-nav-btn blog-nav-btn-outline">
+                  {t('home.login', '登录')}
+                </Link>
+                <Link to="/login" className="blog-nav-btn blog-nav-btn-primary">
+                  {t('home.getStarted', '开始使用')}
+                </Link>
+              </>
+            )}
+          </nav>
+        </div>
       </header>
 
-      {!hasPublicContent ? (
-        <div className="home-empty">
-          <p>{t('home.noPublicContent', '暂无公开内容')}</p>
-        </div>
-      ) : (
-        <>
-          {data?.workspaces && data.workspaces.length > 0 && (
-            <section className="home-section">
-              <h2 className="home-section-title">{t('home.publicWorkspaces', '公开工作空间')}</h2>
-              <div className="home-workspaces">
-                {data.workspaces.map((ws) => (
-                  <Link
-                    key={ws.id}
-                    to={`/workspaces/${ws.id}/view`}
-                    className="home-workspace-card"
-                  >
-                    <h3 className="home-workspace-name">{ws.name}</h3>
-                    <span className="home-workspace-meta">
-                      {t('common.updated')}: {new Date(ws.updated_at).toLocaleDateString()}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {data?.documents && data.documents.length > 0 && (
-            <section className="home-section">
-              <h2 className="home-section-title">{t('home.publicDocuments', '公开文档')}</h2>
-              <div className="home-documents">
-                {data.documents.map((doc) => (
-                  <Link
-                    key={doc.id}
-                    to={`/documents/${doc.id}/view`}
-                    className="home-document-card"
-                  >
-                    <h3 className="home-document-title">{doc.title || t('home.untitled', '无标题')}</h3>
-                    <span className="home-document-meta">
-                      {t('common.updated')}: {new Date(doc.updated_at).toLocaleDateString()}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-        </>
-      )}
-
-      <footer className="home-footer">
-        {user ? (
-          <button className="home-login-link" onClick={() => navigate('/documents')}>
-            {t('nav.editor', '编辑器')}
-          </button>
+      {/* 主体内容区 */}
+      <main className="blog-container">
+        {!hasPublicContent ? (
+          <div className="blog-empty">
+            <svg
+              className="blog-empty-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <p className="blog-empty-text">{t('home.noPublicContent', '暂无公开内容')}</p>
+            <p className="blog-empty-hint">
+              {t('home.noPublicContentHint', '管理员可以在工作空间或文档中设置为公开,内容将展示在此处')}
+            </p>
+          </div>
         ) : (
-          <Link to="/login" className="home-login-link">{t('home.login', '登录')}</Link>
+          <>
+            {/* 工作空间栏目区 */}
+            {data?.workspaces && data.workspaces.length > 0 && (
+              <section className="blog-section">
+                <div className="blog-section-header">
+                  <h2 className="blog-section-title">
+                    {t('home.publicWorkspaces', '栏目')}
+                  </h2>
+                  <p className="blog-section-subtitle">
+                    {t('home.exploreCategories', '探索不同主题的内容分类')}
+                  </p>
+                </div>
+
+                <div className="blog-categories">
+                  {data.workspaces.map((ws) => (
+                    <Link
+                      key={ws.id}
+                      to={`/workspaces/${ws.id}/view`}
+                      className="blog-category-card"
+                    >
+                      <div className="blog-category-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="blog-category-name">{ws.name}</h3>
+                      <div className="blog-category-meta">
+                        <span className="blog-category-date">
+                          {new Date(ws.updated_at).toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* 公开文章列表 */}
+            {data?.documents && data.documents.length > 0 && (
+              <section className="blog-section">
+                <div className="blog-section-header">
+                  <h2 className="blog-section-title">
+                    {t('home.recentPosts', '最新文章')}
+                  </h2>
+                  <p className="blog-section-subtitle">
+                    {t('home.latestUpdates', '查看最近更新的公开文档')}
+                  </p>
+                </div>
+
+                <div className="blog-posts">
+                  {data.documents.map((doc) => (
+                    <article key={doc.id} className="blog-post-card">
+                      <Link to={`/documents/${doc.id}/view`} className="blog-post-link">
+                        <h3 className="blog-post-title">
+                          {doc.title || t('home.untitled', '无标题文档')}
+                        </h3>
+                      </Link>
+
+                      <div className="blog-post-meta">
+                        <time className="blog-post-date">
+                          {new Date(doc.updated_at).toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </time>
+                        <span className="blog-post-separator">·</span>
+                        <span className="blog-post-read-time">
+                          {t('home.readTime', '{{min}} 分钟阅读', {
+                            min: Math.max(1, Math.ceil(doc.content.length / 400)),
+                          })}
+                        </span>
+                      </div>
+
+                      {doc.content && (
+                        <p className="blog-post-excerpt">{getExcerpt(doc.content)}</p>
+                      )}
+
+                      <Link
+                        to={`/documents/${doc.id}/view`}
+                        className="blog-post-read-more"
+                      >
+                        {t('home.readMore', '阅读全文')}
+                        <svg className="blog-post-arrow" viewBox="0 0 20 20" fill="currentColor">
+                          <path
+                            fillRule="evenodd"
+                            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
+      </main>
+
+      {/* Footer */}
+      <footer className="blog-footer">
+        <div className="blog-footer-content">
+          <p className="blog-footer-text">
+            © {new Date().getFullYear()} {siteTitle}
+            {' · '}
+            {t('home.poweredBy', 'Powered by')} MarkdownHub
+          </p>
+        </div>
       </footer>
     </div>
   );

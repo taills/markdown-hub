@@ -6,11 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **MarkdownHub** is a real-time collaborative, Git-native writing environment for Markdown documents. It combines real-time WebSocket collaboration with automatic version control snapshots and granular heading-level permissions.
 
+**Recent Updates:**
+- **博客风格首页** (2024-03-13): 首页重新设计为现代化博客风格,工作空间以栏目形式展示,公开文档显示标题、摘要(前200字)和阅读时长。详见 [docs/blog-homepage-design.md](docs/blog-homepage-design.md)
+
 **Design Philosophy:**
 - Markdown-native: plain text Markdown is the source of truth
 - Real-time collaboration via WebSocket with strong data consistency
 - Git-like version control with heuristic-based automatic snapshots
 - Heading-level granular permissions
+- Modern blog-style public homepage for content discovery
 
 **Tech Stack:**
 - Backend: Go (Gin framework, WebSocket, PostgreSQL with pgvector)

@@ -226,17 +226,6 @@ export function HomePage() {
           </>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="blog-footer">
-        <div className="blog-footer-content">
-          <p className="blog-footer-text">
-            © {new Date().getFullYear()} {siteTitle}
-            {' · '}
-            {t('home.poweredBy', 'Powered by')} MarkdownHub
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

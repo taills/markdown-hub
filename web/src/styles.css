@@ -2186,7 +2186,7 @@ body.is-resizing * {
 .blog-hero {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 5rem 2rem 4rem;
+  padding: 1rem 1rem 1rem;
   text-align: center;
   position: relative;
   overflow: hidden;

@@ -86,9 +86,6 @@ export function HomePage() {
                 <Link to="/login" className="blog-nav-btn blog-nav-btn-outline">
                   {t('home.login', '登录')}
                 </Link>
-                <Link to="/login" className="blog-nav-btn blog-nav-btn-primary">
-                  {t('home.getStarted', '开始使用')}
-                </Link>
               </>
             )}
           </nav>

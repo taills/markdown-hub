@@ -226,6 +226,11 @@ func NewServer(
 			// Site settings
 			admin.GET("/settings/site-title", adminH.GetSiteTitle)
 			admin.PUT("/settings/site-title", adminH.UpdateSiteTitle)
+
+			// LLM settings
+			admin.GET("/settings/llm", adminH.GetLLMConfig)
+			admin.PUT("/settings/llm", adminH.UpdateLLMConfig)
+			admin.POST("/settings/llm/test", adminH.TestLLMConfig)
 		}
 	}
 

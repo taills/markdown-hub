@@ -14,6 +14,9 @@ export function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ username: string; password: string } | null>(null);
+  const [editingEmail, setEditingEmail] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState('');
 
   // Frontend permission check as additional protection
   useEffect(() => {
@@ -82,6 +85,51 @@ export function AdminUsers() {
       await adminService.deleteUser(userId);
       // Remove the user from the list
       setUsers((prev) => prev.filter((u) => parseId(u.id) !== userId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error'));
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const handleResetPassword = async (userId: string, username: string) => {
+    if (!window.confirm(`${t('admin.confirmResetPassword')} ${username}?`)) {
+      return;
+    }
+    if (actionInProgress) return;
+    setActionInProgress(true);
+    try {
+      const result = await adminService.resetPassword(userId);
+      setResetPasswordResult({ username, password: result.new_password });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error'));
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  const closeResetPasswordResult = () => setResetPasswordResult(null);
+
+  const startEditEmail = (userId: string, currentEmail: string) => {
+    setEditingEmail(userId);
+    setEmailInput(currentEmail || '');
+  };
+
+  const cancelEditEmail = () => {
+    setEditingEmail(null);
+    setEmailInput('');
+  };
+
+  const saveEmail = async (userId: string) => {
+    if (actionInProgress) return;
+    setActionInProgress(true);
+    try {
+      const updatedUser = await adminService.updateEmail(userId, emailInput);
+      setUsers((prev) =>
+        prev.map((u) => (parseId(u.id) === userId ? { ...u, email: updatedUser.email } : u))
+      );
+      setEditingEmail(null);
+      setEmailInput('');
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.error'));
     } finally {
@@ -162,7 +210,47 @@ export function AdminUsers() {
                             <span>{user.username}</span>
                           </div>
                         </td>
-                        <td className="user-email">{user.email}</td>
+                        <td className="user-email">
+                          {editingEmail === parseId(user.id) ? (
+                            <div className="email-edit">
+                              <input
+                                type="email"
+                                value={emailInput}
+                                onChange={(e) => setEmailInput(e.target.value)}
+                                placeholder={t('admin.emailPlaceholder')}
+                                disabled={actionInProgress}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveEmail(parseId(user.id));
+                                  if (e.key === 'Escape') cancelEditEmail();
+                                }}
+                              />
+                              <button
+                                className="save-btn"
+                                onClick={() => saveEmail(parseId(user.id))}
+                                disabled={actionInProgress}
+                                title={t('common.save')}
+                              >
+                                ✓
+                              </button>
+                              <button
+                                className="cancel-btn"
+                                onClick={cancelEditEmail}
+                                disabled={actionInProgress}
+                                title={t('common.cancel')}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              className="editable-email"
+                              onClick={() => startEditEmail(parseId(user.id), user.email)}
+                              title={t('admin.editEmail')}
+                            >
+                              {user.email || '-'}
+                            </span>
+                          )}
+                        </td>
                         <td className="user-date">
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
@@ -183,6 +271,16 @@ export function AdminUsers() {
                           </label>
                         </td>
                         <td className="user-actions">
+                          <button
+                            className="reset-password-btn"
+                            onClick={() =>
+                              handleResetPassword(parseId(user.id), user.username)
+                            }
+                            disabled={actionInProgress}
+                            title={t('admin.resetPassword')}
+                          >
+                            🔑 {t('admin.resetPassword')}
+                          </button>
                           <button
                             className="delete-btn"
                             onClick={() =>
@@ -205,6 +303,28 @@ export function AdminUsers() {
       )}
 
       <ErrorModal message={error} onClose={handleCloseError} />
+
+      {resetPasswordResult && (
+        <div className="modal-backdrop" onClick={closeResetPasswordResult}>
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{t('admin.passwordResetSuccess')}</h3>
+            </div>
+            <div className="modal-body">
+              <p>{t('admin.passwordResetMessage', { username: resetPasswordResult.username })}</p>
+              <div className="password-display">
+                <code>{resetPasswordResult.password}</code>
+              </div>
+              <p className="muted">{t('admin.passwordResetWarning')}</p>
+            </div>
+            <div className="modal-actions">
+              <button className="primary" onClick={closeResetPasswordResult}>
+                {t('common.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

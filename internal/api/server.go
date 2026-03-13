@@ -219,6 +219,8 @@ func NewServer(
 			admin.GET("/users", adminH.ListUsers)
 			admin.PATCH("/users/:id/admin", adminH.SetAdmin)
 			admin.DELETE("/users/:id", adminH.DeleteUser)
+			admin.POST("/users/:id/reset-password", adminH.ResetPassword)
+			admin.PUT("/users/:id/email", adminH.UpdateEmail)
 			admin.GET("/logs", adminH.ListLogs)
 
 			// Site settings

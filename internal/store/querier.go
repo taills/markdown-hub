@@ -75,6 +75,7 @@ type Querier interface {
 	UpdateDocumentSortOrder(ctx context.Context, arg UpdateDocumentSortOrderParams) error
 	UpdateDocumentTitle(ctx context.Context, arg UpdateDocumentTitleParams) (Document, error)
 	UpdateUserActive(ctx context.Context, arg UpdateUserActiveParams) (UpdateUserActiveRow, error)
+	UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) (UpdateUserEmailRow, error)
 	UpdateUserIsAdmin(ctx context.Context, arg UpdateUserIsAdminParams) (UpdateUserIsAdminRow, error)
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserPreferredLanguage(ctx context.Context, arg UpdateUserPreferredLanguageParams) (UpdateUserPreferredLanguageRow, error)

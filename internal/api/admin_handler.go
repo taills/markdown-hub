@@ -193,6 +193,111 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// ResetPasswordRequest is the JSON body for resetting a user's password.
+type ResetPasswordRequest struct {
+	UserID string `json:"user_id"`
+}
+
+// ResetPasswordResponse is the JSON response for password reset.
+type ResetPasswordResponse struct {
+	UserID      string `json:"user_id"`
+	NewPassword string `json:"new_password"`
+}
+
+// ResetPassword generates a new random password for a user (admin only).
+func (h *AdminHandler) ResetPassword(c *gin.Context) {
+	// Verify admin status
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if !user.IsAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: admin required"})
+		return
+	}
+
+	// Extract target user ID from path parameter
+	targetUserID := c.Param("id")
+
+	// Extract IP address and User-Agent
+	ipAddress := getClientIP(c.Request)
+	userAgent := c.GetHeader("User-Agent")
+
+	newPassword, err := h.adminSvc.ResetPassword(c.Request.Context(), userID, targetUserID, ipAddress, userAgent)
+	if err != nil {
+		if err == store.ErrNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, ResetPasswordResponse{
+		UserID:      targetUserID,
+		NewPassword: newPassword,
+	})
+}
+
+// UpdateEmailRequest is the JSON body for updating a user's email.
+type UpdateEmailRequest struct {
+	Email string `json:"email" binding:"omitempty,email"`
+}
+
+// UpdateEmail updates a user's email address (admin only).
+func (h *AdminHandler) UpdateEmail(c *gin.Context) {
+	// Verify admin status
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if !user.IsAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: admin required"})
+		return
+	}
+
+	// Extract target user ID from path parameter
+	targetUserID := c.Param("id")
+
+	var req UpdateEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email format"})
+		return
+	}
+
+	// Extract IP address and User-Agent
+	ipAddress := getClientIP(c.Request)
+	userAgent := c.GetHeader("User-Agent")
+
+	updatedUser, err := h.adminSvc.UpdateUserEmail(c.Request.Context(), userID, targetUserID, req.Email, ipAddress, userAgent)
+	if err != nil {
+		if err == store.ErrNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+		respondError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedUser)
+}
+
 // SettingResponse represents a setting for API responses.
 type SettingResponse struct {
 	Key         string `json:"key"`

@@ -297,6 +297,46 @@ func (q *Queries) UpdateUserActive(ctx context.Context, arg UpdateUserActivePara
 	return i, err
 }
 
+const updateUserEmail = `-- name: UpdateUserEmail :one
+UPDATE users SET email = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, username, email, password_hash, preferred_language, is_admin, is_active, created_at, updated_at
+`
+
+type UpdateUserEmailParams struct {
+	ID    uuid.UUID      `json:"id"`
+	Email sql.NullString `json:"email"`
+}
+
+type UpdateUserEmailRow struct {
+	ID                uuid.UUID      `json:"id"`
+	Username          string         `json:"username"`
+	Email             sql.NullString `json:"email"`
+	PasswordHash      string         `json:"password_hash"`
+	PreferredLanguage string         `json:"preferred_language"`
+	IsAdmin           bool           `json:"is_admin"`
+	IsActive          bool           `json:"is_active"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) (UpdateUserEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, updateUserEmail, arg.ID, arg.Email)
+	var i UpdateUserEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.PreferredLanguage,
+		&i.IsAdmin,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateUserIsAdmin = `-- name: UpdateUserIsAdmin :one
 UPDATE users SET is_admin = $2, updated_at = NOW()
 WHERE id = $1

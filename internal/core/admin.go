@@ -2,12 +2,16 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"math/big"
 
 	"github.com/google/uuid"
 	"github.com/sqlc-dev/pqtype"
+	"golang.org/x/crypto/bcrypt"
 
 	"markdownhub/internal/models"
 	"markdownhub/internal/store"
@@ -282,6 +286,110 @@ func (s *AdminService) RestoreUser(ctx context.Context, callerID, targetUserID s
 	}
 
 	// Convert UpdateUserActiveRow to models.User
+	return &models.User{
+		ID:                u.ID.String(),
+		Username:          u.Username,
+		Email:             emailStr,
+		PasswordHash:      u.PasswordHash,
+		PreferredLanguage: u.PreferredLanguage,
+		IsAdmin:           u.IsAdmin,
+		CreatedAt:         u.CreatedAt,
+		UpdatedAt:         u.UpdatedAt,
+	}, nil
+}
+
+// ResetPassword generates a new random password for a user and returns it.
+// callerID must be an admin (check enforced at API layer).
+func (s *AdminService) ResetPassword(ctx context.Context, callerID, targetUserID string, ipAddress, userAgent string) (string, error) {
+	targetUUID, err := uuid.Parse(targetUserID)
+	if err != nil {
+		return "", fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	// Generate a random password (12 characters)
+	newPassword, err := generateRandomPassword(12)
+	if err != nil {
+		return "", fmt.Errorf("generate random password: %w", err)
+	}
+
+	// Hash the password
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("hash password: %w", err)
+	}
+
+	// Update the user's password
+	err = s.db.UpdateUserPassword(ctx, store.UpdateUserPasswordParams{
+		ID:           targetUUID,
+		PasswordHash: string(hash),
+	})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("%w: user not found", store.ErrNotFound)
+		}
+		return "", fmt.Errorf("update password: %w", err)
+	}
+
+	// Log the operation
+	_ = s.logOperation(ctx, callerID, "RESET_PASSWORD", "USER", targetUserID, "", nil, ipAddress, userAgent)
+
+	return newPassword, nil
+}
+
+// generateRandomPassword generates a random password of the specified length.
+func generateRandomPassword(length int) (string, error) {
+	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+	password := make([]byte, length)
+	for i := range password {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+		if err != nil {
+			return "", err
+		}
+		password[i] = chars[num.Int64()]
+	}
+	return string(password), nil
+}
+
+// UpdateUserEmail updates a user's email address.
+// callerID must be an admin (check enforced at API layer).
+func (s *AdminService) UpdateUserEmail(ctx context.Context, callerID, targetUserID, newEmail string, ipAddress, userAgent string) (*models.User, error) {
+	targetUUID, err := uuid.Parse(targetUserID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	// Validate email format
+	if newEmail != "" {
+		// Simple email validation
+		if !regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`).MatchString(newEmail) {
+			return nil, fmt.Errorf("invalid email format")
+		}
+	}
+
+	u, err := s.db.UpdateUserEmail(ctx, store.UpdateUserEmailParams{
+		ID:    targetUUID,
+		Email: sql.NullString{String: newEmail, Valid: newEmail != ""},
+	})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("%w: user not found", store.ErrNotFound)
+		}
+		return nil, fmt.Errorf("update user email: %w", err)
+	}
+
+	// Log the operation
+	details := map[string]interface{}{
+		"old_email": "",
+		"new_email": newEmail,
+	}
+	_ = s.logOperation(ctx, callerID, "UPDATE_EMAIL", "USER", targetUserID, u.Username, details, ipAddress, userAgent)
+
+	// Convert sql.NullString Email to string
+	emailStr := ""
+	if u.Email.Valid {
+		emailStr = u.Email.String
+	}
+
 	return &models.User{
 		ID:                u.ID.String(),
 		Username:          u.Username,

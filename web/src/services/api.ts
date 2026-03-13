@@ -349,6 +349,15 @@ export const adminService = {
     }),
   deleteUser: (id: string) =>
     request<void>(`/admin/users/${id}`, { method: 'DELETE' }),
+  resetPassword: (id: string) =>
+    request<{ user_id: string; new_password: string }>(`/admin/users/${id}/reset-password`, {
+      method: 'POST',
+    }),
+  updateEmail: (id: string, email: string) =>
+    request<User>(`/admin/users/${id}/email`, {
+      method: 'PUT',
+      body: JSON.stringify({ email }),
+    }),
   listAdminLogs: (limit: number = 100, offset: number = 0) =>
     request<AdminLog[]>(`/admin/logs?limit=${limit}&offset=${offset}`),
 };

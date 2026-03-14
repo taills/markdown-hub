@@ -1,0 +1,285 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: 塔易技术研发中心文档库
+        - generic [ref=e7]:
+          - generic "512521" [ref=e8]
+          - button "编辑标题" [ref=e9] [cursor=pointer]
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - button "工作空间" [ref=e12] [cursor=pointer]
+          - button "文档列表" [ref=e13] [cursor=pointer]
+          - button "预览/面板" [ref=e14] [cursor=pointer]
+        - generic [ref=e15]:
+          - button "预览" [ref=e16] [cursor=pointer]
+          - button "历史" [ref=e17] [cursor=pointer]
+          - button "权限" [ref=e18] [cursor=pointer]
+          - button "附件" [ref=e19] [cursor=pointer]
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - button "公开" [ref=e22] [cursor=pointer]:
+            - img [ref=e23]
+          - button "源文件" [ref=e26] [cursor=pointer]:
+            - img [ref=e27]
+        - generic [ref=e30]: 已连接
+        - button "首页" [ref=e31] [cursor=pointer]:
+          - img [ref=e32]
+          - text: 首页
+        - button "A admin ★" [ref=e36] [cursor=pointer]:
+          - generic [ref=e37]: A
+          - generic [ref=e38]: admin
+          - generic [ref=e39]: ★
+        - button "退出" [ref=e40] [cursor=pointer]:
+          - img [ref=e41]
+          - text: 退出
+    - generic [ref=e44]:
+      - complementary [ref=e45]:
+        - heading "工作空间" [level=3] [ref=e48]
+        - generic [ref=e49]:
+          - button "全部工作空间" [ref=e50] [cursor=pointer]
+          - generic [ref=e51] [cursor=pointer]:
+            - button "拖拽排序" [ref=e52]: ⋮⋮
+            - button "16" [ref=e53]:
+              - generic [ref=e54]: "16"
+            - button "工作空间设置" [ref=e56]: ⚙️
+          - generic [ref=e57] [cursor=pointer]:
+            - button "拖拽排序" [ref=e58]: ⋮⋮
+            - button "15" [ref=e59]:
+              - generic [ref=e60]: "15"
+            - button "工作空间设置" [ref=e62]: ⚙️
+          - generic [ref=e63] [cursor=pointer]:
+            - button "拖拽排序" [ref=e64]: ⋮⋮
+            - button "14" [ref=e65]:
+              - generic [ref=e66]: "14"
+            - button "工作空间设置" [ref=e68]: ⚙️
+          - generic [ref=e69] [cursor=pointer]:
+            - button "拖拽排序" [ref=e70]: ⋮⋮
+            - button "13" [ref=e71]:
+              - generic [ref=e72]: "13"
+            - button "工作空间设置" [ref=e74]: ⚙️
+          - generic [ref=e75] [cursor=pointer]:
+            - button "拖拽排序" [ref=e76]: ⋮⋮
+            - button "12" [ref=e77]:
+              - generic [ref=e78]: "12"
+            - button "工作空间设置" [ref=e80]: ⚙️
+          - generic [ref=e81] [cursor=pointer]:
+            - button "拖拽排序" [ref=e82]: ⋮⋮
+            - button "231" [ref=e83]:
+              - generic [ref=e84]: "231"
+            - button "工作空间设置" [ref=e86]: ⚙️
+          - generic [ref=e87] [cursor=pointer]:
+            - button "拖拽排序" [ref=e88]: ⋮⋮
+            - button "123" [ref=e89]:
+              - generic [ref=e90]: "123"
+            - button "工作空间设置" [ref=e92]: ⚙️
+          - generic [ref=e93] [cursor=pointer]:
+            - button "拖拽排序" [ref=e94]: ⋮⋮
+            - button "AI辅助工具" [active] [ref=e95]:
+              - generic [ref=e96]: AI辅助工具
+            - button "工作空间设置" [ref=e98]: ⚙️
+          - generic [ref=e99] [cursor=pointer]:
+            - button "拖拽排序" [ref=e100]: ⋮⋮
+            - button "Workspace1" [ref=e101]:
+              - generic [ref=e102]: Workspace1
+            - button "工作空间设置" [ref=e104]: ⚙️
+          - status [ref=e105]
+        - generic [ref=e106]:
+          - textbox "新建工作空间" [ref=e107]
+          - button "创建" [disabled] [ref=e108]
+      - separator "调整工作空间宽度" [ref=e109]
+      - complementary [ref=e110]:
+        - generic [ref=e111]:
+          - heading "文档列表" [level=3] [ref=e113]
+          - button "刷新" [ref=e114] [cursor=pointer]
+        - generic [ref=e115]:
+          - textbox "新文档标题" [ref=e116]
+          - button "新建" [disabled] [ref=e117]
+        - generic [ref=e118]:
+          - generic [ref=e127]:
+            - button "拖拽排序" [ref=e128]: ⋮⋮
+            - button "8 AI辅助工具 · 2026/3/14" [ref=e129] [cursor=pointer]:
+              - generic [ref=e130]: "8"
+              - generic [ref=e131]:
+                - generic [ref=e132]: AI辅助工具
+                - generic [ref=e133]: ·
+                - generic [ref=e134]: 2026/3/14
+            - button "删除文档" [ref=e136] [cursor=pointer]: 🗑️
+          - generic [ref=e137]:
+            - button "拖拽排序" [ref=e138]: ⋮⋮
+            - button "VSCode AI辅助工具 · 2026/3/14" [ref=e139] [cursor=pointer]:
+              - generic [ref=e140]: VSCode
+              - generic [ref=e141]:
+                - generic [ref=e142]: AI辅助工具
+                - generic [ref=e143]: ·
+                - generic [ref=e144]: 2026/3/14
+            - button "删除文档" [ref=e146] [cursor=pointer]: 🗑️
+          - generic [ref=e147]:
+            - button "拖拽排序" [ref=e148]: ⋮⋮
+            - button "添加MiniMax提供的MCP AI辅助工具 · 2026/3/13" [ref=e149] [cursor=pointer]:
+              - generic [ref=e150]: 添加MiniMax提供的MCP
+              - generic [ref=e151]:
+                - generic [ref=e152]: AI辅助工具
+                - generic [ref=e153]: ·
+                - generic [ref=e154]: 2026/3/13
+            - button "删除文档" [ref=e156] [cursor=pointer]: 🗑️
+          - generic [ref=e157]:
+            - button "拖拽排序" [ref=e158]: ⋮⋮
+            - button "33 AI辅助工具 · 2026/3/14" [ref=e159] [cursor=pointer]:
+              - generic [ref=e160]: "33"
+              - generic [ref=e161]:
+                - generic [ref=e162]: AI辅助工具
+                - generic [ref=e163]: ·
+                - generic [ref=e164]: 2026/3/14
+            - button "删除文档" [ref=e166] [cursor=pointer]: 🗑️
+          - generic [ref=e167]:
+            - button "拖拽排序" [ref=e168]: ⋮⋮
+            - button "4 AI辅助工具 · 2026/3/14" [ref=e169] [cursor=pointer]:
+              - generic [ref=e170]: "4"
+              - generic [ref=e171]:
+                - generic [ref=e172]: AI辅助工具
+                - generic [ref=e173]: ·
+                - generic [ref=e174]: 2026/3/14
+            - button "删除文档" [ref=e176] [cursor=pointer]: 🗑️
+          - generic [ref=e177]:
+            - button "拖拽排序" [ref=e178]: ⋮⋮
+            - button "2 AI辅助工具 · 2026/3/14" [ref=e179] [cursor=pointer]:
+              - generic [ref=e180]: "2"
+              - generic [ref=e181]:
+                - generic [ref=e182]: AI辅助工具
+                - generic [ref=e183]: ·
+                - generic [ref=e184]: 2026/3/14
+            - button "删除文档" [ref=e186] [cursor=pointer]: 🗑️
+          - generic [ref=e187]:
+            - button "拖拽排序" [ref=e188]: ⋮⋮
+            - button "512521 AI辅助工具 · 2026/3/14" [ref=e189] [cursor=pointer]:
+              - generic [ref=e190]: "512521"
+              - generic [ref=e191]:
+                - generic [ref=e192]: AI辅助工具
+                - generic [ref=e193]: ·
+                - generic [ref=e194]: 2026/3/14
+            - button "删除文档" [ref=e196] [cursor=pointer]: 🗑️
+          - generic [ref=e197]:
+            - button "拖拽排序" [ref=e198]: ⋮⋮
+            - button "4412 AI辅助工具 · 2026/3/14" [ref=e199] [cursor=pointer]:
+              - generic [ref=e200]: "4412"
+              - generic [ref=e201]:
+                - generic [ref=e202]: AI辅助工具
+                - generic [ref=e203]: ·
+                - generic [ref=e204]: 2026/3/14
+            - button "删除文档" [ref=e206] [cursor=pointer]: 🗑️
+          - generic [ref=e207]:
+            - button "拖拽排序" [ref=e208]: ⋮⋮
+            - button "123 AI辅助工具 · 2026/3/14" [ref=e209] [cursor=pointer]:
+              - generic [ref=e210]: "123"
+              - generic [ref=e211]:
+                - generic [ref=e212]: AI辅助工具
+                - generic [ref=e213]: ·
+                - generic [ref=e214]: 2026/3/14
+            - button "删除文档" [ref=e216] [cursor=pointer]: 🗑️
+          - generic [ref=e217]:
+            - button "拖拽排序" [ref=e218]: ⋮⋮
+            - button "6 AI辅助工具 · 2026/3/14" [ref=e219] [cursor=pointer]:
+              - generic [ref=e220]: "6"
+              - generic [ref=e221]:
+                - generic [ref=e222]: AI辅助工具
+                - generic [ref=e223]: ·
+                - generic [ref=e224]: 2026/3/14
+            - button "删除文档" [ref=e226] [cursor=pointer]: 🗑️
+          - generic [ref=e227]:
+            - button "拖拽排序" [ref=e228]: ⋮⋮
+            - button "5 AI辅助工具 · 2026/3/14" [ref=e229] [cursor=pointer]:
+              - generic [ref=e230]: "5"
+              - generic [ref=e231]:
+                - generic [ref=e232]: AI辅助工具
+                - generic [ref=e233]: ·
+                - generic [ref=e234]: 2026/3/14
+            - button "删除文档" [ref=e236] [cursor=pointer]: 🗑️
+          - generic [ref=e237]:
+            - button "拖拽排序" [ref=e238]: ⋮⋮
+            - button "3 AI辅助工具 · 2026/3/14" [ref=e239] [cursor=pointer]:
+              - generic [ref=e240]: "3"
+              - generic [ref=e241]:
+                - generic [ref=e242]: AI辅助工具
+                - generic [ref=e243]: ·
+                - generic [ref=e244]: 2026/3/14
+            - button "删除文档" [ref=e246] [cursor=pointer]: 🗑️
+          - generic [ref=e247]:
+            - button "拖拽排序" [ref=e248]: ⋮⋮
+            - button "1 AI辅助工具 · 2026/3/14" [ref=e249] [cursor=pointer]:
+              - generic [ref=e250]: "1"
+              - generic [ref=e251]:
+                - generic [ref=e252]: AI辅助工具
+                - generic [ref=e253]: ·
+                - generic [ref=e254]: 2026/3/14
+            - button "删除文档" [ref=e256] [cursor=pointer]: 🗑️
+          - generic [ref=e257]:
+            - button "拖拽排序" [ref=e258]: ⋮⋮
+            - button "禁用掉内置的WebSearch和WebFetch工具 AI辅助工具 · 2026/3/14" [ref=e259] [cursor=pointer]:
+              - generic [ref=e260]: 禁用掉内置的WebSearch和WebFetch工具
+              - generic [ref=e261]:
+                - generic [ref=e262]: AI辅助工具
+                - generic [ref=e263]: ·
+                - generic [ref=e264]: 2026/3/14
+            - button "删除文档" [ref=e266] [cursor=pointer]: 🗑️
+          - generic [ref=e267]:
+            - button "拖拽排序" [ref=e268]: ⋮⋮
+            - button "11 AI辅助工具 · 2026/3/14" [ref=e269] [cursor=pointer]:
+              - generic [ref=e270]: "11"
+              - generic [ref=e271]:
+                - generic [ref=e272]: AI辅助工具
+                - generic [ref=e273]: ·
+                - generic [ref=e274]: 2026/3/14
+            - button "删除文档" [ref=e276] [cursor=pointer]: 🗑️
+          - generic [ref=e277]:
+            - button "拖拽排序" [ref=e278]: ⋮⋮
+            - button "44 AI辅助工具 · 2026/3/14" [ref=e279] [cursor=pointer]:
+              - generic [ref=e280]: "44"
+              - generic [ref=e281]:
+                - generic [ref=e282]: AI辅助工具
+                - generic [ref=e283]: ·
+                - generic [ref=e284]: 2026/3/14
+            - button "删除文档" [ref=e286] [cursor=pointer]: 🗑️
+          - generic [ref=e287]:
+            - button "拖拽排序" [ref=e288]: ⋮⋮
+            - button "11 AI辅助工具 · 2026/3/14" [ref=e289] [cursor=pointer]:
+              - generic [ref=e290]: "11"
+              - generic [ref=e291]:
+                - generic [ref=e292]: AI辅助工具
+                - generic [ref=e293]: ·
+                - generic [ref=e294]: 2026/3/14
+            - button "删除文档" [ref=e296] [cursor=pointer]: 🗑️
+          - generic [ref=e297]:
+            - button "拖拽排序" [ref=e298]: ⋮⋮
+            - button "7 AI辅助工具 · 2026/3/14" [ref=e299] [cursor=pointer]:
+              - generic [ref=e300]: "7"
+              - generic [ref=e301]:
+                - generic [ref=e302]: AI辅助工具
+                - generic [ref=e303]: ·
+                - generic [ref=e304]: 2026/3/14
+            - button "删除文档" [ref=e306] [cursor=pointer]: 🗑️
+          - generic [ref=e307]:
+            - button "拖拽排序" [ref=e308]: ⋮⋮
+            - button "Claude Code 完全使用指南 AI辅助工具 · 2026/3/13" [ref=e309] [cursor=pointer]:
+              - generic [ref=e310]: Claude Code 完全使用指南
+              - generic [ref=e311]:
+                - generic [ref=e312]: AI辅助工具
+                - generic [ref=e313]: ·
+                - generic [ref=e314]: 2026/3/13
+            - button "删除文档" [ref=e316] [cursor=pointer]: 🗑️
+          - generic [ref=e317]:
+            - button "拖拽排序" [ref=e318]: ⋮⋮
+            - button "223 AI辅助工具 · 2026/3/14" [ref=e319] [cursor=pointer]:
+              - generic [ref=e320]: "223"
+              - generic [ref=e321]:
+                - generic [ref=e322]: AI辅助工具
+                - generic [ref=e323]: ·
+                - generic [ref=e324]: 2026/3/14
+            - button "删除文档" [ref=e326] [cursor=pointer]: 🗑️
+          - status [ref=e119]
+      - separator "调整左侧列表宽度" [ref=e121]
+      - main [ref=e122]:
+        - textbox [ref=e123]
+      - separator "调整预览宽度" [ref=e124]
+      - complementary [ref=e125]
+  - contentinfo [ref=e126]: © 2026 太乙实验室. All rights reserved.

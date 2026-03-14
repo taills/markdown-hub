@@ -28,17 +28,25 @@
     <script>
       // 编辑器光标与预览窗口同步滚动
       function setupCursorSync() {
-        const textarea = document.querySelector('textarea.editor-textarea');
-        const preview = document.querySelector('.markdown-preview');
-
-        if (!textarea || !preview) {
-          setTimeout(setupCursorSync, 500);
-          return;
-        }
-
+        let textarea = null;
+        let preview = null;
         let lastHighlightedElement = null;
+        let pendingHighlightTimer = null;
+
+        const clearLastHighlight = () => {
+          if (lastHighlightedElement) {
+            lastHighlightedElement.classList.remove('cursor-highlight');
+            lastHighlightedElement = null;
+          }
+          if (pendingHighlightTimer) {
+            clearTimeout(pendingHighlightTimer);
+            pendingHighlightTimer = null;
+          }
+        };
 
         const syncScroll = () => {
+          if (!textarea || !preview) return;
+
           const cursorPos = textarea.selectionStart;
           const textBeforeCursor = textarea.value.substring(0, cursorPos);
           const lineNumber = textBeforeCursor.split('\n').length;
@@ -52,17 +60,19 @@
                 el.scrollIntoView({ behavior: 'auto', block: 'center' });
 
                 // 移除之前元素的高亮
-                if (lastHighlightedElement) {
-                  lastHighlightedElement.classList.remove('cursor-highlight');
-                }
+                clearLastHighlight();
 
                 // 添加高亮动画
                 el.classList.add('cursor-highlight');
                 lastHighlightedElement = el;
 
                 // 动画结束后移除类（以便下次可以重新触发）
-                setTimeout(() => {
+                pendingHighlightTimer = setTimeout(() => {
                   el.classList.remove('cursor-highlight');
+                  if (lastHighlightedElement === el) {
+                    lastHighlightedElement = null;
+                  }
+                  pendingHighlightTimer = null;
                 }, 1000);
               }
               break;
@@ -70,8 +80,49 @@
           }
         };
 
-        textarea.addEventListener('click', syncScroll);
-        textarea.addEventListener('keyup', syncScroll);
+        const unbind = () => {
+          if (!textarea) return;
+          textarea.removeEventListener('click', syncScroll);
+          textarea.removeEventListener('keyup', syncScroll);
+          textarea.removeEventListener('input', syncScroll);
+          textarea.removeEventListener('select', syncScroll);
+        };
+
+        const bindToCurrentNodes = () => {
+          const nextTextarea = document.querySelector('textarea.editor-textarea');
+          const nextPreview = document.querySelector('.markdown-preview');
+
+          if (nextTextarea === textarea && nextPreview === preview) {
+            return;
+          }
+
+          unbind();
+          clearLastHighlight();
+
+          textarea = nextTextarea;
+          preview = nextPreview;
+
+          if (!textarea || !preview) {
+            return;
+          }
+
+          textarea.addEventListener('click', syncScroll);
+          textarea.addEventListener('keyup', syncScroll);
+          textarea.addEventListener('input', syncScroll);
+          textarea.addEventListener('select', syncScroll);
+          syncScroll();
+        };
+
+        const observer = new MutationObserver(() => {
+          bindToCurrentNodes();
+        });
+
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+        });
+
+        bindToCurrentNodes();
       }
 
       setTimeout(setupCursorSync, 2000);

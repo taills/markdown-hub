@@ -1002,6 +1002,7 @@ header h1 { font-size: 1.5rem; }
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   border-right: 1px solid var(--border);
   background: var(--surface);
   min-width: 0;
@@ -1042,6 +1043,7 @@ body.is-resizing * {
 
 .workspace-column,
 .document-column {
+  min-height: 0;
   background: #f9fafb;
 }
 
@@ -1053,6 +1055,7 @@ body.is-resizing * {
   background: #f8fafc;
   min-width: 0;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .inline-form input,
@@ -1088,6 +1091,7 @@ body.is-resizing * {
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.75rem 0.6rem;
+  flex: 1;
   overflow-y: auto;
 }
 
@@ -1120,9 +1124,9 @@ body.is-resizing * {
 }
 
 .document-list {
-  display: flex;
-  flex-direction: column;
+  flex: 1 1 auto !important;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .document-item {
@@ -1138,22 +1142,6 @@ body.is-resizing * {
 .document-item.active {
   background: rgba(102, 126, 234, 0.1);
   border-color: var(--primary);
-}
-
-.doc-main {
-  flex: 1;
-  border: none;
-  background: none;
-  text-align: left;
-  padding: 0.75rem 0.9rem;
-  cursor: pointer;
-}
-
-.doc-meta {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 0.2rem;
 }
 
 .editor-column {

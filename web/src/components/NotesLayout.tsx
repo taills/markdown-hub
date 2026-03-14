@@ -978,7 +978,7 @@ export function NotesLayout() {
                 {creatingDocument ? t('doc.creating') : t('doc.create')}
               </button>
             </div>
-            <div className="document-list">
+            <div className="document-list" style={{ flex: '1 1 auto', minHeight: 0 }}>
               <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDocumentDragEnd}>
                 <SortableContext items={(filteredDocuments ?? []).map((d) => d.id)} strategy={verticalListSortingStrategy}>
                   {(filteredDocuments ?? []).map((doc) => (

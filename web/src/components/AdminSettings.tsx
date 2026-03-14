@@ -14,6 +14,15 @@ interface LLMConfigState {
   model_type: 'text' | 'multimodal';
 }
 
+interface EmbeddingConfigState {
+  enable: boolean;
+  base_url: string;
+  api_key: string;
+  name: string;
+  dimensions: number;
+  model_type: 'embedding';
+}
+
 const defaultLLMConfig: LLMConfigState = {
   enable: false,
   base_url: '',
@@ -21,6 +30,15 @@ const defaultLLMConfig: LLMConfigState = {
   name: '',
   context_length: 128000,
   model_type: 'text',
+};
+
+const defaultEmbeddingConfig: EmbeddingConfigState = {
+  enable: false,
+  base_url: '',
+  api_key: '',
+  name: '',
+  dimensions: 1536,
+  model_type: 'embedding',
 };
 
 export function AdminSettings() {
@@ -44,6 +62,13 @@ export function AdminSettings() {
   const [textTestResult, setTextTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [multiTestResult, setMultiTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  // Embedding Config states
+  const [embeddingConfig, setEmbeddingConfig] = useState<EmbeddingConfigState>(defaultEmbeddingConfig);
+  const [embeddingLoading, setEmbeddingLoading] = useState(true);
+  const [embeddingSaving, setEmbeddingSaving] = useState(false);
+  const [testingEmbedding, setTestingEmbedding] = useState(false);
+  const [embeddingTestResult, setEmbeddingTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const handleCloseError = () => setError(null);
 
   useEffect(() => {
@@ -56,13 +81,14 @@ export function AdminSettings() {
       try {
         setLoading(true);
         setLlmLoading(true);
+        setEmbeddingLoading(true);
         setError(null);
 
         // Fetch site title
         const titleData = await siteService.getAdminSiteTitle();
         setSiteTitle(titleData.value);
 
-        // Fetch LLM configs
+        // Fetch LLM configs (these must succeed)
         const [textConfig, multiConfig] = await Promise.all([
           siteService.getLLMConfig('text'),
           siteService.getLLMConfig('multimodal'),
@@ -85,11 +111,28 @@ export function AdminSettings() {
           context_length: multiConfig.context_length,
           model_type: 'multimodal',
         });
+
+        // Fetch embedding config (optional - don't fail if it errors)
+        try {
+          const embeddingConfigData = await siteService.getEmbeddingConfig();
+          setEmbeddingConfig({
+            enable: embeddingConfigData.enable,
+            base_url: embeddingConfigData.base_url,
+            api_key: embeddingConfigData.api_key,
+            name: embeddingConfigData.name,
+            dimensions: embeddingConfigData.dimensions,
+            model_type: 'embedding',
+          });
+        } catch {
+          // Use default embedding config if API not available
+          setEmbeddingConfig(defaultEmbeddingConfig);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : t('admin.settingsLoadError'));
       } finally {
         setLoading(false);
         setLlmLoading(false);
+        setEmbeddingLoading(false);
       }
     };
 
@@ -163,7 +206,45 @@ export function AdminSettings() {
     }
   };
 
-  if (loading || llmLoading) {
+  const handleEmbeddingTest = async () => {
+    if (!embeddingConfig.base_url || !embeddingConfig.api_key || !embeddingConfig.name) {
+      setError(t('admin.llmRequiredFields'));
+      return;
+    }
+
+    try {
+      setTestingEmbedding(true);
+      setError(null);
+      setEmbeddingTestResult(null);
+
+      const result = await siteService.testEmbeddingConfig(embeddingConfig);
+      setEmbeddingTestResult({ success: result.success, message: result.message });
+    } catch (err) {
+      setEmbeddingTestResult({
+        success: false,
+        message: err instanceof Error ? err.message : t('admin.llmTestError'),
+      });
+    } finally {
+      setTestingEmbedding(false);
+    }
+  };
+
+  const handleEmbeddingSave = async () => {
+    try {
+      setEmbeddingSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      await siteService.updateEmbeddingConfig(embeddingConfig);
+      setSuccess(t('admin.settingsSaved'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('admin.settingsSaveError'));
+    } finally {
+      setEmbeddingSaving(false);
+    }
+  };
+
+  if (loading || llmLoading || embeddingLoading) {
     return (
       <div className="admin-page">
         <div className="loading-container">
@@ -462,6 +543,111 @@ export function AdminSettings() {
                     )}
                   </svg>
                   {multiTestResult.message}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Embedding Model Configuration */}
+          <div className="settings-card">
+            <h3>{t('admin.embeddingModel', 'Embedding 模型配置')}</h3>
+            <div className="llm-config-form">
+              <div className="checkbox-row">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={embeddingConfig.enable}
+                    onChange={(e) => setEmbeddingConfig({ ...embeddingConfig, enable: e.target.checked })}
+                  />
+                  <span>{t('admin.llmEnable')}</span>
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="embBaseURL">{t('admin.llmBaseURL')}</label>
+                <input
+                  id="embBaseURL"
+                  type="text"
+                  value={embeddingConfig.base_url}
+                  onChange={(e) => setEmbeddingConfig({ ...embeddingConfig, base_url: e.target.value })}
+                  placeholder="https://api.openai.com/v1"
+                  disabled={!embeddingConfig.enable}
+                  className="settings-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="embAPIKey">{t('admin.llmAPIKey')}</label>
+                <input
+                  id="embAPIKey"
+                  type="password"
+                  value={embeddingConfig.api_key}
+                  onChange={(e) => setEmbeddingConfig({ ...embeddingConfig, api_key: e.target.value })}
+                  placeholder={embeddingConfig.api_key ? '********' : t('admin.llmAPIKeyPlaceholder')}
+                  disabled={!embeddingConfig.enable}
+                  className="settings-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="embModelName">{t('admin.embeddingModelName', '模型名称')}</label>
+                <input
+                  id="embModelName"
+                  type="text"
+                  value={embeddingConfig.name}
+                  onChange={(e) => setEmbeddingConfig({ ...embeddingConfig, name: e.target.value })}
+                  placeholder="text-embedding-ada-002"
+                  disabled={!embeddingConfig.enable}
+                  className="settings-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="embDimensions">{t('admin.embeddingDimensions', '维度')}</label>
+                <input
+                  id="embDimensions"
+                  type="number"
+                  value={embeddingConfig.dimensions}
+                  onChange={(e) => setEmbeddingConfig({ ...embeddingConfig, dimensions: parseInt(e.target.value) || 1536 })}
+                  placeholder="1536"
+                  disabled={!embeddingConfig.enable}
+                  className="settings-input"
+                />
+                <span className="form-hint">{t('admin.embeddingDimensionsHint', '常用维度: 1536 (OpenAI), 1024 (Cohere)')}</span>
+              </div>
+
+              <div className="llm-actions">
+                <button
+                  className="secondary"
+                  onClick={handleEmbeddingTest}
+                  disabled={testingEmbedding || !embeddingConfig.enable || !embeddingConfig.base_url || !embeddingConfig.api_key || !embeddingConfig.name}
+                >
+                  {testingEmbedding ? t('admin.llmTesting') : t('admin.llmTest')}
+                </button>
+                <button
+                  className="primary"
+                  onClick={handleEmbeddingSave}
+                  disabled={embeddingSaving}
+                >
+                  {embeddingSaving ? t('common.saving') : t('common.save')}
+                </button>
+              </div>
+
+              {/* Embedding Test Result */}
+              {embeddingTestResult && (
+                <div className={`test-result ${embeddingTestResult.success ? 'success' : 'error'}`}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {embeddingTestResult.success ? (
+                      <polyline points="20 6 9 17 4 12"/>
+                    ) : (
+                      <>
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                      </>
+                    )}
+                  </svg>
+                  {embeddingTestResult.message}
                 </div>
               )}
             </div>

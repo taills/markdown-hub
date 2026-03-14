@@ -686,6 +686,248 @@ func (h *AdminHandler) TestLLMConfig(c *gin.Context) {
 	}
 }
 
+// EmbeddingConfig represents embedding model configuration.
+type EmbeddingConfig struct {
+	Enable        bool   `json:"enable"`
+	BaseURL       string `json:"base_url"`
+	APIKey        string `json:"api_key"`
+	Name          string `json:"name"`
+	Dimensions    int    `json:"dimensions"` // embedding dimensions (e.g., 1536 for text-embedding-ada-002)
+	ModelType     string `json:"model_type"` // "embedding"
+}
+
+// EmbeddingConfigRequest is the JSON body for updating embedding configuration.
+type EmbeddingConfigRequest struct {
+	Enable     bool   `json:"enable"`
+	BaseURL    string `json:"base_url"`
+	APIKey     string `json:"api_key"`
+	Name       string `json:"name"`
+	Dimensions  int    `json:"dimensions"`
+}
+
+// EmbeddingTestRequest is the JSON body for testing embedding configuration.
+type EmbeddingTestRequest struct {
+	BaseURL    string `json:"base_url" binding:"required"`
+	APIKey     string `json:"api_key" binding:"required"`
+	Name       string `json:"name" binding:"required"`
+	Dimensions int    `json:"dimensions"`
+	ModelType  string `json:"model_type" binding:"required"`
+}
+
+// GetEmbeddingConfig returns the embedding model configuration (admin only).
+func (h *AdminHandler) GetEmbeddingConfig(c *gin.Context) {
+	// Verify admin status
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if !user.IsAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: admin required"})
+		return
+	}
+
+	setting, err := h.adminSvc.GetSetting(c.Request.Context(), "EMBEDDING_CONFIG")
+	if err != nil {
+		if err == store.ErrNotFound {
+			// Return default if not found
+			c.JSON(http.StatusOK, EmbeddingConfig{
+				Enable:     false,
+				BaseURL:    "",
+				APIKey:     "",
+				Name:       "",
+				Dimensions: 1536,
+				ModelType:  "embedding",
+			})
+			return
+		}
+		respondError(c, err)
+		return
+	}
+
+	// Parse JSON value
+	var config EmbeddingConfig
+	if err := json.Unmarshal([]byte(setting.Value), &config); err != nil {
+		// Return default if parse fails
+		c.JSON(http.StatusOK, EmbeddingConfig{
+			Enable:     false,
+			BaseURL:    "",
+			APIKey:     "",
+			Name:       "",
+			Dimensions: 1536,
+			ModelType:  "embedding",
+		})
+		return
+	}
+
+	config.ModelType = "embedding"
+	c.JSON(http.StatusOK, config)
+}
+
+// UpdateEmbeddingConfig updates the embedding model configuration (admin only).
+func (h *AdminHandler) UpdateEmbeddingConfig(c *gin.Context) {
+	// Verify admin status
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if !user.IsAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: admin required"})
+		return
+	}
+
+	var req EmbeddingConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// Validate: if enable is true, required fields must be filled
+	if req.Enable {
+		if req.BaseURL == "" || req.APIKey == "" || req.Name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "base_url, api_key, and name are required when enabled"})
+			return
+		}
+	}
+
+	// Prepare config to save
+	config := EmbeddingConfig{
+		Enable:     req.Enable,
+		BaseURL:    req.BaseURL,
+		APIKey:     req.APIKey,
+		Name:       req.Name,
+		Dimensions: req.Dimensions,
+		ModelType:  "embedding",
+	}
+
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	err = h.adminSvc.UpdateSetting(c.Request.Context(), "EMBEDDING_CONFIG", string(configJSON), "Embedding model configuration")
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	// Return config without API key for security
+	config.APIKey = ""
+	c.JSON(http.StatusOK, config)
+}
+
+// TestEmbeddingConfig tests the embedding model configuration (admin only).
+func (h *AdminHandler) TestEmbeddingConfig(c *gin.Context) {
+	// Verify admin status
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := h.authSvc.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+
+	if !user.IsAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden: admin required"})
+		return
+	}
+
+	var req EmbeddingTestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// Use trpc-agent-go to test embedding connection
+	llm := openai.New(
+		req.Name,
+		openai.WithAPIKey(req.APIKey),
+		openai.WithBaseURL(strings.TrimRight(req.BaseURL, "/")+"/v1"),
+	)
+
+	// Create a simple test request for embeddings
+	testReq := &model.Request{
+		Messages: []model.Message{
+			model.NewUserMessage("Hello world"),
+		},
+	}
+
+	// Set timeout for the test
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	// Send request to test connection
+	responseChan, err := llm.GenerateContent(ctx, testReq)
+	if err != nil {
+		c.JSON(http.StatusOK, LLMTestResponse{
+			Success: false,
+			Message: "Connection failed: " + err.Error(),
+		})
+		return
+	}
+
+	// Wait for response
+	select {
+	case response, ok := <-responseChan:
+		if !ok {
+			c.JSON(http.StatusOK, LLMTestResponse{
+				Success: false,
+				Message: "Connection closed unexpectedly",
+			})
+			return
+		}
+
+		// Check for errors in response
+		if response.Error != nil {
+			c.JSON(http.StatusOK, LLMTestResponse{
+				Success: false,
+				Message: "API error: " + response.Error.Message,
+			})
+			return
+		}
+
+		// Check if we got a valid response
+		if len(response.Choices) > 0 {
+			c.JSON(http.StatusOK, LLMTestResponse{
+				Success: true,
+				Message: "Connection successful! Model is working.",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, LLMTestResponse{
+			Success: false,
+			Message: "No response from model",
+		})
+
+	case <-ctx.Done():
+		c.JSON(http.StatusOK, LLMTestResponse{
+			Success: false,
+			Message: "Connection timeout",
+		})
+	}
+}
+
 // ListLogs returns admin audit logs (admin only).
 func (h *AdminHandler) ListLogs(c *gin.Context) {
 	// Verify admin status

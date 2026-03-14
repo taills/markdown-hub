@@ -415,6 +415,21 @@ export interface LLMTestResult {
   message: string;
 }
 
+// Embedding Configuration types
+export interface EmbeddingConfig {
+  enable: boolean;
+  base_url: string;
+  api_key: string;
+  name: string;
+  dimensions: number;
+  model_type: 'embedding';
+}
+
+export interface EmbeddingTestResult {
+  success: boolean;
+  message: string;
+}
+
 export const siteService = {
   getSiteTitle: async (): Promise<string> => {
     const res = await fetch(`${API_BASE_URL}/public/site-title`);
@@ -457,6 +472,34 @@ export const siteService = {
         name: config.name,
         context_length: config.context_length,
         model_type: config.model_type,
+      }),
+    }),
+
+  // Embedding Configuration
+  getEmbeddingConfig: () =>
+    request<EmbeddingConfig>('/admin/settings/embedding'),
+
+  updateEmbeddingConfig: (config: EmbeddingConfig) =>
+    request<EmbeddingConfig>('/admin/settings/embedding', {
+      method: 'PUT',
+      body: JSON.stringify({
+        enable: config.enable,
+        base_url: config.base_url,
+        api_key: config.api_key,
+        name: config.name,
+        dimensions: config.dimensions,
+      }),
+    }),
+
+  testEmbeddingConfig: (config: EmbeddingConfig) =>
+    request<EmbeddingTestResult>('/admin/settings/embedding/test', {
+      method: 'POST',
+      body: JSON.stringify({
+        base_url: config.base_url,
+        api_key: config.api_key,
+        name: config.name,
+        dimensions: config.dimensions,
+        model_type: 'embedding',
       }),
     }),
 };

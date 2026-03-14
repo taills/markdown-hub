@@ -1,5 +1,5 @@
 import i18n from '@/i18n';
-import type { AuthResponse, Document, DocumentListItem, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats, User, AdminLog } from '@/types';
+import type { AuthResponse, Document, DocumentListItem, DocumentSearchResult, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats, User, AdminLog } from '@/types';
 
 const API_BASE_URL = '/api';
 
@@ -159,6 +159,8 @@ export const documentService = {
       method: 'PATCH',
       body: JSON.stringify({ ids }),
     }),
+  search: (query: string) =>
+    request<DocumentSearchResult[]>(`/search?q=${encodeURIComponent(query)}`),
 };
 
 // ---- Workspaces ----

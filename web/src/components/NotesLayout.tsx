@@ -28,6 +28,7 @@ import { SnapshotPanel } from '@/components/SnapshotPanel';
 import { PermissionsPanel } from '@/components/PermissionsPanel';
 import { AttachmentPanel } from '@/components/AttachmentPanel';
 import { WorkspaceSettingsPanel } from '@/components/WorkspaceSettingsPanel';
+import { SearchModal } from '@/components/SearchModal';
 import { ErrorModal } from '@/components/ErrorModal';
 import { applyLinePatch, createLinePatch } from '@/utils/linePatch';
 import type { Attachment, DocumentListItem, Workspace, WSMessage } from '@/types';
@@ -207,6 +208,7 @@ export function NotesLayout() {
   const [titleError, setTitleError] = useState('');
   const [publicToggling, setPublicToggling] = useState(false);
   const [dismissedDocError, setDismissedDocError] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const docErrorToShow = documentError && documentError !== dismissedDocError ? documentError : '';
   const modalError = titleError || workspaceError || createDocError || docErrorToShow;
@@ -216,6 +218,18 @@ export function NotesLayout() {
     setWorkspaceError('');
     setCreateDocError('');
   };
+
+  // Keyboard shortcut to open search
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -798,6 +812,17 @@ export function NotesLayout() {
         </div>
 
         <div className="topbar-right">
+          <button
+            className="icon-btn"
+            onClick={() => setSearchOpen(true)}
+            title={t('search.title', '搜索文档')}
+            aria-label={t('search.title', '搜索文档')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </button>
           {document && mode === 'edit' && (
             <div className="menu-group doc-visibility-group">
               {canManageDoc && (
@@ -1095,6 +1120,7 @@ export function NotesLayout() {
       </div>
 
       <ErrorModal message={modalError} onClose={handleCloseError} />
+      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

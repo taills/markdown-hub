@@ -47,6 +47,20 @@ type Document struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// DocumentSearchResult represents a document search result with workspace name
+type DocumentSearchResult struct {
+	ID            string    `json:"id"`
+	Title         string    `json:"title"`
+	Content       string    `json:"content"`
+	WorkspaceID   string    `json:"workspace_id"`
+	OwnerID       string    `json:"owner_id"`
+	IsPublic      bool      `json:"is_public"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	SortOrder     int       `json:"sort_order"`
+	WorkspaceName string    `json:"workspace_name,omitempty"`
+}
+
 // Snapshot is an immutable point-in-time copy of a Document.
 type Snapshot struct {
 	ID         string    `json:"id"`

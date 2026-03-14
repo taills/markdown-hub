@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { homeService, siteService } from '@/services/api';
+import { SearchModal } from '@/components/SearchModal';
 import type { Document, Workspace } from '@/types';
 
 interface HomeData {
@@ -22,6 +23,19 @@ export function HomePage() {
   const [siteTitle, setSiteTitle] = useState<string>('MarkdownHub');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Keyboard shortcut to open search
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+      event.preventDefault();
+      setSearchOpen(true);
+    }
+  }, []);
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   useEffect(() => {
     // 并行获取站点标题和首页数据
@@ -73,6 +87,14 @@ export function HomePage() {
           <p className="blog-hero-subtitle">
             {t('home.subtitle', '知识分享 · 协作写作 · Markdown创作平台')}
           </p>
+          <div className="blog-search" onClick={() => setSearchOpen(true)}>
+            <svg className="blog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <span className="blog-search-placeholder">{t('search.placeholder', '搜索文档...')}</span>
+            <span className="blog-search-shortcut">⌘K</span>
+          </div>
           <nav className="blog-nav">
             {user ? (
               <button
@@ -91,6 +113,7 @@ export function HomePage() {
           </nav>
         </div>
       </header>
+      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* 主体内容区 */}
       <main className="blog-container">

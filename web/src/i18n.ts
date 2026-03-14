@@ -45,6 +45,12 @@ const resources = {
         backToProfile: 'Profile',
         settings: 'Settings',
       },
+      search: {
+        title: 'Search Documents',
+        placeholder: 'Search documents...',
+        noResults: 'No documents found',
+        hint: 'Enter keywords to search documents',
+      },
       doc: {
         noneSelected: 'No document selected',
         editTitle: 'Edit title',
@@ -340,6 +346,12 @@ const resources = {
         editor: '编辑器',
         backToProfile: '个人中心',
         settings: '设置',
+      },
+      search: {
+        title: '搜索文档',
+        placeholder: '搜索文档标题或内容...',
+        noResults: '未找到相关文档',
+        hint: '输入关键词搜索文档',
       },
       doc: {
         noneSelected: '未选择文档',

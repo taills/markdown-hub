@@ -460,6 +460,37 @@ func abs(x int) int {
 // Type Conversion Helpers
 // -------------------------------------------------------------------------
 
+// SearchDocuments searches public documents by query
+func (s *DocumentService) SearchDocuments(ctx context.Context, query string) ([]*models.DocumentSearchResult, error) {
+	if query == "" {
+		return nil, nil
+	}
+	results, err := s.db.SearchDocuments(ctx, sql.NullString{String: query, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("search documents: %w", err)
+	}
+	return storeSearchResultsToModels(results), nil
+}
+
+// SearchUserDocuments searches documents accessible by the user
+func (s *DocumentService) SearchUserDocuments(ctx context.Context, userID, query string) ([]*models.DocumentSearchResult, error) {
+	if query == "" {
+		return nil, nil
+	}
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+	results, err := s.db.SearchUserDocuments(ctx, store.SearchUserDocumentsParams{
+		UserID:  userUUID,
+		Column2: sql.NullString{String: query, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("search user documents: %w", err)
+	}
+	return storeSearchUserResultsToModels(results), nil
+}
+
 // storeDocToModel converts a store.Document to *models.Document
 func storeDocToModel(d *store.Document) *models.Document {
 	return &models.Document{
@@ -480,6 +511,46 @@ func storeDocsToModels(docs []store.Document) []*models.Document {
 	result := make([]*models.Document, len(docs))
 	for i := range docs {
 		result[i] = storeDocToModel(&docs[i])
+	}
+	return result
+}
+
+// storeSearchResultsToModels converts search results to models
+func storeSearchResultsToModels(rows []store.SearchDocumentsRow) []*models.DocumentSearchResult {
+	result := make([]*models.DocumentSearchResult, len(rows))
+	for i, r := range rows {
+		result[i] = &models.DocumentSearchResult{
+			ID:            r.ID.String(),
+			Title:         r.Title,
+			Content:       r.Content,
+			WorkspaceID:   r.WorkspaceID.String(),
+			OwnerID:       r.OwnerID.String(),
+			IsPublic:      r.IsPublic,
+			CreatedAt:     r.CreatedAt,
+			UpdatedAt:     r.UpdatedAt,
+			SortOrder:     int(r.SortOrder),
+			WorkspaceName: r.WorkspaceName.String,
+		}
+	}
+	return result
+}
+
+// storeSearchUserResultsToModels converts user search results to models
+func storeSearchUserResultsToModels(rows []store.SearchUserDocumentsRow) []*models.DocumentSearchResult {
+	result := make([]*models.DocumentSearchResult, len(rows))
+	for i, r := range rows {
+		result[i] = &models.DocumentSearchResult{
+			ID:            r.ID.String(),
+			Title:         r.Title,
+			Content:       r.Content,
+			WorkspaceID:   r.WorkspaceID.String(),
+			OwnerID:       r.OwnerID.String(),
+			IsPublic:      r.IsPublic,
+			CreatedAt:     r.CreatedAt,
+			UpdatedAt:     r.UpdatedAt,
+			SortOrder:     int(r.SortOrder),
+			WorkspaceName: r.WorkspaceName.String,
+		}
 	}
 	return result
 }

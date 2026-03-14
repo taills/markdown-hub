@@ -70,6 +70,8 @@ type Querier interface {
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
 	ListWorkspacesByMember(ctx context.Context, userID uuid.UUID) ([]Workspace, error)
 	ListWorkspacesByOwner(ctx context.Context, ownerID uuid.UUID) ([]Workspace, error)
+	SearchDocuments(ctx context.Context, dollar_1 sql.NullString) ([]SearchDocumentsRow, error)
+	SearchUserDocuments(ctx context.Context, arg SearchUserDocumentsParams) ([]SearchUserDocumentsRow, error)
 	UpdateDocumentContent(ctx context.Context, arg UpdateDocumentContentParams) (Document, error)
 	UpdateDocumentPublicStatus(ctx context.Context, arg UpdateDocumentPublicStatusParams) (Document, error)
 	UpdateDocumentSortOrder(ctx context.Context, arg UpdateDocumentSortOrderParams) error

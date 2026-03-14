@@ -43,6 +43,19 @@ export interface DocumentListItem {
   permission?: PermissionLevel; // only present if not owner
 }
 
+export interface DocumentSearchResult {
+  id: string;
+  title: string;
+  content: string;
+  workspace_id: string;
+  owner_id: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  sort_order: number;
+  workspace_name?: string;
+}
+
 export interface Snapshot {
   id: string;
   document_id: string;

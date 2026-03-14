@@ -123,6 +123,9 @@ func NewServer(
 			docs.GET("/:id", optionalAuthMiddleware(), docH.Get)
 			docs.GET("/:id/raw", optionalAuthMiddleware(), docH.GetRaw)
 
+			// Search route - public (returns public docs) or authenticated (returns accessible docs)
+			api.GET("/search", optionalAuthMiddleware(), docH.Search)
+
 			// Protected routes
 			docs.GET("", authMiddleware(), docH.List)
 			docs.POST("", authMiddleware(), docH.Create)

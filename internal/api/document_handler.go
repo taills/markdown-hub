@@ -228,3 +228,35 @@ func (h *DocumentHandler) ListPublicByWorkspace(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, docs)
 }
+
+// Search godoc
+// GET /api/search
+// Searches documents. Public search returns only public documents.
+// Authenticated search returns user's accessible documents.
+func (h *DocumentHandler) Search(c *gin.Context) {
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "search query is required"})
+		return
+	}
+
+	// Try authenticated search first
+	userID, ok := getUserID(c)
+	if ok && userID != "" {
+		results, err := h.docService.SearchUserDocuments(c.Request.Context(), userID, query)
+		if err != nil {
+			respondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, results)
+		return
+	}
+
+	// Fall back to public search
+	results, err := h.docService.SearchDocuments(c.Request.Context(), query)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, results)
+}

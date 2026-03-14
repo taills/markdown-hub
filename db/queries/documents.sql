@@ -48,3 +48,25 @@ SELECT * FROM documents WHERE is_public = true ORDER BY updated_at DESC LIMIT 20
 
 -- name: UpdateDocumentSortOrder :exec
 UPDATE documents SET sort_order = $2, updated_at = NOW() WHERE id = $1;
+
+-- name: SearchDocuments :many
+SELECT d.id, d.title, d.content, d.workspace_id, d.owner_id, d.is_public, d.created_at, d.updated_at, d.sort_order,
+       w.name as workspace_name
+FROM documents d
+LEFT JOIN workspaces w ON w.id = d.workspace_id
+WHERE d.is_public = true
+  AND (d.title ILIKE '%' || $1 || '%' OR d.content ILIKE '%' || $1 || '%')
+ORDER BY d.updated_at DESC
+LIMIT 20;
+
+-- name: SearchUserDocuments :many
+SELECT d.id, d.title, d.content, d.workspace_id, d.owner_id, d.is_public, d.created_at, d.updated_at, d.sort_order,
+       w.name as workspace_name
+FROM documents d
+LEFT JOIN workspaces w ON w.id = d.workspace_id
+LEFT JOIN workspace_members wm ON wm.workspace_id = d.workspace_id
+LEFT JOIN document_permissions dp ON dp.document_id = d.id AND dp.user_id = $1
+WHERE (d.owner_id = $1 OR wm.user_id = $1 OR dp.user_id IS NOT NULL)
+  AND (d.title ILIKE '%' || $2 || '%' OR d.content ILIKE '%' || $2 || '%')
+ORDER BY d.updated_at DESC
+LIMIT 20;

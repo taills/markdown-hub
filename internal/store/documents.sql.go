@@ -7,6 +7,8 @@ package store
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -199,6 +201,129 @@ func (q *Queries) ListPublicDocuments(ctx context.Context) ([]Document, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WorkspaceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchDocuments = `-- name: SearchDocuments :many
+SELECT d.id, d.title, d.content, d.workspace_id, d.owner_id, d.is_public, d.created_at, d.updated_at, d.sort_order,
+       w.name as workspace_name
+FROM documents d
+LEFT JOIN workspaces w ON w.id = d.workspace_id
+WHERE d.is_public = true
+  AND (d.title ILIKE '%' || $1 || '%' OR d.content ILIKE '%' || $1 || '%')
+ORDER BY d.updated_at DESC
+LIMIT 20
+`
+
+type SearchDocumentsRow struct {
+	ID            uuid.UUID      `json:"id"`
+	Title         string         `json:"title"`
+	Content       string         `json:"content"`
+	WorkspaceID   uuid.UUID      `json:"workspace_id"`
+	OwnerID       uuid.UUID      `json:"owner_id"`
+	IsPublic      bool           `json:"is_public"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	SortOrder     int32          `json:"sort_order"`
+	WorkspaceName sql.NullString `json:"workspace_name"`
+}
+
+func (q *Queries) SearchDocuments(ctx context.Context, dollar_1 sql.NullString) ([]SearchDocumentsRow, error) {
+	rows, err := q.db.QueryContext(ctx, searchDocuments, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchDocumentsRow{}
+	for rows.Next() {
+		var i SearchDocumentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Content,
+			&i.WorkspaceID,
+			&i.OwnerID,
+			&i.IsPublic,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SortOrder,
+			&i.WorkspaceName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchUserDocuments = `-- name: SearchUserDocuments :many
+SELECT d.id, d.title, d.content, d.workspace_id, d.owner_id, d.is_public, d.created_at, d.updated_at, d.sort_order,
+       w.name as workspace_name
+FROM documents d
+LEFT JOIN workspaces w ON w.id = d.workspace_id
+LEFT JOIN workspace_members wm ON wm.workspace_id = d.workspace_id
+LEFT JOIN document_permissions dp ON dp.document_id = d.id AND dp.user_id = $1
+WHERE (d.owner_id = $1 OR wm.user_id = $1 OR dp.user_id IS NOT NULL)
+  AND (d.title ILIKE '%' || $2 || '%' OR d.content ILIKE '%' || $2 || '%')
+ORDER BY d.updated_at DESC
+LIMIT 20
+`
+
+type SearchUserDocumentsParams struct {
+	UserID  uuid.UUID      `json:"user_id"`
+	Column2 sql.NullString `json:"column_2"`
+}
+
+type SearchUserDocumentsRow struct {
+	ID            uuid.UUID      `json:"id"`
+	Title         string         `json:"title"`
+	Content       string         `json:"content"`
+	WorkspaceID   uuid.UUID      `json:"workspace_id"`
+	OwnerID       uuid.UUID      `json:"owner_id"`
+	IsPublic      bool           `json:"is_public"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	SortOrder     int32          `json:"sort_order"`
+	WorkspaceName sql.NullString `json:"workspace_name"`
+}
+
+func (q *Queries) SearchUserDocuments(ctx context.Context, arg SearchUserDocumentsParams) ([]SearchUserDocumentsRow, error) {
+	rows, err := q.db.QueryContext(ctx, searchUserDocuments, arg.UserID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchUserDocumentsRow{}
+	for rows.Next() {
+		var i SearchUserDocumentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Content,
+			&i.WorkspaceID,
+			&i.OwnerID,
+			&i.IsPublic,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SortOrder,
+			&i.WorkspaceName,
 		); err != nil {
 			return nil, err
 		}

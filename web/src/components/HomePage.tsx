@@ -1,10 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
-import { homeService, siteService } from '@/services/api';
-import { SearchModal } from '@/components/SearchModal';
-import type { Document, Workspace } from '@/types';
+import { homeService, siteService, documentService } from '@/services/api';
+import type { Document, Workspace, DocumentSearchResult } from '@/types';
 
 interface HomeData {
   workspaces: Workspace[];
@@ -23,15 +22,88 @@ export function HomePage() {
   const [siteTitle, setSiteTitle] = useState<string>('MarkdownHub');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
 
-  // Keyboard shortcut to open search
+  // 搜索状态
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<DocumentSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchResultsRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard shortcut to focus search
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
       event.preventDefault();
-      setSearchOpen(true);
+      searchInputRef.current?.focus();
     }
   }, []);
+
+  // 搜索防抖
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await documentService.search(searchQuery);
+        setSearchResults(results ?? []);
+        setSelectedIndex(0);
+      } catch (err) {
+        console.error('Search failed:', err);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // 搜索结果键盘导航
+  const handleSearchKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelectedIndex((prev) => Math.min(prev + 1, searchResults.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelectedIndex((prev) => Math.max(prev - 1, 0));
+    } else if (event.key === 'Enter' && searchResults[selectedIndex]) {
+      event.preventDefault();
+      navigate(`/documents/${searchResults[selectedIndex].id}`);
+    } else if (event.key === 'Escape') {
+      setSearchQuery('');
+      searchInputRef.current?.blur();
+    }
+  }, [searchResults, selectedIndex, navigate]);
+
+  // 滚动选中的搜索结果到视图
+  useEffect(() => {
+    if (searchResultsRef.current && searchResults.length > 0) {
+      const selectedElement = searchResultsRef.current.children[selectedIndex] as HTMLElement;
+      if (selectedElement) {
+        selectedElement.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [selectedIndex, searchResults.length]);
+
+  // 获取搜索结果摘要
+  const getSearchExcerpt = (content: string, query: string): string => {
+    const index = content.toLowerCase().indexOf(query.toLowerCase());
+    if (index === -1) {
+      return content.substring(0, 100) + (content.length > 100 ? '...' : '');
+    }
+    const start = Math.max(0, index - 30);
+    const end = Math.min(content.length, index + query.length + 70);
+    let excerpt = content.substring(start, end);
+    if (start > 0) excerpt = '...' + excerpt;
+    if (end < content.length) excerpt = excerpt + '...';
+    return excerpt;
+  };
+
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -87,13 +159,54 @@ export function HomePage() {
           <p className="blog-hero-subtitle">
             {t('home.subtitle', '知识分享 · 协作写作 · Markdown创作平台')}
           </p>
-          <div className="blog-search" onClick={() => setSearchOpen(true)}>
-            <svg className="blog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-            <span className="blog-search-placeholder">{t('search.placeholder', '搜索文档...')}</span>
-            <span className="blog-search-shortcut">⌘K</span>
+          <div className="blog-search-container">
+            <div className="blog-search">
+              <svg className="blog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                className="blog-search-input"
+                placeholder={t('search.placeholder', '搜索文档...')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+              />
+              {isSearching && <div className="search-loading-small" />}
+              <span className="blog-search-shortcut">⌘K</span>
+            </div>
+
+            {/* 搜索结果 */}
+            {searchQuery.trim() && (
+              <div className="blog-search-results" ref={searchResultsRef}>
+                {searchResults.length > 0 ? (
+                  searchResults.map((doc, index) => (
+                    <div
+                      key={doc.id}
+                      className={`blog-search-result-item ${index === selectedIndex ? 'selected' : ''}`}
+                      onClick={() => navigate(`/documents/${doc.id}`)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                    >
+                      <div className="blog-search-result-title">
+                        {doc.title || t('home.untitled', '无标题文档')}
+                        {doc.workspace_name && (
+                          <span className="blog-search-result-workspace">{doc.workspace_name}</span>
+                        )}
+                      </div>
+                      <div className="blog-search-result-excerpt">
+                        {getSearchExcerpt(doc.content, searchQuery)}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="blog-search-empty">
+                    {t('search.noResults', '未找到相关文档')}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <nav className="blog-nav">
             {user ? (
@@ -113,7 +226,6 @@ export function HomePage() {
           </nav>
         </div>
       </header>
-      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* 主体内容区 */}
       <main className="blog-container">

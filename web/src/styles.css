@@ -2592,7 +2592,7 @@ body.is-resizing * {
   padding: 1rem 1rem 1rem;
   text-align: center;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .blog-hero::before {
@@ -2630,23 +2630,26 @@ body.is-resizing * {
   line-height: 1.6;
 }
 
+.blog-search-container {
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto 2rem;
+}
+
 .blog-search {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  max-width: 480px;
-  margin: 0 auto 2rem;
   padding: 0.875rem 1.25rem;
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 12px;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.blog-search:hover {
+.blog-search:focus-within {
   background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .blog-search-icon {
@@ -2656,10 +2659,32 @@ body.is-resizing * {
   flex-shrink: 0;
 }
 
-.blog-search-placeholder {
+.blog-search-input {
   flex: 1;
   font-size: 1rem;
-  opacity: 0.9;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+}
+
+.blog-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.search-loading-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .blog-search-shortcut {
@@ -2668,6 +2693,68 @@ body.is-resizing * {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 5px;
   opacity: 0.8;
+}
+
+/* 内联搜索结果 */
+.blog-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.blog-search-result-item {
+  padding: 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s ease;
+}
+
+.blog-search-result-item:last-child {
+  border-bottom: none;
+}
+
+.blog-search-result-item:hover,
+.blog-search-result-item.selected {
+  background: #f8f9fa;
+}
+
+.blog-search-result-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.blog-search-result-workspace {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  background: #e8eaf6;
+  color: #5c6bc0;
+  border-radius: 4px;
+}
+
+.blog-search-result-excerpt {
+  font-size: 0.875rem;
+  color: #666;
+  line-height: 1.5;
+}
+
+.blog-search-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #999;
 }
 
 .blog-nav {

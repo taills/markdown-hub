@@ -402,36 +402,6 @@ export interface SiteTitleResponse {
   site_title: string;
 }
 
-// LLM Configuration types
-export interface LLMConfig {
-  enable: boolean;
-  base_url: string;
-  api_key: string;
-  name: string;
-  context_length: number;
-  model_type: 'text' | 'multimodal';
-}
-
-export interface LLMTestResult {
-  success: boolean;
-  message: string;
-}
-
-// Embedding Configuration types
-export interface EmbeddingConfig {
-  enable: boolean;
-  base_url: string;
-  api_key: string;
-  name: string;
-  dimensions: number;
-  model_type: 'embedding';
-}
-
-export interface EmbeddingTestResult {
-  success: boolean;
-  message: string;
-}
-
 export const siteService = {
   getSiteTitle: async (): Promise<string> => {
     const res = await fetch(`${API_BASE_URL}/public/site-title`);
@@ -447,61 +417,5 @@ export const siteService = {
     request<{ key: string; value: string; description: string }>('/admin/settings/site-title', {
       method: 'PUT',
       body: JSON.stringify({ value }),
-    }),
-
-  // LLM Configuration
-  getLLMConfig: (modelType: 'text' | 'multimodal' = 'text') =>
-    request<LLMConfig>(`/admin/settings/llm?model_type=${modelType}`),
-
-  updateLLMConfig: (config: LLMConfig) =>
-    request<LLMConfig>(`/admin/settings/llm?model_type=${config.model_type}`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        enable: config.enable,
-        base_url: config.base_url,
-        api_key: config.api_key,
-        name: config.name,
-        context_length: config.context_length,
-      }),
-    }),
-
-  testLLMConfig: (config: LLMConfig) =>
-    request<LLMTestResult>('/admin/settings/llm/test', {
-      method: 'POST',
-      body: JSON.stringify({
-        base_url: config.base_url,
-        api_key: config.api_key,
-        name: config.name,
-        context_length: config.context_length,
-        model_type: config.model_type,
-      }),
-    }),
-
-  // Embedding Configuration
-  getEmbeddingConfig: () =>
-    request<EmbeddingConfig>('/admin/settings/embedding'),
-
-  updateEmbeddingConfig: (config: EmbeddingConfig) =>
-    request<EmbeddingConfig>('/admin/settings/embedding', {
-      method: 'PUT',
-      body: JSON.stringify({
-        enable: config.enable,
-        base_url: config.base_url,
-        api_key: config.api_key,
-        name: config.name,
-        dimensions: config.dimensions,
-      }),
-    }),
-
-  testEmbeddingConfig: (config: EmbeddingConfig) =>
-    request<EmbeddingTestResult>('/admin/settings/embedding/test', {
-      method: 'POST',
-      body: JSON.stringify({
-        base_url: config.base_url,
-        api_key: config.api_key,
-        name: config.name,
-        dimensions: config.dimensions,
-        model_type: 'embedding',
-      }),
     }),
 };

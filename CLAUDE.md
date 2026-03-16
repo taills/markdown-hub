@@ -7,7 +7,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **MarkdownHub** is a real-time collaborative, Git-native writing environment for Markdown documents. It combines real-time WebSocket collaboration with automatic version control snapshots and granular heading-level permissions.
 
 **Recent Updates:**
-- **LLM 配置功能** (2026-03-14): 站点设置界面新增 LLM 文本模型和多模态模型配置，支持 Base URL、API Key、模型名称、上下文长度等参数配置，使用 trpc-agent-go 进行连接测试
 - **博客风格首页** (2024-03-13): 首页重新设计为现代化博客风格,工作空间以栏目形式展示,公开文档显示标题、摘要(前200字)和阅读时长。详见 [docs/blog-homepage-design.md](docs/blog-homepage-design.md)
 
 **Design Philosophy:**
@@ -21,7 +20,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Backend: Go (Gin framework, WebSocket, PostgreSQL with pgvector)
 - Frontend: React 18 + TypeScript (Vite build system)
 - Database: PostgreSQL with sqlc for type-safe queries
-- LLM: trpc-agent-go (用于 LLM 调用和测试)
 - Deployment: Single binary with embedded frontend (go:embed)
 
 ## Essential Commands
@@ -246,58 +244,6 @@ Backend tests can be run with `go test ./...`. Frontend uses Vitest (`pnpm test`
 - Strict TypeScript mode enabled
 - No `any` types—define proper interfaces
 - Minimize re-renders with `useMemo`/`useCallback` when appropriate
-
-### LLM Integration (trpc-agent-go)
-
-**重要：所有 LLM 相关操作必须使用 `trpc-agent-go` 库，禁止直接使用 HTTP 请求调用 LLM API。**
-
-使用 trpc-agent-go 调用 LLM：
-
-```go
-import (
-    "trpc.group/trpc-go/trpc-agent-go/model"
-    "trpc.group/trpc-go/trpc-agent-go/model/openai"
-)
-
-// 创建 OpenAI 客户端（支持任意 OpenAI 兼容的 API）
-llm := openai.New(
-    "gpt-4",                    // 模型名称
-    openai.WithAPIKey("your-key"),              // API Key
-    openai.WithBaseURL("https://api.openai.com/v1"),  // 自定义 Base URL
-)
-
-// 发送请求
-req := &model.Request{
-    Messages: []model.Message{
-        model.NewUserMessage("Hello"),
-    },
-}
-
-maxTokens := 10
-req.GenerationConfig = model.GenerationConfig{
-    MaxTokens: &maxTokens,
-}
-
-responseChan, err := llm.GenerateContent(ctx, req)
-if err != nil {
-    // 处理错误
-}
-
-// 处理响应
-for response := range responseChan {
-    if response.Error != nil {
-        // 处理 API 错误
-    }
-    for _, choice := range response.Choices {
-        fmt.Print(choice.Delta.Content)
-    }
-}
-```
-
-**配置测试：**
-- 使用 trpc-agent-go 的 OpenAI 客户端测试 LLM 配置
-- 发送简单的聊天请求验证连接
-- 支持自定义超时时间
 
 ## Article Import Feature
 

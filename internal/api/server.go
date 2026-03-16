@@ -229,16 +229,6 @@ func NewServer(
 			// Site settings
 			admin.GET("/settings/site-title", adminH.GetSiteTitle)
 			admin.PUT("/settings/site-title", adminH.UpdateSiteTitle)
-
-			// LLM settings
-			admin.GET("/settings/llm", adminH.GetLLMConfig)
-			admin.PUT("/settings/llm", adminH.UpdateLLMConfig)
-			admin.POST("/settings/llm/test", adminH.TestLLMConfig)
-
-			// Embedding settings
-			admin.GET("/settings/embedding", adminH.GetEmbeddingConfig)
-			admin.PUT("/settings/embedding", adminH.UpdateEmbeddingConfig)
-			admin.POST("/settings/embedding/test", adminH.TestEmbeddingConfig)
 		}
 	}
 

@@ -20,17 +20,15 @@ func NewImporterHandler(importerSvc *core.ImporterService) *ImporterHandler {
 
 // ImportURLRequest represents the request body for importing from URL.
 type ImportURLRequest struct {
-	URL         string `json:"url" binding:"required"`
-	WorkspaceID string `json:"workspace_id" binding:"required"`
-	Title       string `json:"title"`
+	URL   string `json:"url" binding:"required"`
+	Title string `json:"title"`
 }
 
 // ImportContentRequest represents the request body for importing from HTML content.
 type ImportContentRequest struct {
-	WorkspaceID string `json:"workspace_id" binding:"required"`
-	Title       string `json:"title"`
-	HTML        string `json:"html" binding:"required"`
-	BaseURL     string `json:"base_url"`
+	Title   string `json:"title"`
+	HTML    string `json:"html" binding:"required"`
+	BaseURL string `json:"base_url"`
 }
 
 // ImportResponse represents the response for an import request.
@@ -54,7 +52,7 @@ func (h *ImporterHandler) ImportFromURL(c *gin.Context) {
 		return
 	}
 
-	result, err := h.importerSvc.ImportFromURL(c.Request.Context(), userID, req.WorkspaceID, req.URL, req.Title)
+	result, err := h.importerSvc.ImportFromURL(c.Request.Context(), userID, req.URL, req.Title)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -81,7 +79,7 @@ func (h *ImporterHandler) ImportFromContent(c *gin.Context) {
 		return
 	}
 
-	result, err := h.importerSvc.ImportFromContent(c.Request.Context(), userID, req.WorkspaceID, req.Title, req.HTML, req.BaseURL)
+	result, err := h.importerSvc.ImportFromContent(c.Request.Context(), userID, req.Title, req.HTML, req.BaseURL)
 	if err != nil {
 		respondError(c, err)
 		return

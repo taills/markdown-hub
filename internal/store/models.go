@@ -87,15 +87,14 @@ type AiMessage struct {
 }
 
 type Attachment struct {
-	ID          uuid.UUID     `json:"id"`
-	DocumentID  uuid.NullUUID `json:"document_id"`
-	UploadBy    uuid.UUID     `json:"upload_by"`
-	Filename    string        `json:"filename"`
-	FileType    string        `json:"file_type"`
-	FileSize    int64         `json:"file_size"`
-	FilePath    string        `json:"file_path"`
-	CreatedAt   time.Time     `json:"created_at"`
-	WorkspaceID uuid.UUID     `json:"workspace_id"`
+	ID         uuid.UUID     `json:"id"`
+	DocumentID uuid.NullUUID `json:"document_id"`
+	UploadBy   uuid.UUID     `json:"upload_by"`
+	Filename   string        `json:"filename"`
+	FileType   string        `json:"file_type"`
+	FileSize   int64         `json:"file_size"`
+	FilePath   string        `json:"file_path"`
+	CreatedAt  time.Time     `json:"created_at"`
 }
 
 type AttachmentReference struct {
@@ -118,15 +117,17 @@ type Comment struct {
 }
 
 type Document struct {
-	ID          uuid.UUID `json:"id"`
-	OwnerID     uuid.UUID `json:"owner_id"`
-	Title       string    `json:"title"`
-	Content     string    `json:"content"`
-	IsPublic    bool      `json:"is_public"`
-	SortOrder   int32     `json:"sort_order"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	WorkspaceID uuid.UUID `json:"workspace_id"`
+	ID                uuid.UUID     `json:"id"`
+	OwnerID           uuid.UUID     `json:"owner_id"`
+	Title             string        `json:"title"`
+	Content           string        `json:"content"`
+	IsPublic          bool          `json:"is_public"`
+	SortOrder         int32         `json:"sort_order"`
+	CreatedAt         time.Time     `json:"created_at"`
+	UpdatedAt         time.Time     `json:"updated_at"`
+	ParentID          uuid.NullUUID `json:"parent_id"`
+	Visibility        string        `json:"visibility"`
+	InheritVisibility bool          `json:"inherit_visibility"`
 }
 
 type DocumentPermission struct {
@@ -185,22 +186,4 @@ type User struct {
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 	IsActive          bool           `json:"is_active"`
-}
-
-type Workspace struct {
-	ID        uuid.UUID `json:"id"`
-	OwnerID   uuid.UUID `json:"owner_id"`
-	Name      string    `json:"name"`
-	IsPublic  bool      `json:"is_public"`
-	SortOrder int32     `json:"sort_order"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-type WorkspaceMember struct {
-	ID          uuid.UUID       `json:"id"`
-	WorkspaceID uuid.UUID       `json:"workspace_id"`
-	UserID      uuid.UUID       `json:"user_id"`
-	Level       PermissionLevel `json:"level"`
-	CreatedAt   time.Time       `json:"created_at"`
 }

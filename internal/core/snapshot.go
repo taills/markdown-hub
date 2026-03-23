@@ -198,9 +198,6 @@ func (s *SnapshotService) requireWorkspaceOrDocumentPermission(
 	userID string,
 	required models.PermissionLevel,
 ) error {
-	if err := s.permService.RequireWorkspacePermission(ctx, doc.WorkspaceID, userID, required); err == nil {
-		return nil
-	}
 	return s.permService.RequireDocumentPermission(ctx, doc.ID, userID, doc.OwnerID, required)
 }
 

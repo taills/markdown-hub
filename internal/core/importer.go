@@ -17,7 +17,6 @@ import (
 	mdPlugin "github.com/JohannesKaufmann/html-to-markdown/plugin"
 	"github.com/google/uuid"
 
-	"markdownhub/internal/models"
 	"markdownhub/internal/store"
 )
 
@@ -54,18 +53,10 @@ type ImportResult struct {
 }
 
 // ImportFromURL imports an article from a URL.
-func (s *ImporterService) ImportFromURL(ctx context.Context, userID, workspaceID, importURL, title string) (*ImportResult, error) {
+func (s *ImporterService) ImportFromURL(ctx context.Context, userID, importURL, title string) (*ImportResult, error) {
 	// Validate input
 	if importURL == "" {
 		return nil, fmt.Errorf("%w: URL is required", ErrInvalidInput)
-	}
-	if workspaceID == "" {
-		return nil, fmt.Errorf("%w: workspace ID is required", ErrInvalidInput)
-	}
-
-	// Check permission
-	if err := s.docService.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionEdit); err != nil {
-		return nil, err
 	}
 
 	// Parse URL
@@ -94,16 +85,24 @@ func (s *ImporterService) ImportFromURL(ctx context.Context, userID, workspaceID
 		return nil, fmt.Errorf("convert HTML to Markdown: %w", err)
 	}
 
-	// Download and replace images
-	markdownContent, err = s.processImages(ctx, userID, workspaceID, markdownContent, parsedURL)
+	// Create document first to get document ID
+	doc, err := s.docService.CreateDocument(ctx, userID, "", title, markdownContent)
+	if err != nil {
+		return nil, fmt.Errorf("create document: %w", err)
+	}
+
+	// Download and replace images (using document ID)
+	markdownContent, err = s.processImages(ctx, userID, doc.ID, markdownContent, parsedURL)
 	if err != nil {
 		return nil, fmt.Errorf("process images: %w", err)
 	}
 
-	// Create document
-	doc, err := s.docService.CreateDocument(ctx, userID, workspaceID, title, markdownContent)
-	if err != nil {
-		return nil, fmt.Errorf("create document: %w", err)
+	// Update document content with image URLs
+	if markdownContent != doc.Content {
+		doc, err = s.docService.UpdateContent(ctx, doc.ID, userID, markdownContent)
+		if err != nil {
+			return nil, fmt.Errorf("update document content: %w", err)
+		}
 	}
 
 	return &ImportResult{
@@ -114,18 +113,10 @@ func (s *ImporterService) ImportFromURL(ctx context.Context, userID, workspaceID
 }
 
 // ImportFromContent imports an article from provided HTML content.
-func (s *ImporterService) ImportFromContent(ctx context.Context, userID, workspaceID, title, htmlContent, baseURL string) (*ImportResult, error) {
+func (s *ImporterService) ImportFromContent(ctx context.Context, userID, title, htmlContent, baseURL string) (*ImportResult, error) {
 	// Validate input
 	if htmlContent == "" {
 		return nil, fmt.Errorf("%w: HTML content is required", ErrInvalidInput)
-	}
-	if workspaceID == "" {
-		return nil, fmt.Errorf("%w: workspace ID is required", ErrInvalidInput)
-	}
-
-	// Check permission
-	if err := s.docService.permService.RequireWorkspacePermission(ctx, workspaceID, userID, models.PermissionEdit); err != nil {
-		return nil, err
 	}
 
 	// Extract title if not provided
@@ -142,20 +133,28 @@ func (s *ImporterService) ImportFromContent(ctx context.Context, userID, workspa
 		return nil, fmt.Errorf("convert HTML to Markdown: %w", err)
 	}
 
-	// Process images with the provided base URL
+	// Create document first to get document ID
+	doc, err := s.docService.CreateDocument(ctx, userID, "", title, markdownContent)
+	if err != nil {
+		return nil, fmt.Errorf("create document: %w", err)
+	}
+
+	// Process images with the provided base URL (using document ID)
 	var parsedURL *url.URL
 	if baseURL != "" {
 		parsedURL, _ = url.Parse(baseURL)
 	}
-	markdownContent, err = s.processImages(ctx, userID, workspaceID, markdownContent, parsedURL)
+	markdownContent, err = s.processImages(ctx, userID, doc.ID, markdownContent, parsedURL)
 	if err != nil {
 		return nil, fmt.Errorf("process images: %w", err)
 	}
 
-	// Create document
-	doc, err := s.docService.CreateDocument(ctx, userID, workspaceID, title, markdownContent)
-	if err != nil {
-		return nil, fmt.Errorf("create document: %w", err)
+	// Update document content with image URLs
+	if markdownContent != doc.Content {
+		doc, err = s.docService.UpdateContent(ctx, doc.ID, userID, markdownContent)
+		if err != nil {
+			return nil, fmt.Errorf("update document content: %w", err)
+		}
 	}
 
 	return &ImportResult{
@@ -212,8 +211,8 @@ func (s *ImporterService) extractTitle(html string) string {
 	return ""
 }
 
-// processImages downloads remote images and uploads them as attachments.
-func (s *ImporterService) processImages(ctx context.Context, userID, workspaceID, content string, baseURL *url.URL) (string, error) {
+// processImages downloads remote images and uploads them as attachments to a document.
+func (s *ImporterService) processImages(ctx context.Context, userID, documentID, content string, baseURL *url.URL) (string, error) {
 	// Find all image URLs in the markdown content
 	imageRe := regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
 	matches := imageRe.FindAllStringSubmatchIndex(content, -1)
@@ -271,8 +270,8 @@ func (s *ImporterService) processImages(ctx context.Context, userID, workspaceID
 		}
 		filename := fmt.Sprintf("import_%s%s", uuid.New().String()[:8], ext)
 
-		// Create file path
-		uploadPath := filepath.Join("uploads", workspaceID, filename)
+		// Create file path using document ID
+		uploadPath := filepath.Join("uploads", documentID, filename)
 
 		// Ensure upload directory exists
 		uploadDir := filepath.Dir(uploadPath)
@@ -285,11 +284,14 @@ func (s *ImporterService) processImages(ctx context.Context, userID, workspaceID
 			continue
 		}
 
-		// Create attachment record in database
-		_, err = s.attachSvc.UploadWorkspaceAttachment(
+		// Create attachment record in database (document-level attachment)
+		// Use empty string for workspaceID and ownerID (owner is the uploader)
+		_, err = s.attachSvc.UploadAttachment(
 			ctx,
-			workspaceID,
+			"", // workspaceID - no longer used
+			documentID,
 			userID,
+			userID, // ownerID - the importer is the owner
 			filename,
 			contentType,
 			int64(len(data)),
@@ -302,7 +304,7 @@ func (s *ImporterService) processImages(ctx context.Context, userID, workspaceID
 		}
 
 		// Update the mapping
-		imageMapping[imgURL] = fmt.Sprintf("/uploads/%s/%s", workspaceID, filename)
+		imageMapping[imgURL] = fmt.Sprintf("/uploads/%s/%s", documentID, filename)
 	}
 
 	// Replace image URLs in markdown

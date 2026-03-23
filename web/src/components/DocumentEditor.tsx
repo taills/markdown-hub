@@ -292,7 +292,7 @@ export function DocumentEditor() {
           {activePanel === 'attachments' && (
             <AttachmentPanel
               documentId={document.id}
-              workspaceId={document.workspace_id}
+              workspaceId={document.workspace_id || ''}
               onInsert={handleInsertAttachment}
             />
           )}

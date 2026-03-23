@@ -31,7 +31,6 @@ func NewServer(
 	docSvc *core.DocumentService,
 	snapSvc *core.SnapshotService,
 	permSvc *core.PermissionService,
-	workspaceSvc *core.WorkspaceService,
 	attachSvc *core.AttachmentService,
 	adminSvc *core.AdminService,
 	importerSvc *core.ImporterService,
@@ -52,6 +51,11 @@ func NewServer(
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
 	router.Use(gin.Recovery())
+	router.Use(func(c *gin.Context) {
+		println("DEBUG: received request for path:", c.Request.URL.Path)
+		c.Next()
+		println("DEBUG: finished handling path:", c.Request.URL.Path)
+	})
 	router.Use(LoggerMiddleware()) // Use structured logging middleware
 
 	// Health check endpoints (no auth required)
@@ -60,21 +64,15 @@ func NewServer(
 	router.GET("/ready", healthH.Ready)
 	router.GET("/metrics", healthH.Metrics)
 
-	// Home page data - public endpoint for showing public workspaces and documents
+	// Home page data - public endpoint for showing public documents
 	router.GET("/api/home", func(c *gin.Context) {
-		workspaces, err := workspaceSvc.ListPublicWorkspaces(c.Request.Context())
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch workspaces"})
-			return
-		}
 		documents, err := docSvc.ListGlobalPublicDocuments(c.Request.Context())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch documents"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"workspaces": workspaces,
-			"documents":  documents,
+			"documents": documents,
 		})
 	})
 
@@ -92,9 +90,7 @@ func NewServer(
 	snapH := NewSnapshotHandler(snapSvc)
 	permH := NewPermissionHandler(permSvc, docSvc)
 	attachH := NewAttachmentHandler(attachSvc, docSvc)
-	workspaceH := NewWorkspaceHandler(workspaceSvc)
 	adminH := NewAdminHandler(adminSvc, authSvc)
-	workspaceAttachH := NewWorkspaceAttachmentHandler(attachSvc)
 	importerH := NewImporterHandler(importerSvc)
 	commentH := NewCommentHandler(commentSvc)
 	aiH := NewAIHandler(aiSvc)
@@ -131,6 +127,11 @@ func NewServer(
 			auth.GET("/me/complete-status", authMiddleware(), authH.GetCompleteStatus)
 			auth.POST("/complete-profile", authH.CompleteProfile)
 		}
+
+		// Workspace routes (stub - workspaces concept removed, returns empty array for backward compatibility)
+		api.GET("/workspaces", authMiddleware(), func(c *gin.Context) {
+			c.JSON(http.StatusOK, []interface{}{})
+		})
 
 		// Document routes with optional auth for public access
 		docs := api.Group("/documents")
@@ -207,37 +208,6 @@ func NewServer(
 		{
 			ai.GET("/conversations/:conversationId/messages", aiH.GetMessages)
 			ai.DELETE("/conversations/:conversationId", aiH.DeleteConversation)
-		}
-
-		// Workspace routes
-		workspaces := api.Group("/workspaces")
-		{
-			// Public routes
-			workspaces.GET("/:id", optionalAuthMiddleware(), workspaceH.Get)
-			workspaces.GET("/:id/documents", optionalAuthMiddleware(), docH.ListPublicByWorkspace)
-
-			// Protected routes
-			workspaces.GET("", authMiddleware(), workspaceH.List)
-			workspaces.POST("", authMiddleware(), workspaceH.Create)
-			workspaces.PATCH("/reorder", authMiddleware(), workspaceH.Reorder)
-			workspaces.PATCH("/:id", authMiddleware(), workspaceH.Update)
-			workspaces.PATCH("/:id/public", authMiddleware(), workspaceH.SetPublicStatus)
-			workspaces.DELETE("/:id", authMiddleware(), workspaceH.DeleteWorkspace)
-			workspaces.GET("/:id/members", authMiddleware(), workspaceH.ListMembers)
-			workspaces.PUT("/:id/members", authMiddleware(), workspaceH.SetMember)
-			workspaces.DELETE("/:id/members/:userId", authMiddleware(), workspaceH.DeleteMember)
-
-			// Workspace attachment routes
-			workspaces.POST("/:id/attachments", authMiddleware(), workspaceAttachH.Upload)
-			workspaces.GET("/:id/attachments", authMiddleware(), workspaceAttachH.List)
-			workspaces.DELETE("/:id/attachments/:attachmentId", authMiddleware(), workspaceAttachH.Delete)
-		}
-
-		// Standalone workspace attachment routes
-		workspaceAttachments := api.Group("/workspace-attachments").Use(authMiddleware())
-		{
-			workspaceAttachments.GET("/:id/download", workspaceAttachH.Download)
-			workspaceAttachments.DELETE("/:id", workspaceAttachH.Delete)
 		}
 
 		// User profile routes

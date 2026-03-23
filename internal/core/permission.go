@@ -34,59 +34,6 @@ func levelValue(l models.PermissionLevel) int {
 	return 0
 }
 
-// RequireWorkspacePermission returns ErrUnauthorized if userID does not have
-// at least the requested level on workspaceID. The workspace owner always passes.
-// Admin users are treated as superusers and always pass.
-func (s *PermissionService) RequireWorkspacePermission(
-	ctx context.Context,
-	workspaceID, userID string,
-	required models.PermissionLevel,
-) error {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return fmt.Errorf("invalid user ID: %w", err)
-	}
-
-	// Check if user is admin (superuser); if so, grant access
-	user, err := s.db.GetUserByID(ctx, userUUID)
-	if err == nil && user.IsAdmin {
-		return nil
-	}
-	if err != nil && !errors.Is(err, store.ErrNotFound) {
-		return fmt.Errorf("check admin status: %w", err)
-	}
-
-	wsUUID, err := uuid.Parse(workspaceID)
-	if err != nil {
-		return fmt.Errorf("invalid workspace ID: %w", err)
-	}
-
-	ws, err := s.db.GetWorkspaceByID(ctx, wsUUID)
-	if errors.Is(err, store.ErrNotFound) {
-		return fmt.Errorf("%w: workspace not found", ErrUnauthorized)
-	}
-	if err != nil {
-		return fmt.Errorf("get workspace: %w", err)
-	}
-	if userUUID == ws.OwnerID {
-		return nil
-	}
-	member, err := s.db.GetWorkspaceMember(ctx, store.GetWorkspaceMemberParams{
-		WorkspaceID: wsUUID,
-		UserID:      userUUID,
-	})
-	if errors.Is(err, store.ErrNotFound) {
-		return fmt.Errorf("%w: no access to workspace %s", ErrUnauthorized, workspaceID)
-	}
-	if err != nil {
-		return fmt.Errorf("get workspace member: %w", err)
-	}
-	if levelValue(models.PermissionLevel(member.Level)) < levelValue(required) {
-		return fmt.Errorf("%w: need %s permission, have %s", ErrUnauthorized, required, member.Level)
-	}
-	return nil
-}
-
 // RequireDocumentPermission returns ErrUnauthorized if userID does not have
 // at least the requested level on documentID. The owner always passes.
 // Admin users are treated as superusers and always pass.
@@ -212,15 +159,11 @@ func changedHeadings(oldContent, newContent string, oldSecs, newSecs []models.He
 // SetDocumentPermission grants or updates a user's document-level permission.
 func (s *PermissionService) SetDocumentPermission(
 	ctx context.Context,
-	workspaceID, documentID, callerID, ownerID, targetUserID string,
+	documentID, callerID, ownerID, targetUserID string,
 	level models.PermissionLevel,
 ) (*models.DocumentPermission, error) {
-	if err := s.requireWorkspaceOrDocumentPermission(ctx, workspaceID, documentID, callerID, ownerID, models.PermissionManage); err != nil {
+	if err := s.RequireDocumentPermission(ctx, documentID, callerID, ownerID, models.PermissionManage); err != nil {
 		return nil, err
-	}
-	wsUUID, err := uuid.Parse(workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid workspace ID: %w", err)
 	}
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
@@ -229,13 +172,6 @@ func (s *PermissionService) SetDocumentPermission(
 	targetUUID, err := uuid.Parse(targetUserID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid target user ID: %w", err)
-	}
-
-	if _, err := s.db.GetWorkspaceMember(ctx, store.GetWorkspaceMemberParams{
-		WorkspaceID: wsUUID,
-		UserID:      targetUUID,
-	}); err != nil {
-		return nil, fmt.Errorf("target user not in workspace")
 	}
 
 	perm, err := s.db.UpsertDocumentPermission(ctx, store.UpsertDocumentPermissionParams{
@@ -259,9 +195,9 @@ func (s *PermissionService) SetDocumentPermission(
 // RemoveDocumentPermission revokes a user's document-level permission.
 func (s *PermissionService) RemoveDocumentPermission(
 	ctx context.Context,
-	workspaceID, documentID, callerID, ownerID, targetUserID string,
+	documentID, callerID, ownerID, targetUserID string,
 ) error {
-	if err := s.requireWorkspaceOrDocumentPermission(ctx, workspaceID, documentID, callerID, ownerID, models.PermissionManage); err != nil {
+	if err := s.RequireDocumentPermission(ctx, documentID, callerID, ownerID, models.PermissionManage); err != nil {
 		return err
 	}
 	docUUID, err := uuid.Parse(documentID)
@@ -282,15 +218,11 @@ func (s *PermissionService) RemoveDocumentPermission(
 // SetHeadingPermission grants fine-grained heading-level permission.
 func (s *PermissionService) SetHeadingPermission(
 	ctx context.Context,
-	workspaceID, documentID, callerID, ownerID, targetUserID, headingAnchor string,
+	documentID, callerID, ownerID, targetUserID, headingAnchor string,
 	level models.PermissionLevel,
 ) (*models.HeadingPermission, error) {
-	if err := s.requireWorkspaceOrDocumentPermission(ctx, workspaceID, documentID, callerID, ownerID, models.PermissionManage); err != nil {
+	if err := s.RequireDocumentPermission(ctx, documentID, callerID, ownerID, models.PermissionManage); err != nil {
 		return nil, err
-	}
-	wsUUID, err := uuid.Parse(workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid workspace ID: %w", err)
 	}
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
@@ -299,13 +231,6 @@ func (s *PermissionService) SetHeadingPermission(
 	targetUUID, err := uuid.Parse(targetUserID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid target user ID: %w", err)
-	}
-
-	if _, err := s.db.GetWorkspaceMember(ctx, store.GetWorkspaceMemberParams{
-		WorkspaceID: wsUUID,
-		UserID:      targetUUID,
-	}); err != nil {
-		return nil, fmt.Errorf("target user not in workspace")
 	}
 
 	perm, err := s.db.UpsertHeadingPermission(ctx, store.UpsertHeadingPermissionParams{
@@ -357,15 +282,11 @@ func (s *PermissionService) ListPermissions(ctx context.Context, documentID stri
 // SetDocumentPermissionByUsername grants or updates a user's document-level permission using their username.
 func (s *PermissionService) SetDocumentPermissionByUsername(
 	ctx context.Context,
-	workspaceID, documentID, callerID, ownerID, targetUsername string,
+	documentID, callerID, ownerID, targetUsername string,
 	level models.PermissionLevel,
 ) (*models.DocumentPermission, error) {
-	if err := s.requireWorkspaceOrDocumentPermission(ctx, workspaceID, documentID, callerID, ownerID, models.PermissionManage); err != nil {
+	if err := s.RequireDocumentPermission(ctx, documentID, callerID, ownerID, models.PermissionManage); err != nil {
 		return nil, err
-	}
-	wsUUID, err := uuid.Parse(workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid workspace ID: %w", err)
 	}
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
@@ -379,13 +300,6 @@ func (s *PermissionService) SetDocumentPermissionByUsername(
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get user by username: %w", err)
-	}
-
-	if _, err := s.db.GetWorkspaceMember(ctx, store.GetWorkspaceMemberParams{
-		WorkspaceID: wsUUID,
-		UserID:      targetUser.ID,
-	}); err != nil {
-		return nil, fmt.Errorf("target user not in workspace")
 	}
 
 	perm, err := s.db.UpsertDocumentPermission(ctx, store.UpsertDocumentPermissionParams{
@@ -424,27 +338,15 @@ func (s *PermissionService) GetDocumentsWithPermission(
 	result := make([]*models.Document, len(docs))
 	for i, doc := range docs {
 		result[i] = &models.Document{
-			ID:          doc.ID.String(),
-			WorkspaceID: doc.WorkspaceID.String(),
-			OwnerID:     doc.OwnerID.String(),
-			Title:       doc.Title,
-			Content:     doc.Content,
-			IsPublic:    doc.IsPublic,
-			SortOrder:   int(doc.SortOrder),
-			CreatedAt:   doc.CreatedAt,
-			UpdatedAt:   doc.UpdatedAt,
+			ID:        doc.ID.String(),
+			OwnerID:   doc.OwnerID.String(),
+			Title:     doc.Title,
+			Content:   doc.Content,
+			IsPublic:  doc.IsPublic,
+			SortOrder: int(doc.SortOrder),
+			CreatedAt: doc.CreatedAt,
+			UpdatedAt: doc.UpdatedAt,
 		}
 	}
 	return result, nil
-}
-
-func (s *PermissionService) requireWorkspaceOrDocumentPermission(
-	ctx context.Context,
-	workspaceID, documentID, userID, ownerID string,
-	required models.PermissionLevel,
-) error {
-	if err := s.RequireWorkspacePermission(ctx, workspaceID, userID, required); err == nil {
-		return nil
-	}
-	return s.RequireDocumentPermission(ctx, documentID, userID, ownerID, required)
 }

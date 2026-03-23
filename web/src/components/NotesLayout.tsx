@@ -1012,7 +1012,7 @@ export function NotesLayout() {
                       doc={doc}
                       isActive={id === doc.id}
                       isOwner={doc.owner_id === user?.id}
-                      workspaceName={workspaceMap.get(doc.workspace_id)?.name ?? t('nav.workspace')}
+                      workspaceName={doc.workspace_id ? workspaceMap.get(doc.workspace_id)?.name ?? t('nav.workspace') : t('nav.workspace')}
                       locale={i18n.language}
                       onNavigate={() => navigate(`/documents/${doc.id}`)}
                       onDelete={() => handleDeleteDocument(doc)}
@@ -1086,7 +1086,7 @@ export function NotesLayout() {
               document
                 ? <AttachmentPanel
                     documentId={document.id}
-                    workspaceId={document.workspace_id}
+                    workspaceId={document.workspace_id || ''}
                     onInsert={handleInsertAttachment}
                   />
                 : <div className="empty-state">{t('doc.attachmentsEmpty')}</div>

@@ -35,45 +35,42 @@ func (s *DocumentService) SetSnapshotConfig(config SnapshotConfig) {
 	s.snapshotConfig = config
 }
 
-// CreateDocument creates a new document in a workspace owned by ownerID.
-func (s *DocumentService) CreateDocument(ctx context.Context, ownerID, workspaceID, title, content string) (*models.Document, error) {
+// CreateDocument creates a new document. parentID can be empty for root documents.
+func (s *DocumentService) CreateDocument(ctx context.Context, ownerID, parentID, title, content string) (*models.Document, error) {
 	if title == "" {
 		return nil, fmt.Errorf("%w: title is required", ErrInvalidInput)
 	}
-	if workspaceID == "" {
-		return nil, fmt.Errorf("%w: workspace is required", ErrInvalidInput)
-	}
-	if err := s.permService.RequireWorkspacePermission(ctx, workspaceID, ownerID, models.PermissionEdit); err != nil {
-		return nil, err
-	}
 
-	// Parse UUIDs
 	ownerUUID, err := uuid.Parse(ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid owner ID: %w", err)
 	}
-	workspaceUUID, err := uuid.Parse(workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid workspace ID: %w", err)
+
+	var parentUUID uuid.NullUUID
+	if parentID != "" {
+		pUUID, err := uuid.Parse(parentID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid parent ID: %w", err)
+		}
+		parentUUID = uuid.NullUUID{UUID: pUUID, Valid: true}
 	}
 
-	// Call sqlc method
 	doc, err := s.db.CreateDocument(ctx, store.CreateDocumentParams{
-		OwnerID:     ownerUUID,
-		Title:       title,
-		Content:     content,
-		WorkspaceID: workspaceUUID,
+		OwnerID:          ownerUUID,
+		ParentID:         parentUUID,
+		Title:            title,
+		Content:          content,
+		Visibility:       "internal",
+		InheritVisibility: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create document: %w", err)
 	}
 
-	// Convert store.Document to *models.Document
 	return storeDocToModel(&doc), nil
 }
 
 // GetDocument retrieves a document, enforcing read permission for userID.
-// If userID is empty and the document is public, anyone can access it.
 func (s *DocumentService) GetDocument(ctx context.Context, documentID, userID string) (*models.Document, error) {
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
@@ -91,7 +88,7 @@ func (s *DocumentService) GetDocument(ctx context.Context, documentID, userID st
 	modelDoc := storeDocToModel(&doc)
 
 	// Allow public access for public documents
-	if modelDoc.IsPublic {
+	if modelDoc.Visibility == "public" || modelDoc.IsPublic {
 		return modelDoc, nil
 	}
 	// Otherwise require authentication and permission
@@ -119,29 +116,18 @@ func (s *DocumentService) ListDocuments(ctx context.Context, ownerID string) ([]
 	return storeDocsToModels(docs), nil
 }
 
-// ListPublicDocumentsByWorkspace returns all public documents in a workspace.
-// It does not require authentication — used for anonymous public workspace views.
+// ListPublicDocumentsByWorkspace returns public documents with given IDs (for backward compatibility).
+// Now deprecated - just returns public documents filtered by workspace root ID.
 func (s *DocumentService) ListPublicDocumentsByWorkspace(ctx context.Context, workspaceID string) ([]*models.Document, error) {
-	workspaceUUID, err := uuid.Parse(workspaceID)
+	// For backward compatibility - workspaceID is now a document ID (root document)
+	docs, err := s.db.ListPublicDocuments(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("invalid workspace ID: %w", err)
+		return nil, fmt.Errorf("list public documents: %w", err)
 	}
-
-	docs, err := s.db.ListDocumentsByWorkspace(ctx, workspaceUUID)
-	if err != nil {
-		return nil, fmt.Errorf("list workspace documents: %w", err)
-	}
-
-	public := make([]*models.Document, 0, len(docs))
-	for i := range docs {
-		if docs[i].IsPublic {
-			public = append(public, storeDocToModel(&docs[i]))
-		}
-	}
-	return public, nil
+	return storeDocsToModels(docs), nil
 }
 
-// ListGlobalPublicDocuments returns all public documents across all workspaces for the home page.
+// ListGlobalPublicDocuments returns all public documents for the home page.
 func (s *DocumentService) ListGlobalPublicDocuments(ctx context.Context) ([]*models.Document, error) {
 	docs, err := s.db.ListPublicDocuments(ctx)
 	if err != nil {
@@ -150,54 +136,19 @@ func (s *DocumentService) ListGlobalPublicDocuments(ctx context.Context) ([]*mod
 	return storeDocsToModels(docs), nil
 }
 
-// ListAllAccessibleDocuments returns all documents that a user can access,
-// including owned documents and documents with granted permissions.
+// ListAllAccessibleDocuments returns all documents that a user can access.
 func (s *DocumentService) ListAllAccessibleDocuments(ctx context.Context, userID string) ([]*models.Document, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user ID: %w", err)
 	}
 
-	// Get workspaces the user is a member of
-	workspaces, err := s.db.ListWorkspacesByMember(ctx, userUUID)
+	docs, err := s.db.ListDocumentsWithPermission(ctx, userUUID)
 	if err != nil {
-		return nil, fmt.Errorf("list workspaces: %w", err)
+		return nil, fmt.Errorf("list documents: %w", err)
 	}
 
-	// Collect all documents from those workspaces
-	docMap := make(map[string]*models.Document)
-	for i := range workspaces {
-		workspaceDocs, err := s.db.ListDocumentsByWorkspace(ctx, workspaces[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("list workspace documents: %w", err)
-		}
-		for j := range workspaceDocs {
-			docID := workspaceDocs[j].ID.String()
-			if _, exists := docMap[docID]; !exists {
-				docMap[docID] = storeDocToModel(&workspaceDocs[j])
-			}
-		}
-	}
-
-	// Add documents with explicit permissions
-	permDocs, err := s.db.ListDocumentsWithPermission(ctx, userUUID)
-	if err != nil {
-		return nil, fmt.Errorf("list documents with permission: %w", err)
-	}
-	for i := range permDocs {
-		docID := permDocs[i].ID.String()
-		if _, exists := docMap[docID]; !exists {
-			docMap[docID] = storeDocToModel(&permDocs[i])
-		}
-	}
-
-	// Convert map to slice
-	result := make([]*models.Document, 0, len(docMap))
-	for _, doc := range docMap {
-		result = append(result, doc)
-	}
-
-	return result, nil
+	return storeDocsToModels(docs), nil
 }
 
 // ListAllAccessibleDocumentsWithPermission returns all accessible documents with their permission levels.
@@ -207,50 +158,18 @@ func (s *DocumentService) ListAllAccessibleDocumentsWithPermission(ctx context.C
 		return nil, err
 	}
 
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
-
+	// Convert []*models.Document to []*models.DocumentListItem
 	items := make([]*models.DocumentListItem, len(docs))
 	for i, doc := range docs {
-		items[i] = &models.DocumentListItem{Document: doc}
-
-		// Add permission level if not owner
-		if doc.OwnerID != userID {
-			// Try workspace membership first
-			workspaceUUID, err := uuid.Parse(doc.WorkspaceID)
-			if err == nil {
-				member, err := s.db.GetWorkspaceMember(ctx, store.GetWorkspaceMemberParams{
-					WorkspaceID: workspaceUUID,
-					UserID:      userUUID,
-				})
-				if err == nil {
-					level := models.PermissionLevel(member.Level)
-					items[i].Permission = &level
-					continue
-				}
-			}
-
-			// Try document permission
-			docUUID, err := uuid.Parse(doc.ID)
-			if err == nil {
-				perm, err := s.db.GetDocumentPermission(ctx, store.GetDocumentPermissionParams{
-					DocumentID: docUUID,
-					UserID:     userUUID,
-				})
-				if err == nil {
-					level := models.PermissionLevel(perm.Level)
-					items[i].Permission = &level
-				}
-			}
+		items[i] = &models.DocumentListItem{
+			Document:   doc,
+			Permission: nil, // nil indicates owner/fully accessible
 		}
 	}
 	return items, nil
 }
 
-// UpdateContent applies a new content string to a document, respecting
-// heading-level permissions, and may trigger a snapshot.
+// UpdateContent applies a new content string to a document.
 func (s *DocumentService) UpdateContent(ctx context.Context, documentID, userID, newContent string) (*models.Document, error) {
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
@@ -268,11 +187,6 @@ func (s *DocumentService) UpdateContent(ctx context.Context, documentID, userID,
 	modelDoc := storeDocToModel(&doc)
 
 	if err := s.requireWorkspaceOrDocumentPermission(ctx, modelDoc, userID, models.PermissionEdit); err != nil {
-		return nil, err
-	}
-
-	// Validate heading-level permissions for the modified sections.
-	if err := s.permService.ValidateHeadingEdits(ctx, documentID, userID, modelDoc.OwnerID, modelDoc.Content, newContent); err != nil {
 		return nil, err
 	}
 
@@ -302,7 +216,7 @@ func (s *DocumentService) UpdateContent(ctx context.Context, documentID, userID,
 	return storeDocToModel(&updatedDoc), nil
 }
 
-// UpdateTitle changes the document title (requires edit permission).
+// UpdateTitle changes the document title.
 func (s *DocumentService) UpdateTitle(ctx context.Context, documentID, userID, title string) (*models.Document, error) {
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
@@ -334,7 +248,7 @@ func (s *DocumentService) UpdateTitle(ctx context.Context, documentID, userID, t
 	return storeDocToModel(&updatedDoc), nil
 }
 
-// DeleteDocument removes a document (owner only).
+// DeleteDocument removes a document.
 func (s *DocumentService) DeleteDocument(ctx context.Context, documentID, userID string) error {
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
@@ -358,7 +272,7 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, documentID, userID
 	return s.db.DeleteDocument(ctx, docUUID)
 }
 
-// SetPublicStatus updates the public status of a document (requires manage permission).
+// SetPublicStatus updates the public status of a document.
 func (s *DocumentService) SetPublicStatus(ctx context.Context, documentID, userID string, isPublic bool) (*models.Document, error) {
 	docUUID, err := uuid.Parse(documentID)
 	if err != nil {
@@ -379,9 +293,15 @@ func (s *DocumentService) SetPublicStatus(ctx context.Context, documentID, userI
 		return nil, err
 	}
 
-	updatedDoc, err := s.db.UpdateDocumentPublicStatus(ctx, store.UpdateDocumentPublicStatusParams{
-		ID:       docUUID,
-		IsPublic: isPublic,
+	visibility := "internal"
+	if isPublic {
+		visibility = "public"
+	}
+
+	updatedDoc, err := s.db.UpdateDocumentVisibility(ctx, store.UpdateDocumentVisibilityParams{
+		ID:                docUUID,
+		Visibility:        visibility,
+		InheritVisibility: false,
 	})
 	if err != nil {
 		return nil, err
@@ -396,7 +316,6 @@ func (s *DocumentService) ReorderDocuments(ctx context.Context, userID string, i
 		return nil
 	}
 
-	// Update each document's sort order
 	for i, id := range ids {
 		docUUID, err := uuid.Parse(id)
 		if err != nil {
@@ -415,15 +334,43 @@ func (s *DocumentService) ReorderDocuments(ctx context.Context, userID string, i
 	return nil
 }
 
+// SearchDocuments searches public documents by query.
+func (s *DocumentService) SearchDocuments(ctx context.Context, query string) ([]*models.DocumentSearchResult, error) {
+	if query == "" {
+		return nil, nil
+	}
+	results, err := s.db.SearchDocuments(ctx, sql.NullString{String: query, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("search documents: %w", err)
+	}
+	return storeSearchResultsToModels(results), nil
+}
+
+// SearchUserDocuments searches documents accessible by the user.
+func (s *DocumentService) SearchUserDocuments(ctx context.Context, userID, query string) ([]*models.DocumentSearchResult, error) {
+	if query == "" {
+		return nil, nil
+	}
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+	results, err := s.db.SearchUserDocuments(ctx, store.SearchUserDocumentsParams{
+		UserID:  userUUID,
+		Column2: sql.NullString{String: query, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("search user documents: %w", err)
+	}
+	return storeSearchUserResultsToModels(results), nil
+}
+
 func (s *DocumentService) requireWorkspaceOrDocumentPermission(
 	ctx context.Context,
 	doc *models.Document,
 	userID string,
 	required models.PermissionLevel,
 ) error {
-	if err := s.permService.RequireWorkspacePermission(ctx, doc.WorkspaceID, userID, required); err == nil {
-		return nil
-	}
 	return s.permService.RequireDocumentPermission(ctx, doc.ID, userID, doc.OwnerID, required)
 }
 
@@ -460,57 +407,36 @@ func abs(x int) int {
 // Type Conversion Helpers
 // -------------------------------------------------------------------------
 
-// SearchDocuments searches public documents by query
-func (s *DocumentService) SearchDocuments(ctx context.Context, query string) ([]*models.DocumentSearchResult, error) {
-	if query == "" {
-		return nil, nil
-	}
-	results, err := s.db.SearchDocuments(ctx, sql.NullString{String: query, Valid: true})
-	if err != nil {
-		return nil, fmt.Errorf("search documents: %w", err)
-	}
-	return storeSearchResultsToModels(results), nil
-}
-
-// SearchUserDocuments searches documents accessible by the user
-func (s *DocumentService) SearchUserDocuments(ctx context.Context, userID, query string) ([]*models.DocumentSearchResult, error) {
-	if query == "" {
-		return nil, nil
-	}
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
-	results, err := s.db.SearchUserDocuments(ctx, store.SearchUserDocumentsParams{
-		UserID:  userUUID,
-		Column2: sql.NullString{String: query, Valid: true},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("search user documents: %w", err)
-	}
-	return storeSearchUserResultsToModels(results), nil
-}
-
 // storeDocToModel converts a store.Document to *models.Document
 func storeDocToModel(d *store.Document) *models.Document {
-	return &models.Document{
-		ID:          d.ID.String(),
-		WorkspaceID: d.WorkspaceID.String(),
-		OwnerID:     d.OwnerID.String(),
-		Title:       d.Title,
-		Content:     d.Content,
-		IsPublic:    d.IsPublic,
-		SortOrder:   int(d.SortOrder),
-		CreatedAt:   d.CreatedAt,
-		UpdatedAt:   d.UpdatedAt,
+	doc := &models.Document{
+		ID:                 d.ID.String(),
+		OwnerID:            d.OwnerID.String(),
+		Title:              d.Title,
+		Content:            d.Content,
+		Visibility:         d.Visibility,
+		InheritVisibility:  d.InheritVisibility,
+		IsPublic:           d.IsPublic,
+		SortOrder:          int(d.SortOrder),
+		CreatedAt:          d.CreatedAt,
+		UpdatedAt:          d.UpdatedAt,
 	}
+	if d.ParentID.Valid {
+		s := d.ParentID.UUID.String()
+		doc.ParentID = &s
+	}
+	return doc
 }
 
 // storeDocsToModels converts []store.Document to []*models.Document
 func storeDocsToModels(docs []store.Document) []*models.Document {
 	result := make([]*models.Document, len(docs))
 	for i := range docs {
-		result[i] = storeDocToModel(&docs[i])
+		doc := storeDocToModel(&docs[i])
+		if doc == nil {
+			continue
+		}
+		result[i] = doc
 	}
 	return result
 }
@@ -520,16 +446,16 @@ func storeSearchResultsToModels(rows []store.SearchDocumentsRow) []*models.Docum
 	result := make([]*models.DocumentSearchResult, len(rows))
 	for i, r := range rows {
 		result[i] = &models.DocumentSearchResult{
-			ID:            r.ID.String(),
-			Title:         r.Title,
-			Content:       r.Content,
-			WorkspaceID:   r.WorkspaceID.String(),
-			OwnerID:       r.OwnerID.String(),
-			IsPublic:      r.IsPublic,
-			CreatedAt:     r.CreatedAt,
-			UpdatedAt:     r.UpdatedAt,
-			SortOrder:     int(r.SortOrder),
-			WorkspaceName: r.WorkspaceName.String,
+			ID:        r.ID.String(),
+			Title:     r.Title,
+			Content:   r.Content,
+			OwnerID:   r.OwnerID.String(),
+			IsPublic:  r.IsPublic,
+			SortOrder: int(r.SortOrder),
+		}
+		if r.ParentID.Valid {
+			s := r.ParentID.UUID.String()
+			result[i].ParentID = &s
 		}
 	}
 	return result
@@ -540,16 +466,12 @@ func storeSearchUserResultsToModels(rows []store.SearchUserDocumentsRow) []*mode
 	result := make([]*models.DocumentSearchResult, len(rows))
 	for i, r := range rows {
 		result[i] = &models.DocumentSearchResult{
-			ID:            r.ID.String(),
-			Title:         r.Title,
-			Content:       r.Content,
-			WorkspaceID:   r.WorkspaceID.String(),
-			OwnerID:       r.OwnerID.String(),
-			IsPublic:      r.IsPublic,
-			CreatedAt:     r.CreatedAt,
-			UpdatedAt:     r.UpdatedAt,
-			SortOrder:     int(r.SortOrder),
-			WorkspaceName: r.WorkspaceName.String,
+			ID:        r.ID.String(),
+			Title:     r.Title,
+			Content:   r.Content,
+			OwnerID:   r.OwnerID.String(),
+			IsPublic:  r.IsPublic,
+			SortOrder: int(r.SortOrder),
 		}
 	}
 	return result

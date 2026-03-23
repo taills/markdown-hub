@@ -20,10 +20,13 @@ export interface UserStats {
 
 export interface Document {
   id: string;
-  workspace_id: string;
+  parent_id?: string; // parent document ID, nil means root document (new field after migration)
+  workspace_id?: string; // workspace ID (deprecated after migration, kept for compatibility)
   owner_id: string;
   title: string;
   content: string;
+  visibility: 'public' | 'internal'; // new field after migration
+  inherit_visibility: boolean; // new field after migration
   is_public: boolean;
   sort_order: number;
   created_at: string;
@@ -32,10 +35,13 @@ export interface Document {
 
 export interface DocumentListItem {
   id: string;
-  workspace_id: string;
+  parent_id?: string; // parent document ID, nil means root document
+  workspace_id?: string;
   owner_id: string;
   title: string;
   content: string;
+  visibility: 'public' | 'internal';
+  inherit_visibility: boolean;
   is_public: boolean;
   sort_order: number;
   created_at: string;
@@ -43,17 +49,24 @@ export interface DocumentListItem {
   permission?: PermissionLevel; // only present if not owner
 }
 
+export interface DocumentTreeNode {
+  document: Document;
+  children: DocumentTreeNode[];
+}
+
 export interface DocumentSearchResult {
   id: string;
+  parent_id?: string;
   title: string;
   content: string;
-  workspace_id: string;
+  workspace_id?: string;
+  workspace_name?: string; // kept for compatibility
   owner_id: string;
+  visibility: 'public' | 'internal';
   is_public: boolean;
   created_at: string;
   updated_at: string;
   sort_order: number;
-  workspace_name?: string;
 }
 
 export interface Snapshot {
@@ -93,7 +106,7 @@ export interface HeadingSection {
 
 export interface Attachment {
   id: string;
-  workspace_id: string;
+  workspace_id?: string; // deprecated, prefer document_id
   document_id?: string;
   upload_by: string;
   filename: string;

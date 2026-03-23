@@ -18,7 +18,15 @@ func LoggerMiddleware() gin.HandlerFunc {
 		path := c.Request.URL.Path
 		raw := c.Request.URL.RawQuery
 
-		// Process request
+		// Process request with panic recovery
+		defer func() {
+			if r := recover(); r != nil {
+				println("PANIC recovered:", r)
+				c.AbortWithStatus(500)
+				return
+			}
+		}()
+
 		c.Next()
 
 		// Calculate latency

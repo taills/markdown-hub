@@ -133,7 +133,6 @@ For more information, visit: https://github.com/markdownhub/markdownhub
 	adminSvc := core.NewAdminService(db)
 	docSvc := core.NewDocumentService(db, permSvc)
 	snapSvc := core.NewSnapshotService(db, permSvc)
-	workspaceSvc := core.NewWorkspaceService(db, permSvc, adminSvc)
 	attachSvc := core.NewAttachmentService(db, permSvc)
 	importerSvc := core.NewImporterService(db, docSvc, attachSvc)
 	commentSvc := core.NewCommentService(db, permSvc)
@@ -156,7 +155,7 @@ For more information, visit: https://github.com/markdownhub/markdownhub
 		logger.Info("Static files embedded successfully").Send()
 	}
 
-	srv := api.NewServer(db, authSvc, socialSvc, userSvc, docSvc, snapSvc, permSvc, workspaceSvc, attachSvc, adminSvc, importerSvc, commentSvc, aiSvc, []byte(cfg.GetJWTSecret()), staticFS)
+	srv := api.NewServer(db, authSvc, socialSvc, userSvc, docSvc, snapSvc, permSvc, attachSvc, adminSvc, importerSvc, commentSvc, aiSvc, []byte(cfg.GetJWTSecret()), staticFS)
 
 	httpServer := &http.Server{
 		Addr:         *addr,

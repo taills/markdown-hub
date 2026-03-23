@@ -35,30 +35,33 @@ type UserStats struct {
 }
 
 // Document is the top-level writable unit.
+// Documents form a tree structure via parent_id (nil parent_id = root document)
 type Document struct {
-	ID          string    `json:"id"`
-	WorkspaceID string    `json:"workspace_id"`
-	OwnerID     string    `json:"owner_id"`
-	Title       string    `json:"title"`
-	Content     string    `json:"content"`
-	IsPublic    bool      `json:"is_public"`
-	SortOrder   int       `json:"sort_order"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID               string    `json:"id"`
+	ParentID         *string   `json:"parent_id,omitempty"`     // parent document ID, nil = root
+	OwnerID          string    `json:"owner_id"`
+	Title            string    `json:"title"`
+	Content          string    `json:"content"`
+	Visibility       string    `json:"visibility"`               // "public" or "internal"
+	InheritVisibility bool      `json:"inherit_visibility"`      // inherit parent's visibility if true
+	IsPublic         bool      `json:"is_public"`              // deprecated, use Visibility
+	SortOrder        int       `json:"sort_order"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-// DocumentSearchResult represents a document search result with workspace name
+// DocumentSearchResult represents a document search result
 type DocumentSearchResult struct {
 	ID            string    `json:"id"`
+	ParentID      *string   `json:"parent_id,omitempty"`
 	Title         string    `json:"title"`
 	Content       string    `json:"content"`
-	WorkspaceID   string    `json:"workspace_id"`
 	OwnerID       string    `json:"owner_id"`
+	Visibility    string    `json:"visibility"`
 	IsPublic      bool      `json:"is_public"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 	SortOrder     int       `json:"sort_order"`
-	WorkspaceName string    `json:"workspace_name,omitempty"`
 }
 
 // Snapshot is an immutable point-in-time copy of a Document.

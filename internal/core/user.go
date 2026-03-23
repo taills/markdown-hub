@@ -126,10 +126,8 @@ func (s *UserService) GetStats(ctx context.Context, userID string) (*models.User
 		return nil, err
 	}
 
-	workspaces, err := s.db.CountWorkspacesByUser(ctx, userUUID)
-	if err != nil {
-		return nil, err
-	}
+	// Workspaces concept removed - set to 0, use owned documents as the count
+	workspaces := 0
 
 	attachments, err := s.db.CountAttachmentsUploaded(ctx, userUUID)
 	if err != nil {

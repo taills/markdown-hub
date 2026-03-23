@@ -78,7 +78,7 @@ func (h *PermissionHandler) Set(c *gin.Context) {
 		return
 	}
 
-	perm, err := h.permService.SetDocumentPermissionByUsername(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, body.Username, level)
+	perm, err := h.permService.SetDocumentPermissionByUsername(c.Request.Context(), docID, callerID, doc.OwnerID, body.Username, level)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -102,7 +102,7 @@ func (h *PermissionHandler) Delete(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
-	if err := h.permService.RemoveDocumentPermission(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID); err != nil {
+	if err := h.permService.RemoveDocumentPermission(c.Request.Context(), docID, callerID, doc.OwnerID, targetUserID); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -135,7 +135,7 @@ func (h *PermissionHandler) SetHeading(c *gin.Context) {
 		respondError(c, err)
 		return
 	}
-	perm, err := h.permService.SetHeadingPermission(c.Request.Context(), doc.WorkspaceID, docID, callerID, doc.OwnerID, targetUserID, headingAnchor, level)
+	perm, err := h.permService.SetHeadingPermission(c.Request.Context(), docID, callerID, doc.OwnerID, targetUserID, headingAnchor, level)
 	if err != nil {
 		respondError(c, err)
 		return

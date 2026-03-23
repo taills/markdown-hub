@@ -81,10 +81,12 @@ func authMiddleware() gin.HandlerFunc {
 		}
 		cl, err := parseToken(tokenString)
 		if err != nil {
+			println("DEBUG authMiddleware: parseToken error =", err.Error())
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
 		}
+		println("DEBUG authMiddleware: userID =", cl.UserID)
 		c.Set("user_id", cl.UserID)
 		c.Next()
 	}

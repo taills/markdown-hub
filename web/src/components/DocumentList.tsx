@@ -341,7 +341,7 @@ export function DocumentList() {
             <li key={doc.id} className="document-item">
               <button className="doc-link" onClick={() => navigate(`/documents/${doc.id}`)}>
                 <span className="doc-title">{doc.title}</span>
-                {showAllWorkspaces && (
+                {showAllWorkspaces && doc.workspace_id && (
                   <span className="doc-workspace">
                     {workspaceMap.get(doc.workspace_id)?.name ?? 'Workspace'}
                   </span>

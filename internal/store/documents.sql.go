@@ -16,9 +16,8 @@ import (
 const countAccessibleDocuments = `-- name: CountAccessibleDocuments :one
 SELECT COUNT(DISTINCT d.id)
 FROM documents d
-LEFT JOIN workspace_members wm ON wm.workspace_id = d.workspace_id AND wm.user_id = $1
 LEFT JOIN document_permissions dp ON dp.document_id = d.id AND dp.user_id = $1
-WHERE wm.user_id IS NOT NULL OR dp.user_id IS NOT NULL
+WHERE d.owner_id = $1 OR dp.user_id IS NOT NULL
 `
 
 func (q *Queries) CountAccessibleDocuments(ctx context.Context, userID uuid.UUID) (int64, error) {
@@ -40,24 +39,30 @@ func (q *Queries) CountOwnedDocuments(ctx context.Context, ownerID uuid.UUID) (i
 }
 
 const createDocument = `-- name: CreateDocument :one
-INSERT INTO documents (owner_id, title, content, workspace_id)
-VALUES ($1, $2, $3, $4)
-RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id
+INSERT INTO documents (owner_id, parent_id, title, content, visibility, inherit_visibility, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility
 `
 
 type CreateDocumentParams struct {
-	OwnerID     uuid.UUID `json:"owner_id"`
-	Title       string    `json:"title"`
-	Content     string    `json:"content"`
-	WorkspaceID uuid.UUID `json:"workspace_id"`
+	OwnerID           uuid.UUID     `json:"owner_id"`
+	ParentID          uuid.NullUUID `json:"parent_id"`
+	Title             string        `json:"title"`
+	Content           string        `json:"content"`
+	Visibility        string        `json:"visibility"`
+	InheritVisibility bool          `json:"inherit_visibility"`
+	SortOrder         int32         `json:"sort_order"`
 }
 
 func (q *Queries) CreateDocument(ctx context.Context, arg CreateDocumentParams) (Document, error) {
 	row := q.db.QueryRowContext(ctx, createDocument,
 		arg.OwnerID,
+		arg.ParentID,
 		arg.Title,
 		arg.Content,
-		arg.WorkspaceID,
+		arg.Visibility,
+		arg.InheritVisibility,
+		arg.SortOrder,
 	)
 	var i Document
 	err := row.Scan(
@@ -69,7 +74,9 @@ func (q *Queries) CreateDocument(ctx context.Context, arg CreateDocumentParams) 
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.WorkspaceID,
+		&i.ParentID,
+		&i.Visibility,
+		&i.InheritVisibility,
 	)
 	return i, err
 }
@@ -84,7 +91,7 @@ func (q *Queries) DeleteDocument(ctx context.Context, id uuid.UUID) error {
 }
 
 const getDocumentByID = `-- name: GetDocumentByID :one
-SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id FROM documents WHERE id = $1
+SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility FROM documents WHERE id = $1
 `
 
 func (q *Queries) GetDocumentByID(ctx context.Context, id uuid.UUID) (Document, error) {
@@ -99,13 +106,102 @@ func (q *Queries) GetDocumentByID(ctx context.Context, id uuid.UUID) (Document, 
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.WorkspaceID,
+		&i.ParentID,
+		&i.Visibility,
+		&i.InheritVisibility,
 	)
 	return i, err
 }
 
+const getDocumentPath = `-- name: GetDocumentPath :many
+WITH RECURSIVE doc_path AS (
+    SELECT d.id, d.parent_id, d.title, 1 as depth
+    FROM documents d
+    WHERE d.id = $1
+    UNION ALL
+    SELECT d.id, d.parent_id, d.title, dp.depth + 1
+    FROM documents d
+    JOIN doc_path dp ON d.id = dp.parent_id
+)
+SELECT id, parent_id, title, depth FROM doc_path ORDER BY depth
+`
+
+type GetDocumentPathRow struct {
+	ID       uuid.UUID     `json:"id"`
+	ParentID uuid.NullUUID `json:"parent_id"`
+	Title    string        `json:"title"`
+	Depth    int32         `json:"depth"`
+}
+
+func (q *Queries) GetDocumentPath(ctx context.Context, id uuid.UUID) ([]GetDocumentPathRow, error) {
+	rows, err := q.db.QueryContext(ctx, getDocumentPath, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetDocumentPathRow{}
+	for rows.Next() {
+		var i GetDocumentPathRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ParentID,
+			&i.Title,
+			&i.Depth,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listChildDocuments = `-- name: ListChildDocuments :many
+SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility FROM documents WHERE parent_id = $1 ORDER BY sort_order, updated_at DESC
+`
+
+func (q *Queries) ListChildDocuments(ctx context.Context, parentID uuid.NullUUID) ([]Document, error) {
+	rows, err := q.db.QueryContext(ctx, listChildDocuments, parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Document{}
+	for rows.Next() {
+		var i Document
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.Title,
+			&i.Content,
+			&i.IsPublic,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ParentID,
+			&i.Visibility,
+			&i.InheritVisibility,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDocumentsByOwner = `-- name: ListDocumentsByOwner :many
-SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id FROM documents WHERE owner_id = $1 ORDER BY updated_at DESC
+SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility FROM documents WHERE owner_id = $1 ORDER BY sort_order, updated_at DESC
 `
 
 func (q *Queries) ListDocumentsByOwner(ctx context.Context, ownerID uuid.UUID) ([]Document, error) {
@@ -126,7 +222,9 @@ func (q *Queries) ListDocumentsByOwner(ctx context.Context, ownerID uuid.UUID) (
 			&i.SortOrder,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.WorkspaceID,
+			&i.ParentID,
+			&i.Visibility,
+			&i.InheritVisibility,
 		); err != nil {
 			return nil, err
 		}
@@ -141,12 +239,15 @@ func (q *Queries) ListDocumentsByOwner(ctx context.Context, ownerID uuid.UUID) (
 	return items, nil
 }
 
-const listDocumentsByWorkspace = `-- name: ListDocumentsByWorkspace :many
-SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id FROM documents WHERE workspace_id = $1 ORDER BY sort_order, updated_at DESC
+const listDocumentsWithPermission = `-- name: ListDocumentsWithPermission :many
+SELECT DISTINCT d.id, d.owner_id, d.title, d.content, d.is_public, d.sort_order, d.created_at, d.updated_at, d.parent_id, d.visibility, d.inherit_visibility
+FROM documents d
+LEFT JOIN document_permissions dp ON dp.document_id = d.id AND dp.user_id = $1
+WHERE d.owner_id = $1 OR dp.user_id IS NOT NULL
 `
 
-func (q *Queries) ListDocumentsByWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]Document, error) {
-	rows, err := q.db.QueryContext(ctx, listDocumentsByWorkspace, workspaceID)
+func (q *Queries) ListDocumentsWithPermission(ctx context.Context, userID uuid.UUID) ([]Document, error) {
+	rows, err := q.db.QueryContext(ctx, listDocumentsWithPermission, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +264,9 @@ func (q *Queries) ListDocumentsByWorkspace(ctx context.Context, workspaceID uuid
 			&i.SortOrder,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.WorkspaceID,
+			&i.ParentID,
+			&i.Visibility,
+			&i.InheritVisibility,
 		); err != nil {
 			return nil, err
 		}
@@ -179,7 +282,7 @@ func (q *Queries) ListDocumentsByWorkspace(ctx context.Context, workspaceID uuid
 }
 
 const listPublicDocuments = `-- name: ListPublicDocuments :many
-SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id FROM documents WHERE is_public = true ORDER BY updated_at DESC LIMIT 20
+SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility FROM documents WHERE visibility = 'public' ORDER BY updated_at DESC LIMIT 20
 `
 
 func (q *Queries) ListPublicDocuments(ctx context.Context) ([]Document, error) {
@@ -200,7 +303,48 @@ func (q *Queries) ListPublicDocuments(ctx context.Context) ([]Document, error) {
 			&i.SortOrder,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.WorkspaceID,
+			&i.ParentID,
+			&i.Visibility,
+			&i.InheritVisibility,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRootDocuments = `-- name: ListRootDocuments :many
+SELECT id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility FROM documents WHERE parent_id IS NULL AND owner_id = $1 ORDER BY sort_order, updated_at DESC
+`
+
+func (q *Queries) ListRootDocuments(ctx context.Context, ownerID uuid.UUID) ([]Document, error) {
+	rows, err := q.db.QueryContext(ctx, listRootDocuments, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Document{}
+	for rows.Next() {
+		var i Document
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.Title,
+			&i.Content,
+			&i.IsPublic,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ParentID,
+			&i.Visibility,
+			&i.InheritVisibility,
 		); err != nil {
 			return nil, err
 		}
@@ -216,27 +360,26 @@ func (q *Queries) ListPublicDocuments(ctx context.Context) ([]Document, error) {
 }
 
 const searchDocuments = `-- name: SearchDocuments :many
-SELECT d.id, d.title, d.content, d.workspace_id, d.owner_id, d.is_public, d.created_at, d.updated_at, d.sort_order,
-       w.name as workspace_name
-FROM documents d
-LEFT JOIN workspaces w ON w.id = d.workspace_id
-WHERE d.is_public = true
-  AND (d.title ILIKE '%' || $1 || '%' OR d.content ILIKE '%' || $1 || '%')
-ORDER BY d.updated_at DESC
+SELECT id, parent_id, title, content, owner_id, visibility, inherit_visibility, is_public, created_at, updated_at, sort_order
+FROM documents
+WHERE visibility = 'public'
+  AND (title ILIKE '%' || $1 || '%' OR content ILIKE '%' || $1 || '%')
+ORDER BY updated_at DESC
 LIMIT 20
 `
 
 type SearchDocumentsRow struct {
-	ID            uuid.UUID      `json:"id"`
-	Title         string         `json:"title"`
-	Content       string         `json:"content"`
-	WorkspaceID   uuid.UUID      `json:"workspace_id"`
-	OwnerID       uuid.UUID      `json:"owner_id"`
-	IsPublic      bool           `json:"is_public"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	SortOrder     int32          `json:"sort_order"`
-	WorkspaceName sql.NullString `json:"workspace_name"`
+	ID                uuid.UUID     `json:"id"`
+	ParentID          uuid.NullUUID `json:"parent_id"`
+	Title             string        `json:"title"`
+	Content           string        `json:"content"`
+	OwnerID           uuid.UUID     `json:"owner_id"`
+	Visibility        string        `json:"visibility"`
+	InheritVisibility bool          `json:"inherit_visibility"`
+	IsPublic          bool          `json:"is_public"`
+	CreatedAt         time.Time     `json:"created_at"`
+	UpdatedAt         time.Time     `json:"updated_at"`
+	SortOrder         int32         `json:"sort_order"`
 }
 
 func (q *Queries) SearchDocuments(ctx context.Context, dollar_1 sql.NullString) ([]SearchDocumentsRow, error) {
@@ -250,15 +393,16 @@ func (q *Queries) SearchDocuments(ctx context.Context, dollar_1 sql.NullString) 
 		var i SearchDocumentsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.ParentID,
 			&i.Title,
 			&i.Content,
-			&i.WorkspaceID,
 			&i.OwnerID,
+			&i.Visibility,
+			&i.InheritVisibility,
 			&i.IsPublic,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SortOrder,
-			&i.WorkspaceName,
 		); err != nil {
 			return nil, err
 		}
@@ -274,13 +418,10 @@ func (q *Queries) SearchDocuments(ctx context.Context, dollar_1 sql.NullString) 
 }
 
 const searchUserDocuments = `-- name: SearchUserDocuments :many
-SELECT d.id, d.title, d.content, d.workspace_id, d.owner_id, d.is_public, d.created_at, d.updated_at, d.sort_order,
-       w.name as workspace_name
+SELECT d.id, d.title, d.content, d.owner_id, d.visibility, d.is_public, d.created_at, d.updated_at, d.sort_order
 FROM documents d
-LEFT JOIN workspaces w ON w.id = d.workspace_id
-LEFT JOIN workspace_members wm ON wm.workspace_id = d.workspace_id
 LEFT JOIN document_permissions dp ON dp.document_id = d.id AND dp.user_id = $1
-WHERE (d.owner_id = $1 OR wm.user_id = $1 OR dp.user_id IS NOT NULL)
+WHERE (d.owner_id = $1 OR dp.user_id IS NOT NULL)
   AND (d.title ILIKE '%' || $2 || '%' OR d.content ILIKE '%' || $2 || '%')
 ORDER BY d.updated_at DESC
 LIMIT 20
@@ -292,16 +433,15 @@ type SearchUserDocumentsParams struct {
 }
 
 type SearchUserDocumentsRow struct {
-	ID            uuid.UUID      `json:"id"`
-	Title         string         `json:"title"`
-	Content       string         `json:"content"`
-	WorkspaceID   uuid.UUID      `json:"workspace_id"`
-	OwnerID       uuid.UUID      `json:"owner_id"`
-	IsPublic      bool           `json:"is_public"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	SortOrder     int32          `json:"sort_order"`
-	WorkspaceName sql.NullString `json:"workspace_name"`
+	ID         uuid.UUID `json:"id"`
+	Title      string    `json:"title"`
+	Content    string    `json:"content"`
+	OwnerID    uuid.UUID `json:"owner_id"`
+	Visibility string    `json:"visibility"`
+	IsPublic   bool      `json:"is_public"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	SortOrder  int32     `json:"sort_order"`
 }
 
 func (q *Queries) SearchUserDocuments(ctx context.Context, arg SearchUserDocumentsParams) ([]SearchUserDocumentsRow, error) {
@@ -317,13 +457,12 @@ func (q *Queries) SearchUserDocuments(ctx context.Context, arg SearchUserDocumen
 			&i.ID,
 			&i.Title,
 			&i.Content,
-			&i.WorkspaceID,
 			&i.OwnerID,
+			&i.Visibility,
 			&i.IsPublic,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SortOrder,
-			&i.WorkspaceName,
 		); err != nil {
 			return nil, err
 		}
@@ -342,7 +481,7 @@ const updateDocumentContent = `-- name: UpdateDocumentContent :one
 UPDATE documents
 SET content = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id
+RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility
 `
 
 type UpdateDocumentContentParams struct {
@@ -362,7 +501,41 @@ func (q *Queries) UpdateDocumentContent(ctx context.Context, arg UpdateDocumentC
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.WorkspaceID,
+		&i.ParentID,
+		&i.Visibility,
+		&i.InheritVisibility,
+	)
+	return i, err
+}
+
+const updateDocumentParent = `-- name: UpdateDocumentParent :one
+UPDATE documents
+SET parent_id = $2, sort_order = $3, updated_at = NOW()
+WHERE id = $1
+RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility
+`
+
+type UpdateDocumentParentParams struct {
+	ID        uuid.UUID     `json:"id"`
+	ParentID  uuid.NullUUID `json:"parent_id"`
+	SortOrder int32         `json:"sort_order"`
+}
+
+func (q *Queries) UpdateDocumentParent(ctx context.Context, arg UpdateDocumentParentParams) (Document, error) {
+	row := q.db.QueryRowContext(ctx, updateDocumentParent, arg.ID, arg.ParentID, arg.SortOrder)
+	var i Document
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Title,
+		&i.Content,
+		&i.IsPublic,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ParentID,
+		&i.Visibility,
+		&i.InheritVisibility,
 	)
 	return i, err
 }
@@ -371,7 +544,7 @@ const updateDocumentPublicStatus = `-- name: UpdateDocumentPublicStatus :one
 UPDATE documents
 SET is_public = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id
+RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility
 `
 
 type UpdateDocumentPublicStatusParams struct {
@@ -391,7 +564,9 @@ func (q *Queries) UpdateDocumentPublicStatus(ctx context.Context, arg UpdateDocu
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.WorkspaceID,
+		&i.ParentID,
+		&i.Visibility,
+		&i.InheritVisibility,
 	)
 	return i, err
 }
@@ -414,7 +589,7 @@ const updateDocumentTitle = `-- name: UpdateDocumentTitle :one
 UPDATE documents
 SET title = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, workspace_id
+RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility
 `
 
 type UpdateDocumentTitleParams struct {
@@ -434,7 +609,41 @@ func (q *Queries) UpdateDocumentTitle(ctx context.Context, arg UpdateDocumentTit
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.WorkspaceID,
+		&i.ParentID,
+		&i.Visibility,
+		&i.InheritVisibility,
+	)
+	return i, err
+}
+
+const updateDocumentVisibility = `-- name: UpdateDocumentVisibility :one
+UPDATE documents
+SET visibility = $2, inherit_visibility = $3, updated_at = NOW()
+WHERE id = $1
+RETURNING id, owner_id, title, content, is_public, sort_order, created_at, updated_at, parent_id, visibility, inherit_visibility
+`
+
+type UpdateDocumentVisibilityParams struct {
+	ID                uuid.UUID `json:"id"`
+	Visibility        string    `json:"visibility"`
+	InheritVisibility bool      `json:"inherit_visibility"`
+}
+
+func (q *Queries) UpdateDocumentVisibility(ctx context.Context, arg UpdateDocumentVisibilityParams) (Document, error) {
+	row := q.db.QueryRowContext(ctx, updateDocumentVisibility, arg.ID, arg.Visibility, arg.InheritVisibility)
+	var i Document
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Title,
+		&i.Content,
+		&i.IsPublic,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ParentID,
+		&i.Visibility,
+		&i.InheritVisibility,
 	)
 	return i, err
 }

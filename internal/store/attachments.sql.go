@@ -23,24 +23,22 @@ func (q *Queries) CountAttachmentsUploaded(ctx context.Context, uploadBy uuid.UU
 }
 
 const createAttachment = `-- name: CreateAttachment :one
-INSERT INTO attachments (workspace_id, document_id, upload_by, filename, file_type, file_size, file_path)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, document_id, upload_by, filename, file_type, file_size, file_path, created_at, workspace_id
+INSERT INTO attachments (document_id, upload_by, filename, file_type, file_size, file_path)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, document_id, upload_by, filename, file_type, file_size, file_path, created_at
 `
 
 type CreateAttachmentParams struct {
-	WorkspaceID uuid.UUID     `json:"workspace_id"`
-	DocumentID  uuid.NullUUID `json:"document_id"`
-	UploadBy    uuid.UUID     `json:"upload_by"`
-	Filename    string        `json:"filename"`
-	FileType    string        `json:"file_type"`
-	FileSize    int64         `json:"file_size"`
-	FilePath    string        `json:"file_path"`
+	DocumentID uuid.NullUUID `json:"document_id"`
+	UploadBy   uuid.UUID     `json:"upload_by"`
+	Filename   string        `json:"filename"`
+	FileType   string        `json:"file_type"`
+	FileSize   int64         `json:"file_size"`
+	FilePath   string        `json:"file_path"`
 }
 
 func (q *Queries) CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error) {
 	row := q.db.QueryRowContext(ctx, createAttachment,
-		arg.WorkspaceID,
 		arg.DocumentID,
 		arg.UploadBy,
 		arg.Filename,
@@ -58,7 +56,6 @@ func (q *Queries) CreateAttachment(ctx context.Context, arg CreateAttachmentPara
 		&i.FileSize,
 		&i.FilePath,
 		&i.CreatedAt,
-		&i.WorkspaceID,
 	)
 	return i, err
 }
@@ -112,7 +109,7 @@ func (q *Queries) DeleteAttachmentReference(ctx context.Context, arg DeleteAttac
 }
 
 const getAttachmentByID = `-- name: GetAttachmentByID :one
-SELECT id, document_id, upload_by, filename, file_type, file_size, file_path, created_at, workspace_id FROM attachments WHERE id = $1
+SELECT id, document_id, upload_by, filename, file_type, file_size, file_path, created_at FROM attachments WHERE id = $1
 `
 
 func (q *Queries) GetAttachmentByID(ctx context.Context, id uuid.UUID) (Attachment, error) {
@@ -127,13 +124,12 @@ func (q *Queries) GetAttachmentByID(ctx context.Context, id uuid.UUID) (Attachme
 		&i.FileSize,
 		&i.FilePath,
 		&i.CreatedAt,
-		&i.WorkspaceID,
 	)
 	return i, err
 }
 
 const getUnreferencedAttachments = `-- name: GetUnreferencedAttachments :many
-SELECT a.id, a.document_id, a.upload_by, a.filename, a.file_type, a.file_size, a.file_path, a.created_at, a.workspace_id FROM attachments a
+SELECT a.id, a.document_id, a.upload_by, a.filename, a.file_type, a.file_size, a.file_path, a.created_at FROM attachments a
 LEFT JOIN attachment_references ar ON a.id = ar.attachment_id
 WHERE a.document_id = $1 AND ar.id IS NULL
 `
@@ -156,7 +152,6 @@ func (q *Queries) GetUnreferencedAttachments(ctx context.Context, documentID uui
 			&i.FileSize,
 			&i.FilePath,
 			&i.CreatedAt,
-			&i.WorkspaceID,
 		); err != nil {
 			return nil, err
 		}
@@ -240,7 +235,7 @@ func (q *Queries) ListDocumentAttachmentReferences(ctx context.Context, document
 }
 
 const listDocumentAttachments = `-- name: ListDocumentAttachments :many
-SELECT id, document_id, upload_by, filename, file_type, file_size, file_path, created_at, workspace_id FROM attachments WHERE document_id = $1 ORDER BY created_at DESC
+SELECT id, document_id, upload_by, filename, file_type, file_size, file_path, created_at FROM attachments WHERE document_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListDocumentAttachments(ctx context.Context, documentID uuid.NullUUID) ([]Attachment, error) {
@@ -261,44 +256,6 @@ func (q *Queries) ListDocumentAttachments(ctx context.Context, documentID uuid.N
 			&i.FileSize,
 			&i.FilePath,
 			&i.CreatedAt,
-			&i.WorkspaceID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listWorkspaceAttachments = `-- name: ListWorkspaceAttachments :many
-SELECT id, document_id, upload_by, filename, file_type, file_size, file_path, created_at, workspace_id FROM attachments WHERE workspace_id = $1 ORDER BY created_at DESC
-`
-
-func (q *Queries) ListWorkspaceAttachments(ctx context.Context, workspaceID uuid.UUID) ([]Attachment, error) {
-	rows, err := q.db.QueryContext(ctx, listWorkspaceAttachments, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Attachment{}
-	for rows.Next() {
-		var i Attachment
-		if err := rows.Scan(
-			&i.ID,
-			&i.DocumentID,
-			&i.UploadBy,
-			&i.Filename,
-			&i.FileType,
-			&i.FileSize,
-			&i.FilePath,
-			&i.CreatedAt,
-			&i.WorkspaceID,
 		); err != nil {
 			return nil, err
 		}

@@ -127,7 +127,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 	// Create attachment record in database
 	attachment, err := h.attachSvc.UploadAttachment(
 		c.Request.Context(),
-		doc.WorkspaceID,
+		"", // workspaceID - no longer used, empty string skips workspace permission check
 		docID,
 		userID,
 		doc.OwnerID,
@@ -162,7 +162,7 @@ func (h *AttachmentHandler) List(c *gin.Context) {
 		return
 	}
 
-	attachments, err := h.attachSvc.ListAttachments(c.Request.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
+	attachments, err := h.attachSvc.ListAttachments(c.Request.Context(), "", docID, userID, doc.OwnerID)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -227,7 +227,7 @@ func (h *AttachmentHandler) GetUnreferenced(c *gin.Context) {
 		return
 	}
 
-	attachments, err := h.attachSvc.GetUnreferencedAttachments(c.Request.Context(), doc.WorkspaceID, docID, userID, doc.OwnerID)
+	attachments, err := h.attachSvc.GetUnreferencedAttachments(c.Request.Context(), "", docID, userID, doc.OwnerID)
 	if err != nil {
 		respondError(c, err)
 		return

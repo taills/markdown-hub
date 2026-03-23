@@ -3,10 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { homeService, siteService, documentService } from '@/services/api';
-import type { Document, Workspace, DocumentSearchResult } from '@/types';
+import type { Document, DocumentSearchResult } from '@/types';
 
 interface HomeData {
-  workspaces: Workspace[];
   documents: Document[];
 }
 
@@ -148,7 +147,7 @@ export function HomePage() {
     );
   }
 
-  const hasPublicContent = (data?.workspaces.length ?? 0) > 0 || (data?.documents.length ?? 0) > 0;
+  const hasPublicContent = (data?.documents.length ?? 0) > 0;
 
   return (
     <div className="blog-home">
@@ -251,51 +250,6 @@ export function HomePage() {
           </div>
         ) : (
           <>
-            {/* 工作空间栏目区 */}
-            {data?.workspaces && data.workspaces.length > 0 && (
-              <section className="blog-section">
-                <div className="blog-section-header">
-                  <h2 className="blog-section-title">
-                    {t('home.publicWorkspaces', '栏目')}
-                  </h2>
-                  <p className="blog-section-subtitle">
-                    {t('home.exploreCategories', '探索不同主题的内容分类')}
-                  </p>
-                </div>
-
-                <div className="blog-categories">
-                  {data.workspaces.map((ws) => (
-                    <Link
-                      key={ws.id}
-                      to={`/workspaces/${ws.id}/view`}
-                      className="blog-category-card"
-                    >
-                      <div className="blog-category-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="blog-category-name">{ws.name}</h3>
-                      <div className="blog-category-meta">
-                        <span className="blog-category-date">
-                          {new Date(ws.updated_at).toLocaleDateString('zh-CN', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-
             {/* 公开文章列表 */}
             {data?.documents && data.documents.length > 0 && (
               <section className="blog-section">

@@ -6,7 +6,6 @@ const API_BASE_URL = '/api';
 // ---- Home Page ----
 
 export interface HomeData {
-  workspaces: Workspace[];
   documents: Document[];
 }
 
@@ -131,10 +130,10 @@ export const documentService = {
     }
     return res.text();
   },
-  create: (title: string, content = '', workspaceId: string) =>
+  create: (title: string, content = '', _workspaceId?: string) =>
     request<Document>('/documents', {
       method: 'POST',
-      body: JSON.stringify({ title, content, workspace_id: workspaceId }),
+      body: JSON.stringify({ title, content }),
     }),
   updateContent: (id: string, content: string) =>
     request<Document>(`/documents/${id}/content`, {

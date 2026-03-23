@@ -147,46 +147,6 @@ func (q *Queries) ListDocumentPermissions(ctx context.Context, documentID uuid.U
 	return items, nil
 }
 
-const listDocumentsWithPermission = `-- name: ListDocumentsWithPermission :many
-SELECT DISTINCT d.id, d.owner_id, d.title, d.content, d.is_public, d.sort_order, d.created_at, d.updated_at, d.workspace_id FROM documents d
-JOIN document_permissions dp ON d.id = dp.document_id
-WHERE dp.user_id = $1
-ORDER BY d.updated_at DESC
-`
-
-func (q *Queries) ListDocumentsWithPermission(ctx context.Context, userID uuid.UUID) ([]Document, error) {
-	rows, err := q.db.QueryContext(ctx, listDocumentsWithPermission, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Document{}
-	for rows.Next() {
-		var i Document
-		if err := rows.Scan(
-			&i.ID,
-			&i.OwnerID,
-			&i.Title,
-			&i.Content,
-			&i.IsPublic,
-			&i.SortOrder,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.WorkspaceID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listHeadingPermissions = `-- name: ListHeadingPermissions :many
 SELECT id, document_id, user_id, heading_anchor, level, created_at FROM heading_permissions
 WHERE document_id = $1 AND user_id = $2

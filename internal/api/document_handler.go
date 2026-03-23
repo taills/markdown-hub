@@ -51,11 +51,18 @@ func (h *DocumentHandler) List(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 		return
 	}
+
+	// Debug log
+	println("DEBUG List: userID =", userID)
+
 	items, err := h.docService.ListAllAccessibleDocumentsWithPermission(c.Request.Context(), userID)
 	if err != nil {
+		println("DEBUG List: error =", err.Error())
 		respondError(c, err)
 		return
 	}
+
+	println("DEBUG List: items count =", len(items))
 	c.JSON(http.StatusOK, items)
 }
 

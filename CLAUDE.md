@@ -1,297 +1,112 @@
-# CLAUDE.md
+# Claude Code 项目配置 - MarkdownHub
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## 项目概述
 
-## Project Overview
+MarkdownHub 是一个面向研发团队、技术写作者和知识管理者的**实时同步协作 Markdown 编辑平台**，支持多人实时编辑、标题级权限控制和私有化部署。
 
-**MarkdownHub** is a real-time collaborative, Git-native writing environment for Markdown documents. It combines real-time WebSocket collaboration with automatic version control snapshots and granular heading-level permissions.
+## 技术栈
 
-**Recent Updates:**
-- **博客风格首页** (2024-03-13): 首页重新设计为现代化博客风格,工作空间以栏目形式展示,公开文档显示标题、摘要(前200字)和阅读时长。详见 [docs/blog-homepage-design.md](docs/blog-homepage-design.md)
+### 后端
+- **Go 1.21+** + **Gin** 框架
+- **gorilla/websocket** - WebSocket 实时协作
+- **sqlc** - 类型安全 SQL 代码生成
+- **golang-migrate** - 数据库迁移
 
-**Design Philosophy:**
-- Markdown-native: plain text Markdown is the source of truth
-- Real-time collaboration via WebSocket with strong data consistency
-- Git-like version control with heuristic-based automatic snapshots
-- Heading-level granular permissions
-- Modern blog-style public homepage for content discovery
+### 前端
+- **React 18** + **TypeScript 5**
+- **Vite 5** - 构建工具
+- **Tailwind CSS 3** - 样式框架
+- **Zustand 4** - 状态管理
+- **TipTap 2** - 编辑器
+- **Yjs 13** - 实时协作
 
-**Tech Stack:**
-- Backend: Go (Gin framework, WebSocket, PostgreSQL with pgvector)
-- Frontend: React 18 + TypeScript (Vite build system)
-- Database: PostgreSQL with sqlc for type-safe queries
-- Deployment: Single binary with embedded frontend (go:embed)
+### 数据库
+- **PostgreSQL 15+** + **pgvector** - 向量检索
 
-## Essential Commands
+### 部署
+- Docker 容器化
+- 单二进制交付（go:embed 前端）
 
-### Backend Development
+## 开发规范
 
-```bash
-# Build and run with Docker Compose (recommended)
-docker-compose up --build
+### Go 后端
+- 使用 `sqlc` 生成类型安全 SQL 代码
+- 服务层负责业务逻辑，Handler 层只做请求处理
+- 错误处理使用自定义错误类型（参考 TDD.md 第5章）
+- 所有敏感配置通过环境变量注入
+- API 路径统一使用 `/api/v1/` 前缀
 
-# Generate sqlc code after modifying db/queries/*.sql
-sqlc generate
+### React 前端
+- 组件遵循设计系统（参考 DESIGN.md）
+- 使用 Tailwind CSS 原子化样式
+- 状态管理使用 Zustand
+- 编辑器使用 TipTap + Yjs 实现协作
 
-# Run database migrations
-migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5432/markdownhub?sslmode=disable" up
+### 前端调试
+- **使用 Playwright MCP** 进行浏览器动态调试
+- 通过 `mcp__playwright__browser_navigate` 打开页面
+- 使用 `mcp__playwright__browser_snapshot` 获取页面快照
+- 使用 `mcp__playwright__browser_evaluate` 执行 JavaScript 调试
+- 使用 `mcp__playwright__browser_click/type` 模拟用户交互
+- 截图使用 `mcp__playwright__browser_take_screenshot`
 
-# Build the Go binary (includes embedded frontend)
-go build -o markdownhub ./cmd/
+### MCP 工具使用
+- **积极使用 context7 MCP** 查询第三方库文档，避免版本与文档不一致
+  - 使用 `mcp__context7__resolve-library-id` 解析库
+  - 使用 `mcp__context7__query-docs` 查询文档和代码示例
+- **积极使用 MiniMax MCP** 进行联网搜索和图像识别
+  - 使用 `mcp__MiniMax__web_search` 进行实时信息搜索
+  - 使用 `mcp__MiniMax__understand_image` 进行图像内容识别
 
-# Run the backend (requires DATABASE_URL)
-DATABASE_URL="postgres://postgres:postgres@localhost:5432/markdownhub?sslmode=disable" ./markdownhub
+### 数据库
+- 使用 golang-migrate 管理迁移
+- 迁移文件命名: `{version}_{description}.up.sql`
+- 所有表创建使用 `CREATE TABLE IF NOT EXISTS`
 
-# Run Go tests
-go test ./...
-```
+### API 设计
+- RESTful 风格，JSON 格式
+- 统一响应格式: `{ code, message, data }`
+- 认证使用 JWT Bearer Token
 
-### Frontend Development
+## 文档索引
 
-```bash
-# Install dependencies
-cd web && pnpm install
+| 文档 | 内容 |
+|------|------|
+| `PRD.md` | 产品需求文档、用户故事、里程碑 |
+| `DESIGN.md` | 设计系统、UI 规范、组件定义 |
+| `TDD.md` | 技术架构、API 设计、数据库 schema |
 
-# Run development server (Vite)
-pnpm dev
+## 代码检查清单
 
-# Build for production
-pnpm build
+- [ ] Go 代码通过 `go vet` 和 `golangci-lint`
+- [ ] TypeScript 代码通过 ESLint 和 TypeScript 检查
+- [ ] 组件符合 DESIGN.md 设计规范
+- [ ] API 响应格式符合统一规范
+- [ ] 数据库迁移脚本可回滚
 
-# Run tests
-pnpm test
+## Git 提交规范
 
-# Run tests in watch mode
-pnpm test:watch
-
-# Lint TypeScript
-pnpm lint
-
-# Format code
-pnpm format
-
-# Type check
-pnpm type-check
-```
-
-### Database Workflow
-
-When adding new database functionality:
-
-```bash
-# 1. Add SQL query to db/queries/*.sql with -- name: comment
-# 2. Generate Go code
-sqlc generate
-
-# 3. Use the generated code in internal/core/*.go
-```
-
-## Architecture
-
-### Backend Layer Structure
-
-The backend follows strict separation of concerns:
+每次功能改动后，**测试功能完好时立即执行 git commit**，保持提交的原子性和可追溯性。
 
 ```
-cmd/main.go                    → Application entry point
-internal/api/                  → HTTP handlers & WebSocket (request/response layer)
-internal/core/                 → Business logic services (uses sqlc-generated code directly)
-internal/store/                → Database connection & transaction management
-  ├── store.go                 → DB initialization, connection pooling, transactions
-  └── *.sql.go                 → sqlc-generated code (DO NOT MODIFY)
-internal/models/               → Domain models (uses string IDs)
-db/queries/*.sql               → SQL query definitions (sqlc source)
-db/migrations/*.sql            → Database schema migrations
+feat: 新功能
+fix: 修复问题
+docs: 文档更新
+style: 代码格式（不影响功能）
+refactor: 重构
+test: 测试
+chore: 构建/工具
 ```
 
-**Critical Rule: All SQL must be defined in `db/queries/*.sql` and accessed via sqlc-generated code. Never write SQL directly in Go files.**
+变更内容写入 `docs/CHANGELOG.md`
 
-### sqlc-Based Database Access Pattern
+### 提交流程
+1. 功能开发完成
+2. 使用 Playwright MCP 进行前端和后端联动调试验证
+3. 功能正常 → 立即 `git commit`
+4. 功能异常 → 修复后再次验证，需前端和后端全部验证通过再提交
 
-**Strict Rules:**
-1. All SQL queries MUST be defined in `db/queries/*.sql` with `-- name:` annotations
-2. Run `sqlc generate` to create type-safe Go code in `internal/store/`
-3. Core services (`internal/core/`) directly call sqlc-generated methods
-4. `internal/store/store.go` handles ONLY connection management and transactions—no SQL operations
-5. Use `uuid.UUID` in store layer, `string` in models layer—convert in core layer
-
-**Type Conversion Pattern:**
-```go
-// String → UUID when calling sqlc methods
-userUUID, err := uuid.Parse(userID)
-if err != nil {
-    return nil, fmt.Errorf("invalid user ID: %w", err)
-}
-
-// UUID → String when returning to API layer
-return &models.User{
-    ID: dbUser.ID.String(),
-    // ...
-}
-
-// Nullable UUID handling
-if doc.DocumentID.Valid {
-    docID := doc.DocumentID.UUID.String()
-}
-```
-
-**Parameter Passing:**
-```go
-// ✅ Correct: Use generated Params struct
-user, err := s.db.CreateUser(ctx, store.CreateUserParams{
-    Username:     username,
-    Email:        email,
-    PasswordHash: hash,
-})
-
-// ❌ Wrong: Multiple parameters
-user, err := s.db.CreateUser(ctx, username, email, hash)
-```
-
-### Service Wiring
-
-Services are dependency-injected in `cmd/main.go`:
-
-```go
-permSvc := core.NewPermissionService(db)
-authSvc := core.NewAuthService(db)
-docSvc := core.NewDocumentService(db, permSvc)
-// ... passed to api.NewServer()
-```
-
-### Frontend Structure
-
-```
-web/src/
-  ├── components/           → React components
-  ├── hooks/                → Custom React hooks
-  ├── services/api.ts       → API client (HTTP + WebSocket)
-  ├── types/                → TypeScript type definitions
-  ├── utils/                → Utility functions
-  ├── i18n.ts               → Internationalization (i18next)
-  └── App.tsx               → Main application component
-```
-
-State management uses React hooks and Context (no external state library).
-
-### Editor-Preview Synchronization
-
-编辑器实现了实时光标同步到预览窗口的功能：
-
-**实现方式:**
-- 直接在 `web/index.html` 中注入纯 JavaScript 脚本
-- 监听 `textarea.editor-textarea` 的 `click` 和 `keyup` 事件
-- 根据光标位置计算当前行号
-- 使用 `data-line-end` 属性定位预览中的对应元素
-- 调用 `scrollIntoView()` 自动滚动预览窗口到目标位置
-
-**技术细节:**
-- 采用 HTML 注入方式绕过 React 编译缓存问题
-- 使用 `behavior: 'auto'` 避免频繁输入时的滚动抖动
-- 元素滚动到视口 `center` 位置以提升可读性
-- 轻量级实现，无需额外依赖
-
-### Real-time Collaboration (WebSocket)
-
-WebSocket connections are managed in `internal/api/ws_handler.go` with an EventBus pattern for broadcasting changes. Ensure thread-safe writes to WebSocket connections.
-
-### Version Control (Snapshots)
-
-Automatic snapshot creation is triggered by heuristics defined in `internal/core/document.go`:
-- Line changes > 20
-- Byte changes > 2048
-- Time since last save > 5 minutes
-
-### Granular Permissions
-
-Permissions can be set at the heading level within documents. The backend parses Markdown to build a simple AST and validates edit operations against byte ranges.
-
-## Build and Deployment
-
-The frontend is embedded into the Go binary at compile time:
-
-1. `pnpm build` creates `web/dist/`
-2. `cmd/embed.go` uses `//go:embed dist` to include assets
-3. `go build ./cmd/` produces a single binary
-4. The server serves static files from the embedded FS
-
-When `dist/` is not present (dev mode), the API still works but frontend routes return 404.
-
-## Environment Variables
-
-- `DATABASE_URL`: PostgreSQL connection string (default: `postgres://postgres:postgres@localhost:5432/markdownhub?sslmode=disable`)
-- `ADDR`: Server listen address (default: `:8080`)
-- `JWT_SECRET`: JWT signing key (default: `change-me-in-production`)
-
-## Testing
-
-Backend tests can be run with `go test ./...`. Frontend uses Vitest (`pnpm test`).
-
-## Important Patterns
-
-### Error Handling
-- Use `errors.Is` and `errors.As` for error checking
-- Wrap errors with context: `fmt.Errorf("operation failed: %w", err)`
-- Return `store.ErrNotFound` for missing records
-
-### Concurrency
-- Use `context.Context` for cancellation and timeouts
-- WebSocket writes must be synchronized (use mutex if necessary)
-- Use channels for message passing between goroutines
-
-### Frontend
-- Functional components with hooks
-- Strict TypeScript mode enabled
-- No `any` types—define proper interfaces
-- Minimize re-renders with `useMemo`/`useCallback` when appropriate
-
-## Article Import Feature
-
-### Backend API
-
-The import feature provides two endpoints for importing articles:
-
-```
-POST /api/import/url
-POST /api/import/content
-```
-
-- **URL Import**: Fetches HTML from a remote URL, converts to Markdown, processes images
-- **Content Import**: Accepts HTML content directly (used by browser extension)
-
-### Importer Service (`internal/core/importer.go`)
-
-The `ImporterService` handles:
-1. Fetching HTML from URLs
-2. Converting HTML to Markdown using `github.com/JohannesKaufmann/html-to-markdown`
-3. Processing remote images - downloading and uploading as workspace attachments
-4. Creating documents with the converted content
-
-### Browser Extension (`extensions/importer/`)
-
-The extension includes:
-- `manifest.json`: Manifest V3 configuration
-- `popup.html/js`: User interface for workspace selection and import
-- `content.js`: Extracts page content, converts images to base64
-- `background.js`: Service worker for handling import logic
-
-### Plugin Configuration
-
-```
-GET /api/plugin/config
-```
-
-Returns:
-```json
-{
-  "site_name": "MarkdownHub",
-  "site_url": "https://markdownhub.example.com"
-}
-```
-
-### API Service
-
-Import API methods in `web/src/services/api.ts`:
-- `importService.importFromURL(url, workspaceId, title?)`
-- `importService.importFromContent(workspaceId, html, baseUrl?, title?)`
-- `pluginService.getConfig()`
+### 文件清理
+- 临时截图、调试文件等**完成任务后必须删除**，避免垃圾文件残留
+- 其他不必要的临时文件同样需要清理，保持项目目录整洁
+- 定期检查并清理不再使用的资源文件

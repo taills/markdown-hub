@@ -4,6 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { ErrorModal } from '@/components/ErrorModal';
 import { languageOptions, setLanguage, type SupportedLanguage } from '@/i18n';
 
+// TODO: 当前使用紫色渐变主题色 (#667eea → #764ba2)，与 DESIGN.md 中规定的主色 Blue (#2563EB) 不一致
+// 实际颜色定义见: web/src/styles.css :root 中的 --primary, --primary-dark, --primary-gradient
+
 export function LoginPage() {
   const { t, i18n } = useTranslation();
   const { login, register } = useAuth();

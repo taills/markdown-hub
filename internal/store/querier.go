@@ -12,50 +12,73 @@ import (
 )
 
 type Querier interface {
+	CountAIConversationsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountAccessibleDocuments(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountAdminLogs(ctx context.Context) (int64, error)
 	CountAttachmentsUploaded(ctx context.Context, uploadBy uuid.UUID) (int64, error)
+	CountCommentsByDocument(ctx context.Context, documentID uuid.UUID) (int64, error)
 	CountOwnedDocuments(ctx context.Context, ownerID uuid.UUID) (int64, error)
 	CountSnapshotsAuthored(ctx context.Context, authorID uuid.NullUUID) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CountWorkspacesByUser(ctx context.Context, userID uuid.UUID) (int64, error)
+	CreateAIConversation(ctx context.Context, arg CreateAIConversationParams) (AiConversation, error)
+	CreateAIMessage(ctx context.Context, arg CreateAIMessageParams) (AiMessage, error)
 	CreateAdminLog(ctx context.Context, arg CreateAdminLogParams) (AdminLog, error)
 	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	CreateAttachmentReference(ctx context.Context, arg CreateAttachmentReferenceParams) (AttachmentReference, error)
+	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreateDocument(ctx context.Context, arg CreateDocumentParams) (Document, error)
 	CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) (Snapshot, error)
+	CreateSocialAccount(ctx context.Context, arg CreateSocialAccountParams) (SocialAccount, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	CreateUserWithAdmin(ctx context.Context, arg CreateUserWithAdminParams) (CreateUserWithAdminRow, error)
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
+	DeleteAIConversation(ctx context.Context, id uuid.UUID) error
 	DeleteAllWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) error
 	DeleteAttachment(ctx context.Context, id uuid.UUID) error
 	DeleteAttachmentReference(ctx context.Context, arg DeleteAttachmentReferenceParams) error
+	DeleteComment(ctx context.Context, id uuid.UUID) error
 	DeleteDocument(ctx context.Context, id uuid.UUID) error
 	DeleteDocumentPermission(ctx context.Context, arg DeleteDocumentPermissionParams) error
 	DeleteHeadingPermission(ctx context.Context, arg DeleteHeadingPermissionParams) error
+	DeleteSocialAccount(ctx context.Context, arg DeleteSocialAccountParams) error
+	DeleteSocialAccountByID(ctx context.Context, id uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteWorkspace(ctx context.Context, id uuid.UUID) error
 	DeleteWorkspaceMember(ctx context.Context, arg DeleteWorkspaceMemberParams) error
+	GetAIConversationByID(ctx context.Context, id uuid.UUID) (AiConversation, error)
 	GetAllSettings(ctx context.Context) ([]Setting, error)
 	GetAttachmentByID(ctx context.Context, id uuid.UUID) (Attachment, error)
+	GetCommentByID(ctx context.Context, id uuid.UUID) (Comment, error)
 	GetDocumentByID(ctx context.Context, id uuid.UUID) (Document, error)
 	GetDocumentPermission(ctx context.Context, arg GetDocumentPermissionParams) (DocumentPermission, error)
 	GetDocumentPermissionByUsername(ctx context.Context, arg GetDocumentPermissionByUsernameParams) (DocumentPermission, error)
 	GetHeadingPermission(ctx context.Context, arg GetHeadingPermissionParams) (HeadingPermission, error)
+	GetLatestAIMessages(ctx context.Context, arg GetLatestAIMessagesParams) ([]AiMessage, error)
 	GetLatestSnapshot(ctx context.Context, documentID uuid.UUID) (Snapshot, error)
 	GetSettingByKey(ctx context.Context, key string) (Setting, error)
 	GetSnapshotByID(ctx context.Context, id uuid.UUID) (Snapshot, error)
+	GetSocialAccountByProviderAndExternalID(ctx context.Context, arg GetSocialAccountByProviderAndExternalIDParams) (SocialAccount, error)
+	GetSocialAccountByUserAndProvider(ctx context.Context, arg GetSocialAccountByUserAndProviderParams) (SocialAccount, error)
 	GetUnreferencedAttachments(ctx context.Context, documentID uuid.NullUUID) ([]Attachment, error)
 	GetUserByEmail(ctx context.Context, email sql.NullString) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error)
 	GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error)
 	GetWorkspaceByID(ctx context.Context, id uuid.UUID) (Workspace, error)
 	GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMemberParams) (WorkspaceMember, error)
+	ListAIConversationsByDocument(ctx context.Context, arg ListAIConversationsByDocumentParams) ([]AiConversation, error)
+	ListAIConversationsByUser(ctx context.Context, arg ListAIConversationsByUserParams) ([]AiConversation, error)
+	ListAIMessagesByConversation(ctx context.Context, conversationID uuid.UUID) ([]AiMessage, error)
 	ListAdminLogs(ctx context.Context, arg ListAdminLogsParams) ([]ListAdminLogsRow, error)
 	ListAdminLogsByAdmin(ctx context.Context, arg ListAdminLogsByAdminParams) ([]ListAdminLogsByAdminRow, error)
 	ListAttachmentReferences(ctx context.Context, attachmentID uuid.UUID) ([]AttachmentReference, error)
+	ListCommentReplies(ctx context.Context, parentID uuid.NullUUID) ([]Comment, error)
+	ListCommentsByAuthor(ctx context.Context, authorID uuid.UUID) ([]Comment, error)
+	ListCommentsByDocument(ctx context.Context, documentID uuid.UUID) ([]Comment, error)
+	ListCommentsByDocumentAndAnchor(ctx context.Context, arg ListCommentsByDocumentAndAnchorParams) ([]Comment, error)
 	ListDocumentAttachmentReferences(ctx context.Context, documentID uuid.NullUUID) ([]AttachmentReference, error)
 	ListDocumentAttachments(ctx context.Context, documentID uuid.NullUUID) ([]Attachment, error)
+	ListDocumentComments(ctx context.Context, documentID uuid.UUID) ([]Comment, error)
 	ListDocumentPermissions(ctx context.Context, documentID uuid.UUID) ([]DocumentPermission, error)
 	ListDocumentsByOwner(ctx context.Context, ownerID uuid.UUID) ([]Document, error)
 	ListDocumentsByWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]Document, error)
@@ -65,6 +88,7 @@ type Querier interface {
 	ListPublicDocuments(ctx context.Context) ([]Document, error)
 	ListPublicWorkspaces(ctx context.Context) ([]Workspace, error)
 	ListSnapshotsByDocument(ctx context.Context, arg ListSnapshotsByDocumentParams) ([]Snapshot, error)
+	ListSocialAccountsByUser(ctx context.Context, userID uuid.UUID) ([]SocialAccount, error)
 	ListUsers(ctx context.Context) ([]ListUsersRow, error)
 	ListWorkspaceAttachments(ctx context.Context, workspaceID uuid.UUID) ([]Attachment, error)
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
@@ -72,6 +96,7 @@ type Querier interface {
 	ListWorkspacesByOwner(ctx context.Context, ownerID uuid.UUID) ([]Workspace, error)
 	SearchDocuments(ctx context.Context, dollar_1 sql.NullString) ([]SearchDocumentsRow, error)
 	SearchUserDocuments(ctx context.Context, arg SearchUserDocumentsParams) ([]SearchUserDocumentsRow, error)
+	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdateDocumentContent(ctx context.Context, arg UpdateDocumentContentParams) (Document, error)
 	UpdateDocumentPublicStatus(ctx context.Context, arg UpdateDocumentPublicStatusParams) (Document, error)
 	UpdateDocumentSortOrder(ctx context.Context, arg UpdateDocumentSortOrderParams) error
@@ -81,6 +106,7 @@ type Querier interface {
 	UpdateUserIsAdmin(ctx context.Context, arg UpdateUserIsAdminParams) (UpdateUserIsAdminRow, error)
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserPreferredLanguage(ctx context.Context, arg UpdateUserPreferredLanguageParams) (UpdateUserPreferredLanguageRow, error)
+	UpdateUserUsername(ctx context.Context, arg UpdateUserUsernameParams) (UpdateUserUsernameRow, error)
 	UpdateWorkspaceName(ctx context.Context, arg UpdateWorkspaceNameParams) (Workspace, error)
 	UpdateWorkspacePublicStatus(ctx context.Context, arg UpdateWorkspacePublicStatusParams) (Workspace, error)
 	UpdateWorkspaceSortOrder(ctx context.Context, arg UpdateWorkspaceSortOrderParams) error

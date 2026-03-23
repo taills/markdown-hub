@@ -70,6 +70,22 @@ type AdminLog struct {
 	CreatedAt      time.Time             `json:"created_at"`
 }
 
+type AiConversation struct {
+	ID         uuid.UUID `json:"id"`
+	UserID     uuid.UUID `json:"user_id"`
+	DocumentID uuid.UUID `json:"document_id"`
+	Title      string    `json:"title"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type AiMessage struct {
+	ID             uuid.UUID `json:"id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	Role           string    `json:"role"`
+	Content        string    `json:"content"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type Attachment struct {
 	ID          uuid.UUID     `json:"id"`
 	DocumentID  uuid.NullUUID `json:"document_id"`
@@ -88,6 +104,17 @@ type AttachmentReference struct {
 	DocumentID   uuid.UUID `json:"document_id"`
 	ReferencedAt int32     `json:"referenced_at"`
 	CreatedAt    time.Time `json:"created_at"`
+}
+
+type Comment struct {
+	ID            uuid.UUID      `json:"id"`
+	DocumentID    uuid.UUID      `json:"document_id"`
+	AuthorID      uuid.UUID      `json:"author_id"`
+	Content       string         `json:"content"`
+	HeadingAnchor sql.NullString `json:"heading_anchor"`
+	ParentID      uuid.NullUUID  `json:"parent_id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
 
 type Document struct {
@@ -134,6 +161,18 @@ type Snapshot struct {
 	Content    string        `json:"content"`
 	Message    string        `json:"message"`
 	CreatedAt  time.Time     `json:"created_at"`
+}
+
+type SocialAccount struct {
+	ID               uuid.UUID      `json:"id"`
+	UserID           uuid.UUID      `json:"user_id"`
+	Provider         string         `json:"provider"`
+	ExternalUserID   string         `json:"external_user_id"`
+	ExternalNickname sql.NullString `json:"external_nickname"`
+	AccessToken      sql.NullString `json:"access_token"`
+	RefreshToken     sql.NullString `json:"refresh_token"`
+	TokenExpiresAt   sql.NullTime   `json:"token_expires_at"`
+	BoundAt          time.Time      `json:"bound_at"`
 }
 
 type User struct {

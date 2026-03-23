@@ -9,7 +9,7 @@ VALUES ($1, sqlc.narg('email'), $2, $3)
 RETURNING id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at;
 
 -- name: GetUserByID :one
-SELECT id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at FROM users WHERE id = $1;
+SELECT id, username, email, password_hash, preferred_language, is_admin, is_active, created_at, updated_at FROM users WHERE id = $1;
 
 -- name: GetUserByEmail :one
 SELECT id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at FROM users WHERE email = $1;
@@ -46,5 +46,10 @@ RETURNING id, username, email, password_hash, preferred_language, is_admin, is_a
 
 -- name: UpdateUserEmail :one
 UPDATE users SET email = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, username, email, password_hash, preferred_language, is_admin, is_active, created_at, updated_at;
+
+-- name: UpdateUserUsername :one
+UPDATE users SET username = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING id, username, email, password_hash, preferred_language, is_admin, is_active, created_at, updated_at;

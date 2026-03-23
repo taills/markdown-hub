@@ -1209,16 +1209,38 @@ erDiagram
 ```
 
 **心跳检测机制**:
-- 客户端每 25 秒发送一次 `ping` 消息
+- 客户端每 54 秒发送一次 `ping` 消息（实际实现：`pongWait * 9 / 10 = 54s`）
 - 服务端收到后响应 `pong` 消息
-- 若 30 秒内无任何消息，服务器主动断开连接
+- 若 60 秒内无任何消息，服务器主动断开连接（`pongWait = 60s`）
 - WebSocket 连接超时时间为 60 秒
+- 消息最大大小限制：512KB
+
+**断线重连策略**:
+1. 客户端检测到 WebSocket 连接断开后，等待 1 秒后尝试第一次重连
+2. 如果失败，指数退避重试：2秒、4秒、8秒、16秒、32秒
+3. 最大重试间隔为 32 秒，最多重试 10 次
+4. 重连成功后，服务器发送 `init` 消息包含当前文档完整内容
+5. 客户端需要重新同步光标位置和编辑状态
+
+**WebSocket 连接参数**:
+```go
+const (
+    writeWait      = 10 * time.Second  // 写操作超时
+    pongWait       = 60 * time.Second  // 等待pong响应超时
+    pingPeriod     = 54 * time.Second  // 发送ping间隔
+    maxMessageSize = 512 * 1024        // 512KB 最大消息
+)
+```
 
 ### 4.4 错误码设计
+
+#### 4.4.1 HTTP 状态码定义
 
 | 错误码 | HTTP 状态码 | 说明 | 解决方案 |
 |-------|------------|------|---------|
 | 200 | 200 | 成功 | - |
+| 201 | 201 | 创建成功 | - |
+| 204 | 204 | 删除成功 | - |
 | 400 | 400 | 参数错误 | 检查请求参数格式 |
 | 401 | 401 | 未认证 | 登录获取 Token |
 | 403 | 403 | 无权限 | 检查文档访问权限 |
@@ -1228,6 +1250,100 @@ erDiagram
 | 429 | 429 | 请求过于频繁 | 降低请求频率 |
 | 500 | 500 | 服务器错误 | 联系技术支持 |
 
+#### 4.4.2 业务错误码定义 (errcode + errmsg)
+
+**认证模块 (Auth)**:
+
+| errcode | errmsg | 说明 |
+|---------|--------|------|
+| AUTH_USER_EXISTS | 用户名已存在 | 注册时用户名冲突 |
+| AUTH_INVALID_CREDENTIALS | 用户名或密码错误 | 登录凭证无效 |
+| AUTH_USER_NOT_FOUND | 用户不存在 | 查找用户失败 |
+| AUTH_EMAIL_ALREADY_BOUND | 邮箱已被其他用户绑定 | 第三方登录绑定冲突 |
+| AUTH_INVALID_TOKEN | Token无效或已过期 | Token验证失败 |
+| AUTH_SOCIAL_BIND_FAILED | 第三方绑定失败 | 社交账号绑定操作失败 |
+| AUTH_USERNAME_TAKEN | 用户名已被占用 | 用户名检查冲突 |
+| AUTH_WEAK_PASSWORD | 密码强度不足 | 密码不符合要求 |
+
+**文档模块 (Document)**:
+
+| errcode | errmsg | 说明 |
+|---------|--------|------|
+| DOC_NOT_FOUND | 文档不存在 | 文档ID不存在 |
+| DOC_NO_READ_PERMISSION | 无读取权限 | 用户无文档阅读权限 |
+| DOC_NO_WRITE_PERMISSION | 无写入权限 | 用户无文档编辑权限 |
+| DOC_NO_MANAGE_PERMISSION | 无管理权限 | 用户无文档管理权限 |
+| DOC_INVALID_PARENT | 父文档不存在或形成循环引用 | 父文档ID无效 |
+| DOC_MOVE_TO_CHILD | 不能将文档移动到自己的子文档下 | 移动目标无效 |
+| DOC_WORKSPACE_NOT_FOUND | 工作空间不存在 | 工作空间ID不存在 |
+| DOC_INVALID_VISIBILITY | 无效的可见性设置 | visibility值非法 |
+
+**权限模块 (Permission)**:
+
+| errcode | errmsg | 说明 |
+|---------|--------|------|
+| PERM_DENIED | 权限不足 | 用户权限级别不够 |
+| PERM_NOT_FOUND | 权限规则不存在 | 权限ID不存在 |
+| PERM_INVALID_GRANTEE_TYPE | 无效的授权对象类型 | grantee_type非法 |
+| PERM_INVALID_LEVEL | 无效的权限级别 | level值非法 |
+| PERM_CANNOT_MODIFY_OWNER | 不能修改所有者的权限 | 所有者权限不可修改 |
+| PERM_HEADING_NOT_FOUND | 指定的标题不存在 | heading_anchor无效 |
+
+**快照模块 (Snapshot)**:
+
+| errcode | errmsg | 说明 |
+|---------|--------|------|
+| SNAP_NOT_FOUND | 快照不存在 | 快照ID不存在 |
+| SNAP_NO_PERMISSION | 无快照访问权限 | 用户无快照访问权限 |
+| SNAP_COMPARE_SAME | 不能对比同一快照 | compare_id与snapshot_id相同 |
+| SNAP_NOT_FOUND_FOR_DIFF | 对比的快照不存在 | compare_id无效 |
+
+**附件模块 (Attachment)**:
+
+| errcode | errmsg | 说明 |
+|---------|--------|------|
+| ATTACH_NOT_FOUND | 附件不存在 | 附件ID不存在 |
+| ATTACH_FILE_TOO_LARGE | 文件大小超过限制 | 超出100MB限制 |
+| ATTACH_FILE_TYPE_NOT_ALLOWED | 文件类型不允许 | 文件类型不在白名单 |
+| ATTACH_NO_UPLOAD_PERMISSION | 无上传权限 | 用户无工作空间上传权限 |
+| ATTACH_NOT_OWNER | 不是上传者，无法管理引用 | 操作者不是文件上传者 |
+| ATTACH_WORKSPACE_STORAGE_FULL | 工作空间存储已满 | 存储配额超限 |
+| ATTACH_REFERENCE_NOT_FOUND | 引用关系不存在 | 引用ID不存在 |
+
+**AI 模块 (AI)**:
+
+| errcode | errmsg | 说明 |
+|---------|--------|------|
+| AI_NOT_CONFIGURED | AI服务未配置 | 未设置AI API密钥 |
+| AI_REQUEST_FAILED | AI请求失败 | AI服务响应错误 |
+| AI_QUOTA_EXCEEDED | AI配额超限 | API配额用尽 |
+| AI_INVALID_RESPONSE | AI响应格式错误 | AI返回数据解析失败 |
+| AI_DOC_NOT_ACCESSIBLE | 文档无权限访问 | 问答时使用无权限文档 |
+| AI_CONVERSATION_NOT_FOUND | 对话不存在 | 对话ID不存在 |
+
+**WebSocket 错误码**:
+
+| errcode | 说明 |
+|---------|------|
+| 1001 | 无效的消息格式 |
+| 1002 | 未认证或Token无效 |
+| 1003 | 文档不存在 |
+| 1004 | 无访问权限 |
+| 1005 | 连接数超限 |
+| 1006 | 连接超时 |
+
+#### 4.4.3 数据库约束错误映射
+
+| Constraint Name | HTTP状态码 | errcode | errmsg |
+|----------------|------------|---------|--------|
+| users_username_key | 409 | AUTH_USERNAME_TAKEN | 用户名已存在 |
+| users_email_key | 409 | AUTH_EMAIL_ALREADY_BOUND | 邮箱已被其他用户绑定 |
+| workspaces_owner_id_name_key | 409 | AUTH_WORKSPACE_NAME_EXISTS | 工作空间名称已存在 |
+| workspace_members_workspace_id_user_id_key | 409 | AUTH_WORKSPACE_MEMBER_EXISTS | 用户已在此工作空间中 |
+| document_permissions_document_id_user_id_key | 409 | PERM_DOC_PERMISSION_EXISTS | 协作者权限已存在 |
+| heading_permissions_document_id_user_id_heading_anchor_key | 409 | PERM_HEADING_PERMISSION_EXISTS | 标题权限已存在 |
+| attachments_document_id_file_path_key | 409 | ATTACH_EXISTS | 附件已存在 |
+
 ### 4.5 API 限流策略
 
 | 接口类型 | 限流规则 | 窗口 |
@@ -1236,6 +1352,25 @@ erDiagram
 | 写入接口 | 60 次/分钟 | 滑动窗口 |
 | 读取接口 | 120 次/分钟 | 滑动窗口 |
 | WebSocket | 100 消息/分钟 | 滑动窗口 |
+
+**限流实现细节**:
+- 使用滑动窗口算法实现精确限流
+- 限流计数器存储在内存中（单机部署）
+- 分布式部署时建议使用 Redis 共享限流状态
+- 限流触发时返回 HTTP 429 状态码
+- 响应头包含 `X-RateLimit-Limit`、`X-RateLimit-Remaining`、`X-RateLimit-Reset`
+
+**各接口具体限流配置**:
+
+| 接口路径 | 限制 | 窗口 |
+|---------|------|------|
+| POST /api/auth/login | 5次/分钟 | 滑动窗口 |
+| POST /api/auth/register | 3次/分钟 | 滑动窗口 |
+| PATCH /api/documents/*/content | 60次/分钟 | 滑动窗口 |
+| POST /api/documents | 30次/分钟 | 滑动窗口 |
+| DELETE /api/documents/* | 20次/分钟 | 滑动窗口 |
+| GET /api/* | 120次/分钟 | 滑动窗口 |
+| WebSocket /ws | 100消息/分钟 | 滑动窗口 |
 
 ---
 
@@ -1574,6 +1709,45 @@ graph LR
 | 速率限制 | 滑动窗口限流 | P1 |
 | 审计日志 | 记录所有管理操作 | P1 |
 
+### 6.4 安全头配置
+
+**HTTP 安全响应头**:
+
+| 头部名称 | 值 | 说明 |
+|---------|-----|------|
+| X-Content-Type-Options | nosniff | 防止 MIME 类型嗅探 |
+| X-Frame-Options | DENY | 防止点击劫持 |
+| X-XSS-Protection | 1; mode=block | XSS 过滤（传统浏览器） |
+| Referrer-Policy | strict-origin-when-cross-origin | 引用来源控制 |
+| Permissions-Policy | camera=(), microphone=(), geolocation=() | 禁用浏览器特性 |
+| Content-Security-Policy | default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' wss: https:; frame-ancestors 'none' | CSP 策略 |
+| Strict-Transport-Security | max-age=31536000; includeSubDomains | 强制 HTTPS |
+
+**CORS 跨域配置**:
+
+| 配置项 | 开发环境 | 生产环境 |
+|-------|---------|---------|
+| Allow-Origin | * (允许所有) | 通过 ALLOWED_ORIGINS 环境变量配置 |
+| Allow-Methods | GET, POST, PUT, PATCH, DELETE, OPTIONS | 同左 |
+| Allow-Headers | Content-Type, Authorization, X-CSRF-Token | 同左 |
+| Allow-Credentials | true | true |
+| Max-Age | 86400 | 86400 |
+
+**Cookie 安全属性**:
+
+| 属性 | 值 | 说明 |
+|-----|-----|------|
+| Secure | true | 仅 HTTPS 传输 |
+| HttpOnly | true | 禁止 JavaScript 访问 |
+| SameSite | Strict | 严格同源策略 |
+| Path | / | 作用于全路径 |
+
+**文件上传安全**:
+- 文件类型白名单：jpg, jpeg, png, gif, webp, pdf, doc, docx, xls, xlsx, zip, rar, 7z, txt, md
+- 文件大小限制：单文件最大 100MB
+- 路径遍历防护：使用 `filepath.Clean` 清理路径
+- 文件名处理：保留原始文件名但存储到随机命名的路径
+
 ### 6.2 权限模型
 
 **权限级别**:
@@ -1635,6 +1809,8 @@ graph LR
 
 ### 7.2 缓存策略
 
+**注意**: 当前实现中缓存功能尚未完全实现，以下为设计文档中的规划。
+
 | 缓存层级 | 缓存内容 | TTL | 更新策略 |
 |---------|---------|-----|---------|
 | 内存缓存 | 用户 Session、权限计算结果 | 5 分钟 | LRU 淘汰 |
@@ -1645,6 +1821,12 @@ graph LR
 - 文档更新时删除相关缓存
 - 用户权限变更时删除权限缓存
 - WebSocket 编辑立即更新缓存
+
+**待实现的缓存功能**:
+- [ ] 文档内容缓存（Redis）
+- [ ] 用户权限计算结果缓存（内存 LRU）
+- [ ] 搜索结果缓存（Redis）
+- [ ] 缓存预热机制
 
 ### 7.3 异步处理
 
@@ -1783,13 +1965,28 @@ log:
 
 | 接口 | 方法 | 描述 | 响应内容 |
 |------|------|------|---------|
-| /health | GET | 服务健康状态 | `{"status": "ok", "timestamp": "2026-03-23T10:00:00Z"}` |
-| /health/ready | GET | 就绪检查（含数据库连接） | `{"status": "ok", "database": "connected", "timestamp": "2026-03-23T10:00:00Z"}` |
-| /health/live | GET | 存活检查 | `{"status": "ok"}` |
+| /health | GET | 服务健康状态 | `{"status": "healthy", "uptime": "xxx"}` |
+| /ready | GET | 就绪检查（含数据库连接） | `{"status": "ready"}` |
+| /metrics | GET | 应用指标 | 内存、协程数等运行时指标 |
 
 **健康检查响应示例**:
 
-**GET /health/ready**
+**GET /health**
+```json
+// 正常 (200)
+{
+  "status": "healthy",
+  "uptime": "2h30m15s"
+}
+
+// 数据库连接失败 (503)
+{
+  "status": "unhealthy",
+  "error": "database connection failed"
+}
+```
+
+**GET /ready**
 ```json
 // 服务正常 (200)
 {
@@ -1923,7 +2120,90 @@ markdown-hub/
 - [pgvector 扩展](https://github.com/pgvector/pgvector)
 - [sqlc 文档](https://docs.sqlc.dev/)
 
-### 10.3 术语表
+### 10.4 实现与设计差异记录
+
+本文档记录代码实现与设计文档之间的差异，供后续维护参考。
+
+#### 10.4.1 API 路由差异
+
+| TDD 设计路径 | 实际实现路径 | 差异说明 |
+|-------------|-------------|---------|
+| `/api/v1/*` | `/api/*` | 未使用 v1 版本前缀 |
+| `/api/auth/social/*` | 未实现 | 第三方登录功能未开发 |
+| `/api/documents/:id/visibility` | `PATCH /api/documents/:id/public` | 使用 is_public 布尔字段替代 visibility 字符串 |
+| `/api/documents/:id/children` | 未实现 | 子文档查询功能未开发 |
+| `/api/documents/:id/tree` | 未实现 | 文档树形结构 API 未开发 |
+| `/api/documents/:id/move` | 未实现 | 文档移动功能未开发 |
+| `/api/documents/public` | `GET /api/search?q=xxx` | 使用搜索 API 替代独立公开文档列表 |
+| `/api/snapshots` (独立) | `POST/GET /api/documents/:id/snapshots` | 快照挂载在文档路由下 |
+| `/api/comments/*` | 未实现 | 评论模块完全未开发 |
+| `/api/ai/*` | 未实现 | AI 模块完全未开发 |
+| `/api/export/*` | 未实现 | 导出模块完全未开发 |
+| `/api/roles/*` | 未实现 | 角色模块完全未开发 |
+| `/api/departments/*` | 未实现 | 部门模块完全未开发 |
+| `/api/i18n/*` | 未实现 | 多语言模块完全未开发 |
+
+#### 10.4.2 数据库 Schema 差异
+
+| TDD 设计 | 实际实现 | 差异说明 |
+|---------|---------|---------|
+| `documents.visibility` (VARCHAR) | `documents.is_public` (BOOLEAN) | 使用布尔字段替代 visibility 字符串 |
+| `documents.parent_id` | 不存在 | 文档树形结构通过 workspace_id 组织，无父子关系 |
+| `documents.inherit_visibility` | 不存在 | 未实现可见性继承 |
+| `documents.is_deleted` | 不存在 | 未实现软删除 |
+| `users.avatar_url` | 不存在 | 用户头像功能未实现 |
+| `users.department_id` | 不存在 | 部门关联未实现 |
+| `departments` 表 | 不存在 | 部门模块未开发 |
+| `roles` 表 | 不存在 | 角色模块未开发 |
+| `user_roles` 表 | 不存在 | 用户角色关联未实现 |
+| `social_accounts` 表 | 不存在 | 第三方账号绑定未实现 |
+| `comments` 表 | 不存在 | 评论功能未实现 |
+| `ai_conversations` 表 | 不存在 | AI 对话功能未实现 |
+| `ai_messages` 表 | 不存在 | AI 消息存储未实现 |
+| `settings` 表 | 存在但仅用于 SITE_TITLE | 其他设置项未实现 |
+
+#### 10.4.3 JWT 配置差异
+
+| 配置项 | TDD 设计 | 实际实现 |
+|-------|---------|---------|
+| 签名算法 | RS256 | HS256 |
+| Token 有效期 | 7 天 | 24 小时 |
+| Token 位置 | Authorization Header | Header 或 Cookie |
+
+#### 10.4.4 WebSocket 差异
+
+| 配置项 | TDD 设计 | 实际实现 |
+|-------|---------|---------|
+| 认证方式 | `Authorization: Bearer <token>` Header | `token` 查询参数 |
+| 心跳间隔 | 25 秒 | 54 秒 |
+| 连接超时 | 30 秒 | 60 秒 |
+| 消息类型 | `join`, `leave`, `edit`, `cursor`, `ping` | `update`, `patch`, `init`, `error` |
+
+#### 10.4.5 统一响应格式差异
+
+| 项目 | TDD 设计 | 实际实现 |
+|-----|---------|---------|
+| 成功格式 | `{code, message, data}` | 直接返回数据对象 |
+| 错误格式 | `{code, message, error}` | `{error}` |
+| 错误码位置 | 顶级 `code` 字段 | 无 `code` 字段，仅 HTTP 状态码 |
+
+#### 10.4.6 未实现的安全功能
+
+| 功能 | TDD 设计 | 实际实现 |
+|-----|---------|---------|
+| API 限流中间件 | 滑动窗口限流 | 未实现（代码中有注释待添加） |
+| CSP 响应头 | 配置完整 CSP 策略 | 未配置 |
+| 速率限制 | 登录 5 次/分钟等 | 未实现 |
+
+#### 10.4.7 缺失的环境变量
+
+| TDD 设计 | 说明 | 实际实现 |
+|---------|------|---------|
+| CORS_ALLOWED_ORIGINS | CORS 配置 | ALLOWED_ORIGINS (WS 专用) |
+| SESSION_SECRET | Session 加密 | 未使用 Session |
+| AI_* | AI 配置 | 未实现 AI 功能 |
+
+---
 
 | 术语 | 定义 |
 |------|------|

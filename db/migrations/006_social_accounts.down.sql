@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS social_accounts;
+ALTER TABLE users DROP COLUMN IF EXISTS is_active;

@@ -167,3 +167,32 @@ export interface AdminLog {
   created_at: string;
   admin_username?: string;
 }
+
+export interface Comment {
+  id: string;
+  document_id: string;
+  author_id: string;
+  content: string;
+  heading_anchor?: string;
+  parent_id?: string;
+  created_at: string;
+  updated_at: string;
+  author_username?: string;
+  replies?: Comment[];
+}
+
+export interface AIConversation {
+  id: string;
+  user_id: string;
+  document_id: string;
+  title: string;
+  created_at: string;
+}
+
+export interface AIMessage {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}

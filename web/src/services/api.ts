@@ -1,5 +1,5 @@
 import i18n from '@/i18n';
-import type { AuthResponse, Document, DocumentListItem, DocumentSearchResult, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats, User, AdminLog } from '@/types';
+import type { AuthResponse, Document, DocumentListItem, DocumentSearchResult, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats, User, AdminLog, Comment, AIConversation, AIMessage } from '@/types';
 
 const API_BASE_URL = '/api';
 
@@ -417,5 +417,82 @@ export const siteService = {
     request<{ key: string; value: string; description: string }>('/admin/settings/site-title', {
       method: 'PUT',
       body: JSON.stringify({ value }),
+    }),
+};
+
+// ---- Comments ----
+
+export interface CreateCommentRequest {
+  content: string;
+  heading_anchor?: string;
+  parent_id?: string;
+}
+
+export const commentService = {
+  list: (documentId: string) =>
+    request<Comment[]>(`/documents/${documentId}/comments`),
+  create: (documentId: string, data: CreateCommentRequest) =>
+    request<Comment>(`/documents/${documentId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (commentId: string, content: string) =>
+    request<Comment>(`/comments/${commentId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    }),
+  delete: (commentId: string) =>
+    request<void>(`/comments/${commentId}`, { method: 'DELETE' }),
+};
+
+// ---- AI ----
+
+export interface AskResponse {
+  conversation_id: string;
+  messages: AIMessage[];
+}
+
+export interface SummarizeResponse {
+  summary: string;
+}
+
+export interface CompleteResponse {
+  completion: string;
+}
+
+export interface ExpandResponse {
+  expanded: string;
+}
+
+export const aiService = {
+  listConversations: (documentId: string, limit = 20, offset = 0) =>
+    request<AIConversation[]>(`/documents/${documentId}/ai/conversations?limit=${limit}&offset=${offset}`),
+  createConversation: (documentId: string, title: string) =>
+    request<AIConversation>(`/documents/${documentId}/ai/conversations`, {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    }),
+  getMessages: (conversationId: string) =>
+    request<AIMessage[]>(`/ai/conversations/${conversationId}/messages`),
+  deleteConversation: (conversationId: string) =>
+    request<void>(`/ai/conversations/${conversationId}`, { method: 'DELETE' }),
+  ask: (documentId: string, conversationId: string, question: string) =>
+    request<AskResponse>(`/documents/${documentId}/ai/ask`, {
+      method: 'POST',
+      body: JSON.stringify({ conversation_id: conversationId, question }),
+    }),
+  summarize: (documentId: string) =>
+    request<SummarizeResponse>(`/documents/${documentId}/ai/summarize`, {
+      method: 'POST',
+    }),
+  complete: (documentId: string, text: string) =>
+    request<CompleteResponse>(`/documents/${documentId}/ai/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+  expand: (documentId: string, paragraph: string) =>
+    request<ExpandResponse>(`/documents/${documentId}/ai/expand`, {
+      method: 'POST',
+      body: JSON.stringify({ paragraph }),
     }),
 };

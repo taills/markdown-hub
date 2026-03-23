@@ -149,7 +149,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email sql.NullString) (Get
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, password_hash, preferred_language, is_admin, created_at, updated_at FROM users WHERE id = $1
+SELECT id, username, email, password_hash, preferred_language, is_admin, is_active, created_at, updated_at FROM users WHERE id = $1
 `
 
 type GetUserByIDRow struct {
@@ -159,6 +159,7 @@ type GetUserByIDRow struct {
 	PasswordHash      string         `json:"password_hash"`
 	PreferredLanguage string         `json:"preferred_language"`
 	IsAdmin           bool           `json:"is_admin"`
+	IsActive          bool           `json:"is_active"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 }
@@ -173,6 +174,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 		&i.PasswordHash,
 		&i.PreferredLanguage,
 		&i.IsAdmin,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -421,6 +423,46 @@ func (q *Queries) UpdateUserPreferredLanguage(ctx context.Context, arg UpdateUse
 		&i.PasswordHash,
 		&i.PreferredLanguage,
 		&i.IsAdmin,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUserUsername = `-- name: UpdateUserUsername :one
+UPDATE users SET username = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, username, email, password_hash, preferred_language, is_admin, is_active, created_at, updated_at
+`
+
+type UpdateUserUsernameParams struct {
+	ID       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+}
+
+type UpdateUserUsernameRow struct {
+	ID                uuid.UUID      `json:"id"`
+	Username          string         `json:"username"`
+	Email             sql.NullString `json:"email"`
+	PasswordHash      string         `json:"password_hash"`
+	PreferredLanguage string         `json:"preferred_language"`
+	IsAdmin           bool           `json:"is_admin"`
+	IsActive          bool           `json:"is_active"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserUsername(ctx context.Context, arg UpdateUserUsernameParams) (UpdateUserUsernameRow, error) {
+	row := q.db.QueryRowContext(ctx, updateUserUsername, arg.ID, arg.Username)
+	var i UpdateUserUsernameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.PreferredLanguage,
+		&i.IsAdmin,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

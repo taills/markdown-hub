@@ -9,12 +9,13 @@ import { MarkdownPreview } from '@/components/MarkdownPreview';
 import { SnapshotPanel } from '@/components/SnapshotPanel';
 import { PermissionsPanel } from '@/components/PermissionsPanel';
 import { AttachmentPanel } from '@/components/AttachmentPanel';
+import { CommentsPanel } from '@/components/CommentsPanel';
 import { ErrorModal } from '@/components/ErrorModal';
 import { attachmentService, documentService } from '@/services/api';
 import { applyLinePatch, createLinePatch } from '@/utils/linePatch';
 import type { Attachment, WSMessage } from '@/types';
 
-type Panel = 'preview' | 'history' | 'permissions' | 'attachments';
+type Panel = 'preview' | 'history' | 'permissions' | 'attachments' | 'comments';
 
 export function DocumentEditor() {
   const { id } = useParams<{ id: string }>();
@@ -255,6 +256,12 @@ export function DocumentEditor() {
           >
             Attachments
           </button>
+          <button
+            className={activePanel === 'comments' ? 'active' : ''}
+            onClick={() => setActivePanel('comments')}
+          >
+            Comments
+          </button>
         </div>
       </header>
 
@@ -288,6 +295,9 @@ export function DocumentEditor() {
               workspaceId={document.workspace_id}
               onInsert={handleInsertAttachment}
             />
+          )}
+          {activePanel === 'comments' && (
+            <CommentsPanel documentId={document.id} />
           )}
         </div>
       </div>

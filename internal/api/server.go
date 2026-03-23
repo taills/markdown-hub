@@ -26,6 +26,7 @@ type Server struct {
 func NewServer(
 	db *store.DB,
 	authSvc *core.AuthService,
+	socialSvc *core.SocialService,
 	userSvc *core.UserService,
 	docSvc *core.DocumentService,
 	snapSvc *core.SnapshotService,
@@ -34,6 +35,8 @@ func NewServer(
 	attachSvc *core.AttachmentService,
 	adminSvc *core.AdminService,
 	importerSvc *core.ImporterService,
+	commentSvc *core.CommentService,
+	aiSvc *core.AIService,
 	secret []byte,
 	staticFiles embed.FS,
 ) *Server {
@@ -83,7 +86,7 @@ func NewServer(
 	})
 
 	// Initialize handlers
-	authH := NewAuthHandler(authSvc)
+	authH := NewAuthHandler(authSvc, socialSvc)
 	userH := NewUserHandler(userSvc)
 	docH := NewDocumentHandler(docSvc)
 	snapH := NewSnapshotHandler(snapSvc)
@@ -93,6 +96,8 @@ func NewServer(
 	adminH := NewAdminHandler(adminSvc, authSvc)
 	workspaceAttachH := NewWorkspaceAttachmentHandler(attachSvc)
 	importerH := NewImporterHandler(importerSvc)
+	commentH := NewCommentHandler(commentSvc)
+	aiH := NewAIHandler(aiSvc)
 
 	// WebSocket endpoint
 	router.GET("/ws", hub.ServeWS)
@@ -114,6 +119,17 @@ func NewServer(
 			auth.POST("/register", authH.Register)
 			auth.POST("/login", authH.Login)
 			auth.GET("/me", authMiddleware(), authH.Me)
+
+			// Social login routes (public - no CSRF protection needed)
+			auth.GET("/social/dingtalk/qr", authH.GetDingTalkQR)
+			auth.GET("/social/wecom/qr", authH.GetWeComQR)
+			auth.GET("/social/feishu/qr", authH.GetFeishuQR)
+			auth.GET("/social/callback/:provider", authH.SocialCallback)
+			auth.POST("/social/bind", authMiddleware(), authH.BindSocial)
+			auth.DELETE("/social/bind/:provider", authMiddleware(), authH.UnbindSocial)
+			auth.GET("/social/accounts", authMiddleware(), authH.ListSocialAccounts)
+			auth.GET("/me/complete-status", authMiddleware(), authH.GetCompleteStatus)
+			auth.POST("/complete-profile", authH.CompleteProfile)
 		}
 
 		// Document routes with optional auth for public access
@@ -151,6 +167,18 @@ func NewServer(
 			docs.GET("/:id/attachments", authMiddleware(), attachH.List)
 			docs.GET("/:id/attachments/unreferenced", authMiddleware(), attachH.GetUnreferenced)
 			docs.DELETE("/:id/attachments/:attachmentId", authMiddleware(), attachH.Delete)
+
+			// Comment routes
+			docs.GET("/:id/comments", authMiddleware(), commentH.ListComments)
+			docs.POST("/:id/comments", authMiddleware(), commentH.CreateComment)
+
+			// AI routes
+			docs.GET("/:id/ai/conversations", authMiddleware(), aiH.ListConversations)
+			docs.POST("/:id/ai/conversations", authMiddleware(), aiH.CreateConversation)
+			docs.POST("/:id/ai/ask", authMiddleware(), aiH.Ask)
+			docs.POST("/:id/ai/summarize", authMiddleware(), aiH.Summarize)
+			docs.POST("/:id/ai/complete", authMiddleware(), aiH.Complete)
+			docs.POST("/:id/ai/expand", authMiddleware(), aiH.Expand)
 		}
 
 		// Standalone snapshot routes
@@ -165,6 +193,20 @@ func NewServer(
 		{
 			attachments.GET("/:id/download", attachH.Download)
 			attachments.DELETE("/:id", attachH.Delete)
+		}
+
+		// Standalone comment routes
+		comments := api.Group("/comments").Use(authMiddleware())
+		{
+			comments.PUT("/:id", commentH.UpdateComment)
+			comments.DELETE("/:id", commentH.DeleteComment)
+		}
+
+		// Standalone AI routes
+		ai := api.Group("/ai").Use(authMiddleware())
+		{
+			ai.GET("/conversations/:conversationId/messages", aiH.GetMessages)
+			ai.DELETE("/conversations/:conversationId", aiH.DeleteConversation)
 		}
 
 		// Workspace routes

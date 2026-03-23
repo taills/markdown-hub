@@ -164,3 +164,41 @@ type AdminLog struct {
 	CreatedAt      time.Time              `json:"created_at"`
 	AdminUsername  string                 `json:"admin_username,omitempty"`
 }
+
+// Comment represents a comment on a document or heading.
+type Comment struct {
+	ID            string    `json:"id"`
+	DocumentID    string    `json:"document_id"`
+	AuthorID      string    `json:"author_id"`
+	Content       string    `json:"content"`
+	HeadingAnchor *string   `json:"heading_anchor,omitempty"` // nil means document-level comment
+	ParentID      *string   `json:"parent_id,omitempty"`      // nil means root comment
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	AuthorUsername string   `json:"author_username,omitempty"`
+	Replies       []*Comment `json:"replies,omitempty"`
+}
+
+// AIConversation represents an AI conversation session associated with a document.
+type AIConversation struct {
+	ID         string    `json:"id"`
+	UserID     string    `json:"user_id"`
+	DocumentID string    `json:"document_id"`
+	Title      string    `json:"title"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// AIMessage represents a message in an AI conversation.
+type AIMessage struct {
+	ID             string    `json:"id"`
+	ConversationID string    `json:"conversation_id"`
+	Role           string    `json:"role"` // "user" or "assistant"
+	Content        string    `json:"content"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// AIMessageRole defines the role of an AI message.
+const (
+	AIRoleUser      = "user"
+	AIRoleAssistant = "assistant"
+)

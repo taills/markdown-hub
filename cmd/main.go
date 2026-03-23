@@ -129,12 +129,21 @@ For more information, visit: https://github.com/markdownhub/markdownhub
 	permSvc := core.NewPermissionService(db)
 	authSvc := core.NewAuthService(db)
 	userSvc := core.NewUserService(db)
+	socialSvc := core.NewSocialService(db, authSvc)
 	adminSvc := core.NewAdminService(db)
 	docSvc := core.NewDocumentService(db, permSvc)
 	snapSvc := core.NewSnapshotService(db, permSvc)
 	workspaceSvc := core.NewWorkspaceService(db, permSvc, adminSvc)
 	attachSvc := core.NewAttachmentService(db, permSvc)
 	importerSvc := core.NewImporterService(db, docSvc, attachSvc)
+	commentSvc := core.NewCommentService(db, permSvc)
+	aiSvc := core.NewAIService(db)
+	// Load AI configuration from environment or settings
+	aiSvc.Configure(
+		os.Getenv("AI_API_KEY"),
+		os.Getenv("AI_API_BASE"),
+		os.Getenv("AI_MODEL"),
+	)
 
 	// Embed the frontend build (dist/) at compile time.
 	// When dist/ is not embedded (dev mode), pass nil so the API still works.
@@ -147,7 +156,7 @@ For more information, visit: https://github.com/markdownhub/markdownhub
 		logger.Info("Static files embedded successfully").Send()
 	}
 
-	srv := api.NewServer(db, authSvc, userSvc, docSvc, snapSvc, permSvc, workspaceSvc, attachSvc, adminSvc, importerSvc, []byte(cfg.GetJWTSecret()), staticFS)
+	srv := api.NewServer(db, authSvc, socialSvc, userSvc, docSvc, snapSvc, permSvc, workspaceSvc, attachSvc, adminSvc, importerSvc, commentSvc, aiSvc, []byte(cfg.GetJWTSecret()), staticFS)
 
 	httpServer := &http.Server{
 		Addr:         *addr,

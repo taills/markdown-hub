@@ -285,6 +285,16 @@ export function NotesLayout() {
     if (id === doc.id) navigate('/');
   };
 
+  const handleRenameDocument = async (doc: DocumentListItem, newTitle: string) => {
+    try {
+      await documentService.updateTitle(doc.id, newTitle);
+      showToast(t('doc.renameSuccess'), 'success');
+      reload();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Error', 'error');
+    }
+  };
+
   const saveTitle = async () => {
     if (!document || titleSaving) return;
     const nextTitle = titleDraft.trim();
@@ -661,18 +671,6 @@ export function NotesLayout() {
                 {t('common.refresh')}
               </button>
             </div>
-            <div className="inline-form">
-              <input
-                type="text"
-                placeholder={t('doc.newTitlePlaceholder')}
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateDocument()}
-              />
-              <button onClick={handleCreateDocument} disabled={creatingDocument || !newTitle.trim()}>
-                {creatingDocument ? t('doc.creating') : t('doc.create')}
-              </button>
-            </div>
             <div className="document-list" style={{ flex: '1 1 auto', minHeight: 0 }}>
               <TreeDocumentList
                 documents={documents ?? []}
@@ -681,6 +679,7 @@ export function NotesLayout() {
                 locale={i18n.language}
                 onSelect={(doc) => navigate(`/documents/${doc.id}`)}
                 onDelete={handleDeleteDocument}
+                onRename={handleRenameDocument}
                 onCreateChild={async (parentId, title) => {
                   try {
                     const doc = await documentService.create(title, '', parentId);

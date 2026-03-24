@@ -3812,6 +3812,37 @@ body.is-resizing * {
   line-height: 1.4;
 }
 
+/* 添加子文档按钮 */
+.add-child-btn {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.tree-document-item:hover .add-child-btn {
+  opacity: 0.6;
+}
+
+.add-child-btn:hover {
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text);
+}
+
 /* 子文档数量徽章 - 隐藏 */
 .doc-child-count {
   display: none;

@@ -430,140 +430,153 @@ export function NotesLayout() {
     } as React.CSSProperties;
   }, [visibleColumns, columnWidths, mode]);
 
+  const wsPillClass = {
+    connected: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+    connecting: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+    disconnected: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
+  }[connectionState];
+
   return (
-    <div className="notes-shell">
-      <header className="notes-topbar">
-        <div className="topbar-left">
-          <span className="app-title">{siteTitle}</span>
-          <div className="doc-title-wrap">
-            {!document && <span className="doc-title">{t('doc.noneSelected')}</span>}
-            {document && !isEditingTitle && (
-              <span className="doc-title" title={document.title}>{document.title}</span>
-            )}
-            {document && isEditingTitle && (
-              <div className="doc-title-edit">
-                <input
-                  className="doc-title-input"
-                  type="text"
-                  value={titleDraft}
-                  onChange={(e) => setTitleDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveTitle();
-                    if (e.key === 'Escape') cancelTitleEdit();
-                  }}
-                  onBlur={saveTitle}
-                  disabled={titleSaving}
-                  aria-label={t('doc.titleLabel')}
-                />
-                <div className="doc-title-actions">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-neutral-900">
+      {/* Topbar */}
+      <header className="flex items-center h-14 px-4 border-b border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shrink-0 gap-4">
+        {/* Left: Logo + Doc Title */}
+        <div className="flex items-center gap-3 min-w-0 shrink-0">
+          <span className="text-base font-semibold text-gray-900 dark:text-white shrink-0">
+            {siteTitle}
+          </span>
+          {document && (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-gray-500 dark:text-neutral-400 text-sm truncate max-w-[200px]">
+                {document.title}
+              </span>
+              {canEditTitle && !isEditingTitle && (
+                <button
+                  className="shrink-0 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-1 py-0.5 rounded"
+                  onClick={() => setIsEditingTitle(true)}
+                  title={t('doc.editTitle')}
+                >
+                  {t('doc.editTitle')}
+                </button>
+              )}
+              {isEditingTitle && (
+                <div className="flex items-center gap-1">
+                  <input
+                    className="h-7 px-2 text-sm border border-gray-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700 text-gray-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    type="text"
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveTitle();
+                      if (e.key === 'Escape') cancelTitleEdit();
+                    }}
+                    onBlur={saveTitle}
+                    disabled={titleSaving}
+                    aria-label={t('doc.titleLabel')}
+                  />
                   <button
-                    className="doc-title-btn"
+                    className="shrink-0 h-7 px-2 text-xs border border-gray-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-600"
                     onClick={saveTitle}
                     disabled={titleSaving}
                   >
                     {t('doc.save')}
                   </button>
                   <button
-                    className="doc-title-btn ghost"
+                    className="shrink-0 h-7 px-2 text-xs border border-gray-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-600"
                     onClick={cancelTitleEdit}
                     disabled={titleSaving}
                   >
                     {t('doc.cancel')}
                   </button>
                 </div>
-              </div>
-            )}
-            {document && canEditTitle && !isEditingTitle && (
-              <button
-                className="doc-title-btn ghost"
-                onClick={() => setIsEditingTitle(true)}
-                title={t('doc.editTitle')}
-              >
-                {t('doc.editTitle')}
-              </button>
-            )}
-          </div>
+              )}
+            </div>
+          )}
+          {!document && (
+            <span className="text-sm text-gray-500 dark:text-neutral-400">
+              {t('doc.noneSelected')}
+            </span>
+          )}
         </div>
 
-        <div className="topbar-center">
-          <div className="menu-group">
+        {/* Center: Toggle buttons */}
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden">
             <button
-              className={visibleColumns.documents ? 'active' : ''}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                visibleColumns.documents
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700'
+              }`}
               onClick={() => toggleColumn('documents')}
               disabled={mode === 'settings'}
             >
               {t('nav.documents')}
             </button>
             <button
-              className={visibleColumns.preview ? 'active' : ''}
+              className={`px-3 py-1.5 text-xs font-medium border-l border-gray-200 dark:border-neutral-700 transition-colors ${
+                visibleColumns.preview
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700'
+              }`}
               onClick={() => toggleColumn('preview')}
               disabled={mode === 'settings'}
             >
               {t('nav.previewPanel')}
             </button>
           </div>
-          <div className="menu-group">
-            <button
-              className={activePanel === 'preview' ? 'active' : ''}
-              onClick={() => setActivePanel('preview')}
-              disabled={mode === 'settings'}
-            >
-              {t('nav.preview')}
-            </button>
-            <button
-              className={activePanel === 'history' ? 'active' : ''}
-              onClick={() => setActivePanel('history')}
-              disabled={mode === 'settings'}
-            >
-              {t('nav.history')}
-            </button>
-            <button
-              className={activePanel === 'permissions' ? 'active' : ''}
-              onClick={() => setActivePanel('permissions')}
-              disabled={mode === 'settings'}
-            >
-              {t('nav.permissions')}
-            </button>
-            <button
-              className={activePanel === 'attachments' ? 'active' : ''}
-              onClick={() => setActivePanel('attachments')}
-              disabled={mode === 'settings'}
-            >
-              {t('nav.attachments')}
-            </button>
+          <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden ml-1">
+            {(['preview', 'history', 'permissions', 'attachments'] as Panel[]).map((p) => (
+              <button
+                key={p}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  activePanel === p
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700'
+                } ${p !== 'preview' ? 'border-l border-gray-200 dark:border-neutral-700' : ''}`}
+                onClick={() => setActivePanel(p)}
+                disabled={mode === 'settings'}
+              >
+                {t(`nav.${p}`)}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="topbar-right">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2 ml-auto shrink-0">
           <button
-            className="icon-btn"
+            className="size-8 inline-flex justify-center items-center rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-600 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700"
             onClick={() => setSearchOpen(true)}
             title={t('search.title', '搜索文档')}
             aria-label={t('search.title', '搜索文档')}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
           </button>
+
           {document && mode === 'edit' && (
-            <div className="menu-group doc-visibility-group">
+            <div className="flex items-center gap-1">
               {canManageDoc && (
                 <button
-                  className={`icon-btn ${document.is_public ? 'active' : ''}`}
+                  className={`size-8 inline-flex justify-center items-center rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-600 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700 ${
+                    document.is_public ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700' : ''
+                  }`}
                   onClick={handleToggleDocPublic}
                   disabled={publicToggling}
                   title={document.is_public ? t('doc.setPrivate') : t('doc.setPublic')}
                   aria-label={document.is_public ? t('doc.setPrivate') : t('doc.setPublic')}
                 >
                   {document.is_public ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10"/>
                       <line x1="2" y1="12" x2="22" y2="12"/>
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                     </svg>
                   ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                       <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
@@ -572,24 +585,24 @@ export function NotesLayout() {
               )}
               {document.is_public && (
                 <button
-                  className="icon-btn"
+                  className="size-8 inline-flex justify-center items-center rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-600 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700"
                   onClick={handleCopyPublicLink}
                   title={t('doc.publicLink')}
                   aria-label={t('doc.publicLink')}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                   </svg>
                 </button>
               )}
               <button
-                className="icon-btn"
+                className="size-8 inline-flex justify-center items-center rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-600 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700"
                 onClick={handleViewRaw}
                 title={t('doc.viewRaw')}
                 aria-label={t('doc.viewRaw')}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
                   <line x1="16" y1="13" x2="8" y2="13"/>
@@ -599,13 +612,14 @@ export function NotesLayout() {
               </button>
             </div>
           )}
+
           {id && (
-            <span className={`ws-pill ws-${connectionState}`}>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${wsPillClass}`}>
               {connectionState === 'connected' ? t('common.connected') : connectionState === 'connecting' ? t('common.connecting') : t('common.disconnected')}
             </span>
           )}
           {collaborators.length > 0 && (
-            <span className="collaborators">
+            <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-400">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                 <circle cx="12" cy="7" r="4"/>
                 <path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2" fill="none" stroke="currentColor" strokeWidth="2"/>
@@ -613,100 +627,127 @@ export function NotesLayout() {
               {collaborators.length} {t('common.online')}
             </span>
           )}
-          <button className="ghost" onClick={() => navigate('/home')}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button
+            className="size-8 inline-flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 text-xs font-medium hover:bg-gray-50 dark:hover:bg-neutral-700"
+            onClick={() => navigate('/home')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
               <polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
-            {t('nav.home')}
+            <span className="hidden sm:inline">{t('nav.home')}</span>
           </button>
-          <div className="user-menu">
-            <button className="user-chip" onClick={() => navigate('/me')}>
-              <span className="user-avatar">{user?.username?.charAt(0).toUpperCase()}</span>
-              <span>{user?.username}</span>
-              {user?.is_admin && <span style={{ color: 'var(--accent)', marginLeft: '2px' }}>★</span>}
-            </button>
-          </div>
-          <button className="ghost" onClick={logout}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 text-xs font-medium hover:bg-gray-50 dark:hover:bg-neutral-700"
+            onClick={() => navigate('/me')}
+          >
+            <span className="size-5 inline-flex justify-center items-center rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+              {user?.username?.charAt(0).toUpperCase()}
+            </span>
+            <span className="hidden sm:inline">
+              {user?.username}
+              {user?.is_admin && <span className="text-amber-500 ml-0.5">★</span>}
+            </span>
+          </button>
+          <button
+            className="size-8 sm:size-auto inline-flex justify-center items-center gap-1.5 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-600 dark:text-neutral-400 text-xs hover:bg-gray-50 dark:hover:bg-neutral-700"
+            onClick={logout}
+            title={t('nav.logout')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            {t('nav.logout')}
+            <span className="hidden sm:inline">{t('nav.logout')}</span>
           </button>
         </div>
       </header>
 
-      <div className="notes-columns" style={columnsStyle} ref={containerRef}>
+      {/* Main Columns */}
+      <div
+        className="flex flex-1 min-h-0 overflow-hidden"
+        style={columnsStyle}
+        ref={containerRef}
+      >
         {mode === 'edit' && visibleColumns.documents && (
-          <aside className="notes-column document-column">
-            <div className="column-header">
-              <div>
-                <h3>{t('nav.documents')}</h3>
+          <>
+            <aside className="flex flex-col min-h-0 bg-white dark:bg-neutral-800 border-e border-gray-200 dark:border-neutral-700">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-neutral-700">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-neutral-200">
+                  {t('nav.documents')}
+                </h3>
+                <button
+                  className="px-3 py-1 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 disabled:opacity-50"
+                  onClick={reload}
+                  disabled={docsLoading}
+                >
+                  {t('common.refresh')}
+                </button>
               </div>
-              <button className="secondary" onClick={reload} disabled={docsLoading}>
-                {t('common.refresh')}
-              </button>
-            </div>
-            <div className="document-list" style={{ flex: '1 1 auto', minHeight: 0 }}>
-              <TreeDocumentList
-                documents={documents ?? []}
-                selectedId={id}
-                currentUserId={user?.id}
-                locale={i18n.language}
-                onSelect={(doc) => navigate(`/documents/${doc.id}`)}
-                onDelete={handleDeleteDocument}
-                onRename={handleRenameDocument}
-                onCreateChild={async (parentId, title) => {
-                  try {
-                    const doc = await documentService.create(title, '', parentId);
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <TreeDocumentList
+                  documents={documents ?? []}
+                  selectedId={id}
+                  currentUserId={user?.id}
+                  locale={i18n.language}
+                  onSelect={(doc) => navigate(`/documents/${doc.id}`)}
+                  onDelete={handleDeleteDocument}
+                  onRename={handleRenameDocument}
+                  onCreateChild={async (parentId, title) => {
+                    try {
+                      const doc = await documentService.create(title, '', parentId);
+                      reload();
+                      showToast(t('doc.createdSuccess'), 'success');
+                      navigate(`/documents/${doc.id}`);
+                    } catch (e) {
+                      showToast(e instanceof Error ? e.message : 'Error', 'error');
+                    }
+                  }}
+                  onMove={async (docId, newParentId, newSortOrder) => {
+                    try {
+                      await documentService.move(docId, newParentId, newSortOrder);
+                      reload();
+                      showToast(t('doc.movedSuccess'), 'success');
+                    } catch (e) {
+                      showToast(e instanceof Error ? e.message : 'Error', 'error');
+                    }
+                  }}
+                  onReorder={async (_docId, _newSortOrder) => {
                     reload();
-                    showToast(t('doc.createdSuccess'), 'success');
-                    navigate(`/documents/${doc.id}`);
-                  } catch (e) {
-                    showToast(e instanceof Error ? e.message : 'Error', 'error');
-                  }
-                }}
-                onMove={async (docId, newParentId, newSortOrder) => {
-                  try {
-                    await documentService.move(docId, newParentId, newSortOrder);
-                    reload();
-                    showToast(t('doc.movedSuccess'), 'success');
-                  } catch (e) {
-                    showToast(e instanceof Error ? e.message : 'Error', 'error');
-                  }
-                }}
-                onReorder={async (_docId, _newSortOrder) => {
-                  // For now, just reload - could be optimized with optimistic update
-                  reload();
-                }}
-              />
-            </div>
-          </aside>
-        )}
-
-        {mode === 'edit' && visibleColumns.documents && (
-          <div
-            className="column-resizer"
-            role="separator"
-            aria-label="调整左侧列表宽度"
-            onMouseDown={startResize('documents')}
-          />
+                  }}
+                />
+              </div>
+            </aside>
+            <div
+              className="w-1.5 cursor-col-resize bg-gray-200 dark:bg-neutral-700 hover:bg-blue-400 dark:hover:bg-blue-500 shrink-0"
+              role="separator"
+              aria-label="调整左侧列表宽度"
+              onMouseDown={startResize('documents')}
+            />
+          </>
         )}
 
         {mode === 'edit' && (
-          <main className="notes-column editor-column">
-            {docLoading && <div className="loading-inline">{t('common.loading')}</div>}
+          <main className="flex flex-col min-h-0 min-w-0 bg-white dark:bg-neutral-800">
+            {docLoading && (
+              <div className="flex items-center justify-center flex-1 text-sm text-gray-500 dark:text-neutral-400">
+                {t('common.loading')}
+              </div>
+            )}
             {!docLoading && !document && (
-              <div className="empty-state">
+              <div className="flex flex-col items-center justify-center flex-1 text-sm text-gray-500 dark:text-neutral-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3 opacity-40">
+                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
                 {t('doc.pickPrompt')}
               </div>
             )}
             {!docLoading && document && (
               <textarea
                 ref={textareaRef}
-                className="editor-textarea"
+                className="editor-textarea flex-1"
                 value={content}
                 onChange={(e) => handleContentChange(e.target.value)}
                 spellCheck={false}
@@ -716,43 +757,42 @@ export function NotesLayout() {
         )}
 
         {mode === 'edit' && visibleColumns.preview && (
-          <div
-            className="column-resizer"
-            role="separator"
-            aria-label="调整预览宽度"
-            onMouseDown={startResize('preview')}
-          />
-        )}
-
-        {mode === 'edit' && visibleColumns.preview && (
-          <aside className="notes-column preview-column">
-            {activePanel === 'preview' && (
-              document
-                ? <MarkdownPreview content={content} />
-                : <div className="empty-state">{t('doc.previewEmpty')}</div>
-            )}
-            {activePanel === 'history' && (
-              document
-                ? <SnapshotPanel documentId={document.id} onRestore={(doc) => {
-                  setDocument(doc);
-                  setContent(doc.content);
-                }} />
-                : <div className="empty-state">{t('doc.historyEmpty')}</div>
-            )}
-            {activePanel === 'permissions' && (
-              document
-                ? <PermissionsPanel documentId={document.id} />
-                : <div className="empty-state">{t('doc.permissionsEmpty')}</div>
-            )}
-            {activePanel === 'attachments' && (
-              document
-                ? <AttachmentPanel
-                    documentId={document.id}
-                    onInsert={handleInsertAttachment}
-                  />
-                : <div className="empty-state">{t('doc.attachmentsEmpty')}</div>
-            )}
-          </aside>
+          <>
+            <div
+              className="w-1.5 cursor-col-resize bg-gray-200 dark:bg-neutral-700 hover:bg-blue-400 dark:hover:bg-blue-500 shrink-0"
+              role="separator"
+              aria-label="调整预览宽度"
+              onMouseDown={startResize('preview')}
+            />
+            <aside className="flex flex-col min-h-0 bg-white dark:bg-neutral-800">
+              {activePanel === 'preview' && (
+                document
+                  ? <MarkdownPreview content={content} />
+                  : <div className="flex flex-col items-center justify-center flex-1 text-sm text-gray-500 dark:text-neutral-400">{t('doc.previewEmpty')}</div>
+              )}
+              {activePanel === 'history' && (
+                document
+                  ? <SnapshotPanel documentId={document.id} onRestore={(doc) => {
+                    setDocument(doc);
+                    setContent(doc.content);
+                  }} />
+                  : <div className="flex flex-col items-center justify-center flex-1 text-sm text-gray-500 dark:text-neutral-400">{t('doc.historyEmpty')}</div>
+              )}
+              {activePanel === 'permissions' && (
+                document
+                  ? <PermissionsPanel documentId={document.id} />
+                  : <div className="flex flex-col items-center justify-center flex-1 text-sm text-gray-500 dark:text-neutral-400">{t('doc.permissionsEmpty')}</div>
+              )}
+              {activePanel === 'attachments' && (
+                document
+                  ? <AttachmentPanel
+                      documentId={document.id}
+                      onInsert={handleInsertAttachment}
+                    />
+                  : <div className="flex flex-col items-center justify-center flex-1 text-sm text-gray-500 dark:text-neutral-400">{t('doc.attachmentsEmpty')}</div>
+              )}
+            </aside>
+          </>
         )}
       </div>
 

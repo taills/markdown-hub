@@ -305,22 +305,27 @@ export function AdminUsers() {
       <ErrorModal message={error} onClose={handleCloseError} />
 
       {resetPasswordResult && (
-        <div className="modal-backdrop" onClick={closeResetPasswordResult}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{t('admin.passwordResetSuccess')}</h3>
-            </div>
-            <div className="modal-body">
-              <p>{t('admin.passwordResetMessage', { username: resetPasswordResult.username })}</p>
-              <div className="password-display">
-                <code>{resetPasswordResult.password}</code>
+        <div className="hs-overlay open size-full fixed top-0 start-0 z-[80] overflow-x-hidden overflow-y-auto" onClick={closeResetPasswordResult}>
+          <div className="hs-overlay-open:mt-7 hs-overlay-open:opacity-100 hs-overlay-open:duration-500 mt-0 opacity-0 ease-out transition-all sm:max-w-lg sm:w-full m-3 sm:mx-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col bg-white border shadow-sm rounded-xl dark:bg-neutral-800 dark:border-neutral-700">
+              <div className="flex items-center justify-between py-3 px-4 border-b border-gray-200 dark:border-neutral-700">
+                <h3 className="font-semibold text-gray-800 dark:text-neutral-200">{t('admin.passwordResetSuccess')}</h3>
+                <button className="size-8 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-600" onClick={closeResetPasswordResult}>
+                  <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
               </div>
-              <p className="muted">{t('admin.passwordResetWarning')}</p>
-            </div>
-            <div className="modal-actions">
-              <button className="primary" onClick={closeResetPasswordResult}>
-                {t('common.confirm')}
-              </button>
+              <div className="px-4 py-4">
+                <p className="text-sm text-gray-700 dark:text-neutral-300 mb-3">{t('admin.passwordResetMessage', { username: resetPasswordResult.username })}</p>
+                <div className="bg-gray-100 dark:bg-neutral-700 rounded-md px-3 py-2 mb-3">
+                  <code className="text-sm font-mono text-gray-900 dark:text-neutral-100">{resetPasswordResult.password}</code>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-neutral-400">{t('admin.passwordResetWarning')}</p>
+              </div>
+              <div className="flex justify-end items-center gap-x-2 py-3 px-4 border-t border-gray-200 dark:border-neutral-700">
+                <button className="py-2 px-4 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700" onClick={closeResetPasswordResult}>
+                  {t('common.confirm')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

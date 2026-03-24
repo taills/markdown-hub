@@ -114,73 +114,94 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop search-modal-backdrop" onClick={onClose}>
+    <div
+      className="hs-overlay open size-full fixed top-0 start-0 z-[80] overflow-x-hidden overflow-y-auto"
+      onClick={onClose}
+    >
       <div
-        className="search-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('search.title', '搜索文档')}
+        className="hs-overlay-open:mt-7 hs-overlay-open:opacity-100 hs-overlay-open:duration-500 mt-0 opacity-0 ease-out transition-all sm:max-w-lg sm:w-full m-3 sm:mx-auto"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="search-input-wrapper">
-          <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="text"
-            className="search-input"
-            placeholder={t('search.placeholder', '搜索文档标题或内容...')}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          {isLoading && <div className="search-loading" />}
-          <button className="search-close-btn" onClick={onClose} aria-label={t('common.close', '关闭')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
+        <div className="flex flex-col bg-white border shadow-sm rounded-xl dark:bg-neutral-800 dark:border-neutral-700">
+          {/* Search Input */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-neutral-700">
+            <svg className="shrink-0 size-4 text-gray-500 dark:text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
             </svg>
-          </button>
+            <input
+              ref={inputRef}
+              type="text"
+              className="grow text-sm text-gray-800 dark:text-neutral-200 bg-transparent border-0 outline-none placeholder-gray-400 dark:placeholder-neutral-500"
+              placeholder={t('search.placeholder', '搜索文档标题或内容...')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            {isLoading && (
+              <span className="loading-spinner shrink-0" />
+            )}
+            <button
+              className="shrink-0 size-7 inline-flex justify-center items-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-600"
+              onClick={onClose}
+              aria-label={t('common.close', '关闭')}
+            >
+              <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Results */}
+          {query.trim() && results.length > 0 && (
+            <div
+              className="max-h-80 overflow-y-auto"
+              ref={resultsRef}
+            >
+              {results.map((doc, index) => (
+                <div
+                  key={doc.id}
+                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-0 ${
+                    index === selectedIndex
+                      ? 'bg-blue-50 dark:bg-blue-900/20'
+                      : 'hover:bg-gray-50 dark:hover:bg-neutral-700'
+                  }`}
+                  onClick={() => {
+                    navigate(`/documents/${doc.id}`);
+                    onClose();
+                  }}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-neutral-200 truncate">
+                      {doc.title || t('home.untitled', '无标题文档')}
+                    </span>
+                    {doc.workspace_name && (
+                      <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 dark:bg-neutral-700 dark:text-neutral-400">
+                        {doc.workspace_name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5 line-clamp-2">
+                    {getExcerpt(doc.content, query)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {query.trim() && !isLoading && results.length === 0 && (
+            <div className="px-4 py-8 text-sm text-center text-gray-500 dark:text-neutral-400">
+              {t('search.noResults', '未找到相关文档')}
+            </div>
+          )}
+
+          {!query.trim() && (
+            <div className="px-4 py-6 text-sm text-center text-gray-400 dark:text-neutral-500">
+              {t('search.hint', '输入关键词搜索文档')}
+            </div>
+          )}
         </div>
-
-        {query.trim() && results.length > 0 && (
-          <div className="search-results" ref={resultsRef}>
-            {results.map((doc, index) => (
-              <div
-                key={doc.id}
-                className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
-                onClick={() => {
-                  navigate(`/documents/${doc.id}`);
-                  onClose();
-                }}
-                onMouseEnter={() => setSelectedIndex(index)}
-              >
-                <div className="search-result-title">
-                  {doc.title || t('home.untitled', '无标题文档')}
-                  {doc.workspace_name && (
-                    <span className="search-result-workspace">{doc.workspace_name}</span>
-                  )}
-                </div>
-                <div className="search-result-excerpt">
-                  {getExcerpt(doc.content, query)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {query.trim() && !isLoading && results.length === 0 && (
-          <div className="search-empty">
-            {t('search.noResults', '未找到相关文档')}
-          </div>
-        )}
-
-        {!query.trim() && (
-          <div className="search-hint">
-            {t('search.hint', '输入关键词搜索文档')}
-          </div>
-        )}
       </div>
     </div>
   );

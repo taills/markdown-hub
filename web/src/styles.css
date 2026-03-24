@@ -3666,39 +3666,52 @@ body.is-resizing * {
 /* ============================================
    树形文档列表
    ============================================ */
+/* ============================================
+   树形文档列表 - Linear/Notion风格
+   ============================================ */
+
 .tree-document-list {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--surface);
 }
 
 .tree-toolbar {
   display: flex;
-  gap: 4px;
-  padding: 8px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
-  background: #fafafa;
+  background: var(--surface);
 }
 
 .view-mode-btn {
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  border-radius: 4px;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.view-mode-btn:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 
 .view-mode-btn.active {
   background: var(--primary);
   color: white;
-  border-color: var(--primary);
 }
 
 .tree-content {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 8px 0;
 }
 
 .tree-node {
@@ -3706,28 +3719,47 @@ body.is-resizing * {
   flex-direction: column;
 }
 
+/* 文档项 - 美化设计 */
 .tree-document-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin: 2px 4px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: all 0.15s ease;
+  gap: 6px;
+  margin: 2px 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: default;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .tree-document-item:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(102, 126, 234, 0.05);
+  border-color: rgba(102, 126, 234, 0.1);
 }
 
 .tree-document-item.active {
-  background: rgba(102, 126, 234, 0.1);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(102, 126, 234, 0.08));
+  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: 0 1px 3px rgba(102, 126, 234, 0.1);
+}
+
+.tree-document-item.active .doc-title {
+  color: var(--primary-dark);
+  font-weight: 500;
+}
+
+.tree-document-item.active .doc-child-count {
+  background: rgba(102, 126, 234, 0.15);
+  color: var(--primary-dark);
 }
 
 .tree-document-item.dragging {
-  opacity: 0.5;
+  opacity: 0.4;
+  transform: scale(0.98);
 }
 
+/* 展开/折叠按钮 */
 .expand-btn {
   width: 20px;
   height: 20px;
@@ -3736,15 +3768,21 @@ body.is-resizing * {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
 .expand-btn:hover {
-  color: var(--text);
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--primary);
+}
+
+.expand-btn.expanded {
+  color: var(--primary);
 }
 
 .expand-placeholder {
@@ -3752,69 +3790,186 @@ body.is-resizing * {
   flex-shrink: 0;
 }
 
+/* 拖拽手柄 */
+.drag-handle {
+  cursor: grab;
+  opacity: 0;
+  transition: all 0.2s ease;
+  padding: 3px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drag-handle:hover {
+  opacity: 0.8 !important;
+  background: rgba(102, 126, 234, 0.08);
+  color: var(--primary);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.tree-document-item:hover .drag-handle {
+  opacity: 0.4;
+}
+
+/* 文档主按钮 */
+.doc-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* 文档标题 - 靠左对齐 */
+.doc-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
+  text-align: left;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+/* 子文档数量徽章 */
+.doc-child-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+/* 子节点容器 */
 .tree-children {
   display: flex;
   flex-direction: column;
+  margin-left: 12px;
+  padding-left: 14px;
+  border-left: 2px solid rgba(102, 126, 234, 0.15);
+  position: relative;
 }
 
+.tree-children::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(102, 126, 234, 0.15) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* 创建子文档输入框 */
 .tree-create-child {
-  display: flex;
-  gap: 4px;
-  padding: 4px 8px;
-  margin: 2px 4px;
+  padding: 4px 12px;
+  margin: 2px 6px;
 }
 
-.tree-create-child input {
-  flex: 1;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-.tree-create-child button {
-  padding: 4px 8px;
-  border: 1px solid var(--border);
+.inline-edit-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
   background: var(--surface);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
+  outline: none;
+  transition: all 0.2s ease;
+  color: var(--text);
 }
 
-.tree-create-child button:first-of-type {
-  background: var(--primary);
-  color: white;
+.inline-edit-input:focus {
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.tree-create-child button:last-of-type {
+.inline-edit-input::placeholder {
   color: var(--text-muted);
 }
 
-.doc-child-count {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-left: 4px;
+/* ============================================
+   右键菜单
+   ============================================ */
+.context-menu {
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  padding: 6px 0;
+  min-width: 160px;
+  animation: contextMenuIn 0.15s ease-out;
 }
 
-.doc-add-child {
-  display: inline-flex;
+@keyframes contextMenuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.context-menu-item {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 14px;
+  text-align: left;
   border: none;
-  background: transparent;
-  border-radius: 4px;
-  color: var(--text-muted);
+  background: none;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 13px;
+  color: var(--text);
+  transition: background 0.1s ease;
 }
 
-.doc-add-child:hover {
+.context-menu-item:hover {
+  background: var(--hover);
+}
+
+.context-menu-item:active {
   background: rgba(102, 126, 234, 0.1);
-  color: var(--primary);
+}
+
+.context-menu-item.danger {
+  color: #dc3545;
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(220, 53, 69, 0.08);
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
 }
 
 /* ============================================

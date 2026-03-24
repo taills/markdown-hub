@@ -1,19 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import type { DocumentListItem, DocumentTreeNode } from '@/types';
 import { buildDocumentTree } from '@/utils/documentTree';
 
@@ -24,114 +10,171 @@ interface ContextMenuState {
   node: DocumentTreeNode | null;
 }
 
-interface TreeDocumentItemProps {
+interface TreeItemProps {
   node: DocumentTreeNode;
-  depth: number;
+  level: number;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
-  isActive: boolean;
-  isOwner: boolean;
-  locale: string;
-  onNavigate: () => void;
+  selectedId?: string;
+  onSelect: (doc: DocumentListItem) => void;
   onContextMenu: (e: React.MouseEvent, node: DocumentTreeNode) => void;
   onCreateChild: (parentId: string) => void;
 }
 
-function SortableTreeItem({
+function TreeItem({
   node,
-  depth,
+  level,
   expandedIds,
   onToggleExpand,
-  isActive,
-  isOwner: _isOwner,
-  locale: _locale,
-  onNavigate,
+  selectedId,
+  onSelect,
   onContextMenu,
   onCreateChild,
-}: TreeDocumentItemProps) {
+}: TreeItemProps) {
   const doc = node.document;
   const children = node.children;
   const hasChildren = children.length > 0;
   const isExpanded = expandedIds.has(doc.id);
+  const isSelected = doc.id === selectedId;
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: doc.id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    paddingLeft: `${depth * 16 + 8}px`,
-  };
+  const paddingLeft = level * 16 + 8;
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      className={`tree-document-item ${isActive ? 'active' : ''} ${isDragging ? 'dragging' : ''}`}
+      className={`hs-accordion hs-accordion-treeview-level-${level + 1} ${isSelected ? 'active' : ''}`}
+      role="treeitem"
+      aria-expanded={hasChildren ? isExpanded : undefined}
       data-doc-id={doc.id}
       onContextMenu={(e) => {
         e.preventDefault();
         onContextMenu(e, node);
       }}
     >
-      <button
-        className="drag-handle"
-        {...attributes}
-        {...listeners}
-        tabIndex={-1}
-        aria-label="拖拽"
+      {/* Accordion Heading */}
+      <div
+        className="hs-accordion-heading py-0.5 flex items-center gap-x-0.5 w-full"
+        style={{ paddingLeft: `${paddingLeft}px` }}
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-          <circle cx="2" cy="2" r="1" />
-          <circle cx="5" cy="2" r="1" />
-          <circle cx="8" cy="2" r="1" />
-          <circle cx="2" cy="5" r="1" />
-          <circle cx="5" cy="5" r="1" />
-          <circle cx="8" cy="5" r="1" />
-          <circle cx="2" cy="8" r="1" />
-          <circle cx="5" cy="8" r="1" />
-          <circle cx="8" cy="8" r="1" />
-        </svg>
-      </button>
+        {/* Toggle Button */}
+        {hasChildren ? (
+          <button
+            className="hs-accordion-toggle size-6 flex justify-center items-center hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-md focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none"
+            onClick={() => onToggleExpand(doc.id)}
+            aria-expanded={isExpanded}
+          >
+            <svg
+              className={`size-4 text-gray-600 dark:text-neutral-400 ${isExpanded ? 'hs-accordion-active:rotate-90' : ''} transition-transform duration-200`}
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        ) : (
+          <span className="size-6" />
+        )}
 
-      {hasChildren ? (
-        <button
-          className={`expand-btn ${isExpanded ? 'expanded' : ''}`}
-          onClick={() => onToggleExpand(doc.id)}
-          aria-label={isExpanded ? '折叠' : '展开'}
+        {/* Document Link */}
+        <div
+          className={`grow px-1.5 rounded-md cursor-pointer ${
+            isSelected
+              ? 'bg-blue-100 dark:bg-blue-900/30'
+              : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
+          }`}
+          onClick={() => onSelect(doc)}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-            {isExpanded ? (
-              <path d="M3 4.5L6 7.5L9 4.5" />
-            ) : (
-              <path d="M4.5 3L7.5 6L4.5 9" />
-            )}
-          </svg>
-        </button>
-      ) : (
-        <span className="expand-placeholder" />
-      )}
+          <div className="flex items-center gap-x-3">
+            {/* Document Icon */}
+            <svg
+              className={`shrink-0 size-4 ${
+                hasChildren
+                  ? 'text-yellow-500'
+                  : 'text-gray-400 dark:text-neutral-500'
+              }`}
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {hasChildren ? (
+                <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+              ) : (
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              )}
+            </svg>
 
-      <button className="doc-main" onClick={onNavigate}>
-        <span className="doc-title">{doc.title}</span>
-      </button>
-      <button
-        className="add-child-btn"
-        onClick={(e) => {
-          e.stopPropagation();
-          onCreateChild(doc.id);
-        }}
-        title="添加子文档"
-      >
-        +
-      </button>
+            {/* Title */}
+            <span className="grow text-sm text-gray-800 dark:text-neutral-200 truncate">
+              {doc.title}
+            </span>
+
+            {/* Add Child Button */}
+            <button
+              className="shrink-0 size-5 flex justify-center items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateChild(doc.id);
+              }}
+              title="添加子文档"
+            >
+              <svg
+                className="size-3.5"
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Accordion Content */}
+      {hasChildren && (
+        <div
+          id={`collapse-${doc.id}`}
+          className={`hs-accordion-content w-full overflow-hidden transition-[height] duration-300 ${
+            isExpanded ? 'active' : ''
+          }`}
+          role="group"
+        >
+          <div className="pb-1">
+            {children.map((child) => (
+              <TreeItem
+                key={child.document.id}
+                node={child}
+                level={level + 1}
+                expandedIds={expandedIds}
+                onToggleExpand={onToggleExpand}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                onContextMenu={onContextMenu}
+                onCreateChild={onCreateChild}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -152,14 +195,14 @@ interface TreeDocumentListProps {
 export function TreeDocumentList({
   documents,
   selectedId,
-  currentUserId,
-  locale,
+  currentUserId: _currentUserId,
+  locale: _locale,
   onSelect,
   onDelete,
   onRename,
   onCreateChild,
-  onMove,
-  onReorder,
+  onMove: _onMove,
+  onReorder: _onReorder,
 }: TreeDocumentListProps) {
   const { t } = useTranslation();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -174,16 +217,7 @@ export function TreeDocumentList({
   const [editingNode, setEditingNode] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const contextMenuRef = useRef<HTMLDivElement>(null);
-  // Keep a ref to the context menu node for event handlers
   const contextMenuNodeRef = useRef<DocumentTreeNode | null>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
 
   // Build tree structure
   const tree = useMemo(() => buildDocumentTree(documents), [documents]);
@@ -215,11 +249,11 @@ export function TreeDocumentList({
     }
   }, [contextMenu.visible]);
 
-  // Native context menu handler as fallback for Playwright/testing
+  // Native context menu handler
   useEffect(() => {
     const handleNativeContextMenu = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      const treeItem = target.closest('.tree-document-item');
+      const treeItem = target.closest('.hs-accordion');
       if (treeItem) {
         e.preventDefault();
         const docId = treeItem.getAttribute('data-doc-id');
@@ -321,22 +355,6 @@ export function TreeDocumentList({
     return null;
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const activeDoc = documents.find((d) => d.id === active.id);
-    const overDoc = documents.find((d) => d.id === over.id);
-
-    if (activeDoc && overDoc) {
-      if (activeDoc.parent_id === overDoc.parent_id) {
-        onReorder(activeDoc.id, overDoc.sort_order);
-      } else {
-        onMove(activeDoc.id, overDoc.parent_id ?? null, overDoc.sort_order);
-      }
-    }
-  };
-
   const handleDelete = () => {
     const node = contextMenuNodeRef.current || contextMenu.node;
     if (node) {
@@ -353,33 +371,61 @@ export function TreeDocumentList({
     }
   };
 
-  const renderTreeNode = (node: DocumentTreeNode, depth: number): React.ReactNode => {
-    const doc = node.document;
-    const children = node.children;
-    const isActive = doc.id === selectedId;
-    const isOwner = doc.owner_id === currentUserId;
-    const isExpanded = expandedIds.has(doc.id);
-    const isEditing = editingNode === doc.id;
+  return (
+    <div className="tree-document-list">
+      <div className="tree-content">
+        {/* Tree Root */}
+        <div
+          className="hs-accordion-treeview-root"
+          role="tree"
+          aria-orientation="vertical"
+        >
+          {tree.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-neutral-400">
+              {t('doc.empty', '暂无文档')}
+            </div>
+          ) : (
+            tree.map((node) => (
+              <TreeItem
+                key={node.document.id}
+                node={node}
+                level={0}
+                expandedIds={expandedIds}
+                onToggleExpand={handleToggleExpand}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                onContextMenu={handleContextMenu}
+                onCreateChild={handleCreateChild}
+              />
+            ))
+          )}
+        </div>
 
-    return (
-      <div key={doc.id} className="tree-node">
-        <SortableTreeItem
-          node={node}
-          depth={depth}
-          expandedIds={expandedIds}
-          onToggleExpand={handleToggleExpand}
-          isActive={isActive}
-          isOwner={isOwner}
-          locale={locale}
-          onNavigate={() => onSelect(doc)}
-          onContextMenu={handleContextMenu}
-          onCreateChild={handleCreateChild}
-        />
-        {isEditing && (
-          <div className="tree-create-child" style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}>
+        {/* Inline Create Child Input */}
+        {creatingChildFor && (
+          <div className="px-4 py-2">
             <input
               type="text"
-              className="inline-edit-input"
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={newChildTitle}
+              onChange={(e) => setNewChildTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleConfirmCreateChild();
+                if (e.key === 'Escape') handleCancelCreateChild();
+              }}
+              onBlur={handleConfirmCreateChild}
+              placeholder={t('doc.newTitlePlaceholder')}
+              autoFocus
+            />
+          </div>
+        )}
+
+        {/* Inline Rename Input */}
+        {editingNode && (
+          <div className="px-4 py-2">
+            <input
+              type="text"
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={editingTitle}
               onChange={(e) => setEditingTitle(e.target.value)}
               onKeyDown={(e) => {
@@ -391,66 +437,13 @@ export function TreeDocumentList({
             />
           </div>
         )}
-        {creatingChildFor === doc.id && (
-          <div className="tree-create-child" style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}>
-            <input
-              type="text"
-              value={newChildTitle}
-              onChange={(e) => setNewChildTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleConfirmCreateChild();
-                }
-                if (e.key === 'Escape') handleCancelCreateChild();
-              }}
-              onBlur={() => {
-                // Small delay to allow click events to process first
-                setTimeout(handleConfirmCreateChild, 100);
-              }}
-              placeholder={t('doc.newTitlePlaceholder')}
-              className="inline-edit-input"
-              autoFocus
-            />
-          </div>
-        )}
-        {isExpanded && children.length > 0 && (
-          <div className="tree-children">
-            {children.map((child) => renderTreeNode(child, depth + 1))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const allItemIds = documents.map((d) => d.id);
-
-  return (
-    <div className="tree-document-list">
-      <div className="tree-content">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={allItemIds}
-            strategy={verticalListSortingStrategy}
-          >
-            {tree.length === 0 ? (
-              <div className="empty">{t('doc.empty')}</div>
-            ) : (
-              tree.map((node) => renderTreeNode(node, 0))
-            )}
-          </SortableContext>
-        </DndContext>
       </div>
 
       {/* Context Menu */}
       {contextMenu.visible && contextMenu.node && (
         <div
           ref={contextMenuRef}
-          className="context-menu"
+          className="fixed z-50 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[160px]"
           style={{
             position: 'fixed',
             left: contextMenu.x,
@@ -459,32 +452,66 @@ export function TreeDocumentList({
           }}
         >
           <button
-            className="context-menu-item"
+            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
             onClick={handleStartRename}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            <svg
+              className="size-4"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
             </svg>
             {t('doc.rename', '重命名')}
           </button>
           <button
-            className="context-menu-item"
+            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
             onClick={handleInsertChild}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 5v14M5 12h14" />
+            <svg
+              className="size-4"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
             </svg>
             {t('doc.insertChild', '插入子级')}
           </button>
-          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+          <div className="h-px bg-gray-200 dark:bg-neutral-700 my-1" />
           <button
-            className="context-menu-item danger"
+            className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
             onClick={handleDelete}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <svg
+              className="size-4"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 6h18" />
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
             </svg>
             {t('doc.delete', '删除')}
           </button>

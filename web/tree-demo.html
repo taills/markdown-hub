@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>树形文档列表样式演示</title>
+  <style>
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5568d3;
+      --text: #2d3748;
+      --text-muted: #718096;
+      --border: #e2e8f0;
+      --surface: #ffffff;
+      --hover: #f7fafc;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+      background: #f8f9fa;
+      padding: 40px 20px;
+    }
+
+    .demo-container {
+      max-width: 400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 10px 20px rgba(0, 0, 0, 0.08);
+      padding: 24px 0;
+    }
+
+    .demo-header {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 20px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .tree-content {
+      padding: 8px 0;
+    }
+
+    .tree-node {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 文档项 - 美化设计 */
+    .tree-document-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 6px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      background: transparent;
+      border: 1px solid transparent;
+    }
+
+    .tree-document-item:hover {
+      background: rgba(102, 126, 234, 0.05);
+      border-color: rgba(102, 126, 234, 0.1);
+    }
+
+    .tree-document-item.active {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.12), rgba(102, 126, 234, 0.08));
+      border-color: rgba(102, 126, 234, 0.3);
+      box-shadow: 0 1px 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .tree-document-item.active .doc-title {
+      color: var(--primary-dark);
+      font-weight: 500;
+    }
+
+    .tree-document-item.active .doc-child-count {
+      background: rgba(102, 126, 234, 0.15);
+      color: var(--primary-dark);
+    }
+
+    /* 拖拽手柄 */
+    .drag-handle {
+      cursor: grab;
+      opacity: 0;
+      transition: all 0.2s ease;
+      padding: 3px;
+      border-radius: 4px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      background: transparent;
+      border: none;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drag-handle:hover {
+      opacity: 0.8 !important;
+      background: rgba(102, 126, 234, 0.08);
+      color: var(--primary);
+    }
+
+    .tree-document-item:hover .drag-handle {
+      opacity: 0.4;
+    }
+
+    /* 展开/折叠按钮 */
+    .expand-btn {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .expand-btn:hover {
+      background: rgba(102, 126, 234, 0.1);
+      color: var(--primary);
+    }
+
+    .expand-btn.expanded {
+      color: var(--primary);
+    }
+
+    .expand-placeholder {
+      width: 20px;
+      flex-shrink: 0;
+    }
+
+    /* 文档主按钮 */
+    .doc-main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      min-width: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    /* 文档标题 - 靠左对齐 */
+    .doc-title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--text);
+      text-align: left;
+      line-height: 1.5;
+      letter-spacing: 0.01em;
+    }
+
+    /* 子文档数量徽章 */
+    .doc-child-count {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.05);
+      padding: 2px 6px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    /* 子节点容器 */
+    .tree-children {
+      display: flex;
+      flex-direction: column;
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 2px solid rgba(102, 126, 234, 0.15);
+      position: relative;
+    }
+
+    .tree-children::before {
+      content: '';
+      position: absolute;
+      left: -2px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(102, 126, 234, 0.15) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .note {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background: #f7fafc;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .note strong {
+      color: var(--primary-dark);
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <div class="demo-header">
+      <h1>树形文档列表</h1>
+      <p class="subtitle">美化后的样式演示</p>
+    </div>
+
+    <div class="tree-content">
+      <!-- 根文档 1 -->
+      <div class="tree-node">
+        <div class="tree-document-item active">
+          <button class="drag-handle">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+              <circle cx="2" cy="2" r="1" />
+              <circle cx="5" cy="2" r="1" />
+              <circle cx="8" cy="2" r="1" />
+              <circle cx="2" cy="5" r="1" />
+              <circle cx="5" cy="5" r="1" />
+              <circle cx="8" cy="5" r="1" />
+              <circle cx="2" cy="8" r="1" />
+              <circle cx="5" cy="8" r="1" />
+              <circle cx="8" cy="8" r="1" />
+            </svg>
+          </button>
+          <button class="expand-btn expanded">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 4.5L6 7.5L9 4.5" />
+            </svg>
+          </button>
+          <button class="doc-main">
+            <span class="doc-title">产品需求文档</span>
+            <span class="doc-child-count">3</span>
+          </button>
+        </div>
+
+        <!-- 子文档 -->
+        <div class="tree-children">
+          <div class="tree-node">
+            <div class="tree-document-item" style="padding-left: 10px;">
+              <button class="drag-handle">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                  <circle cx="2" cy="2" r="1" />
+                  <circle cx="5" cy="2" r="1" />
+                  <circle cx="8" cy="2" r="1" />
+                  <circle cx="2" cy="5" r="1" />
+                  <circle cx="5" cy="5" r="1" />
+                  <circle cx="8" cy="5" r="1" />
+                  <circle cx="2" cy="8" r="1" />
+                  <circle cx="5" cy="8" r="1" />
+                  <circle cx="8" cy="8" r="1" />
+                </svg>
+              </button>
+              <span class="expand-placeholder"></span>
+              <button class="doc-main">
+                <span class="doc-title">功能需求</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="tree-node">
+            <div class="tree-document-item" style="padding-left: 10px;">
+              <button class="drag-handle">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                  <circle cx="2" cy="2" r="1" />
+                  <circle cx="5" cy="2" r="1" />
+                  <circle cx="8" cy="2" r="1" />
+                  <circle cx="2" cy="5" r="1" />
+                  <circle cx="5" cy="5" r="1" />
+                  <circle cx="8" cy="5" r="1" />
+                  <circle cx="2" cy="8" r="1" />
+                  <circle cx="5" cy="8" r="1" />
+                  <circle cx="8" cy="8" r="1" />
+                </svg>
+              </button>
+              <span class="expand-placeholder"></span>
+              <button class="doc-main">
+                <span class="doc-title">技术方案</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="tree-node">
+            <div class="tree-document-item" style="padding-left: 10px;">
+              <button class="drag-handle">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                  <circle cx="2" cy="2" r="1" />
+                  <circle cx="5" cy="2" r="1" />
+                  <circle cx="8" cy="2" r="1" />
+                  <circle cx="2" cy="5" r="1" />
+                  <circle cx="5" cy="5" r="1" />
+                  <circle cx="8" cy="5" r="1" />
+                  <circle cx="2" cy="8" r="1" />
+                  <circle cx="5" cy="8" r="1" />
+                  <circle cx="8" cy="8" r="1" />
+                </svg>
+              </button>
+              <span class="expand-placeholder"></span>
+              <button class="doc-main">
+                <span class="doc-title">测试计划</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 根文档 2 -->
+      <div class="tree-node">
+        <div class="tree-document-item">
+          <button class="drag-handle">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+              <circle cx="2" cy="2" r="1" />
+              <circle cx="5" cy="2" r="1" />
+              <circle cx="8" cy="2" r="1" />
+              <circle cx="2" cy="5" r="1" />
+              <circle cx="5" cy="5" r="1" />
+              <circle cx="8" cy="5" r="1" />
+              <circle cx="2" cy="8" r="1" />
+              <circle cx="5" cy="8" r="1" />
+              <circle cx="8" cy="8" r="1" />
+            </svg>
+          </button>
+          <button class="expand-btn">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M4.5 3L7.5 6L4.5 9" />
+            </svg>
+          </button>
+          <button class="doc-main">
+            <span class="doc-title">技术文档</span>
+            <span class="doc-child-count">2</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 根文档 3 -->
+      <div class="tree-node">
+        <div class="tree-document-item">
+          <button class="drag-handle">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+              <circle cx="2" cy="2" r="1" />
+              <circle cx="5" cy="2" r="1" />
+              <circle cx="8" cy="2" r="1" />
+              <circle cx="2" cy="5" r="1" />
+              <circle cx="5" cy="5" r="1" />
+              <circle cx="8" cy="5" r="1" />
+              <circle cx="2" cy="8" r="1" />
+              <circle cx="5" cy="8" r="1" />
+              <circle cx="8" cy="8" r="1" />
+            </svg>
+          </button>
+          <span class="expand-placeholder"></span>
+          <button class="doc-main">
+            <span class="doc-title">会议纪要</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>样式改进：</strong><br>
+      ✓ 标题靠左对齐，字号 14px<br>
+      ✓ 激活状态使用渐变背景和边框<br>
+      ✓ 鼠标悬停有淡蓝色高亮<br>
+      ✓ 展开按钮更大，交互更友好<br>
+      ✓ 拖拽手柄在悬停时显示<br>
+      ✓ 子文档有渐变连接线<br>
+      ✓ 圆角和阴影增强层次感
+    </div>
+  </div>
+
+  <script>
+    // 简单的交互演示
+    document.querySelectorAll('.tree-document-item').forEach(item => {
+      item.addEventListener('click', function(e) {
+        if (e.target.closest('.expand-btn')) {
+          const btn = e.target.closest('.expand-btn');
+          const node = item.closest('.tree-node');
+          const children = node.querySelector('.tree-children');
+
+          if (children) {
+            const isExpanded = btn.classList.contains('expanded');
+            btn.classList.toggle('expanded');
+            children.style.display = isExpanded ? 'none' : 'flex';
+
+            const svg = btn.querySelector('svg path');
+            if (svg) {
+              svg.setAttribute('d', isExpanded ? 'M4.5 3L7.5 6L4.5 9' : 'M3 4.5L6 7.5L9 4.5');
+            }
+          }
+          return;
+        }
+
+        document.querySelectorAll('.tree-document-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

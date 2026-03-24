@@ -67,9 +67,6 @@ export function NotesLayout() {
     startWidths: Record<ResizableColumn, number>;
   } | null>(null);
 
-  const [newTitle, setNewTitle] = useState('');
-  const [creatingDocument, setCreatingDocument] = useState(false);
-  const [createDocError, setCreateDocError] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [titleSaving, setTitleSaving] = useState(false);
@@ -79,11 +76,10 @@ export function NotesLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const docErrorToShow = documentError && documentError !== dismissedDocError ? documentError : '';
-  const modalError = titleError || createDocError || docErrorToShow;
+  const modalError = titleError || docErrorToShow;
   const handleCloseError = () => {
     if (documentError) setDismissedDocError(documentError);
     setTitleError('');
-    setCreateDocError('');
   };
 
   // Keyboard shortcut to open search
@@ -253,24 +249,6 @@ export function NotesLayout() {
     if (document.owner_id === user?.id) return true;
     return activeDocPermission === 'manage';
   }, [activeDocPermission, document, user?.id]);
-
-  const handleCreateDocument = async () => {
-    if (!newTitle.trim()) return;
-    setCreatingDocument(true);
-    setCreateDocError('');
-    try {
-      const doc = await documentService.create(newTitle.trim(), '');
-      setNewTitle('');
-      reload();
-      showToast(t('doc.createdSuccess'), 'success');
-      navigate(`/documents/${doc.id}`);
-    } catch (e: unknown) {
-      setCreateDocError(e instanceof Error ? e.message : 'Error');
-      showToast(t('doc.createFailed'), 'error');
-    } finally {
-      setCreatingDocument(false);
-    }
-  };
 
   const handleDeleteDocument = async (doc: DocumentListItem) => {
     if (!confirm(t('doc.deleteConfirm'))) return;

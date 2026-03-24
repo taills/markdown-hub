@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>树形文档列表 - 极简风格（Trilium Notes）</title>
+  <style>
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5568d3;
+      --text: #2d3748;
+      --text-muted: #718096;
+      --border: #e2e8f0;
+      --surface: #ffffff;
+      --hover: #f7fafc;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+      background: #f8f9fa;
+      padding: 40px 20px;
+    }
+
+    .demo-container {
+      max-width: 400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 20px 0;
+    }
+
+    .demo-header {
+      padding: 0 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 18px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .tree-content {
+      padding: 4px 0;
+    }
+
+    .tree-node {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 文档项 - 极简设计 */
+    .tree-document-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.15s ease;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    .tree-document-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .tree-document-item.active {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .tree-document-item.active .doc-title {
+      font-weight: 500;
+    }
+
+    /* 展开/折叠按钮 */
+    .expand-btn {
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: 2px;
+      transition: color 0.15s ease;
+    }
+
+    .expand-btn:hover {
+      color: var(--text);
+    }
+
+    .expand-btn.expanded {
+      color: var(--text);
+    }
+
+    .expand-placeholder {
+      width: 16px;
+      flex-shrink: 0;
+    }
+
+    /* 文档主按钮 */
+    .doc-main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      min-width: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    /* 文档标题 */
+    .doc-title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text);
+      text-align: left;
+      line-height: 1.4;
+    }
+
+    /* 子节点容器 */
+    .tree-children {
+      display: flex;
+      flex-direction: column;
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .note {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background: #f7fafc;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .note strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+
+    .comparison div {
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .comparison strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <div class="demo-header">
+      <h1>树形文档列表</h1>
+      <p class="subtitle">极简风格（参考 Trilium Notes）</p>
+    </div>
+
+    <div class="tree-content">
+      <!-- 根文档 1 -->
+      <div class="tree-node">
+        <div class="tree-document-item active">
+          <button class="expand-btn expanded">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M2 3L5 6L8 3" />
+            </svg>
+          </button>
+          <button class="doc-main">
+            <span class="doc-title">📄 产品需求文档</span>
+          </button>
+        </div>
+
+        <!-- 子文档 -->
+        <div class="tree-children">
+          <div class="tree-node">
+            <div class="tree-document-item" style="padding-left: 8px;">
+              <span class="expand-placeholder"></span>
+              <button class="doc-main">
+                <span class="doc-title">📝 功能需求</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="tree-node">
+            <div class="tree-document-item" style="padding-left: 8px;">
+              <span class="expand-placeholder"></span>
+              <button class="doc-main">
+                <span class="doc-title">⚙️ 技术方案</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="tree-node">
+            <div class="tree-document-item" style="padding-left: 8px;">
+              <span class="expand-placeholder"></span>
+              <button class="doc-main">
+                <span class="doc-title">🧪 测试计划</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 根文档 2 -->
+      <div class="tree-node">
+        <div class="tree-document-item">
+          <button class="expand-btn">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 2L6 5L3 8" />
+            </svg>
+          </button>
+          <button class="doc-main">
+            <span class="doc-title">📚 技术文档</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 根文档 3 -->
+      <div class="tree-node">
+        <div class="tree-document-item">
+          <span class="expand-placeholder"></span>
+          <button class="doc-main">
+            <span class="doc-title">📋 会议纪要</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 根文档 4 -->
+      <div class="tree-node">
+        <div class="tree-document-item">
+          <button class="expand-btn">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 2L6 5L3 8" />
+            </svg>
+          </button>
+          <button class="doc-main">
+            <span class="doc-title">📅 日记</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 根文档 5 -->
+      <div class="tree-node">
+        <div class="tree-document-item">
+          <span class="expand-placeholder"></span>
+          <button class="doc-main">
+            <span class="doc-title">🔖 收藏</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>极简设计特点（参考 Trilium Notes）</strong>
+      <div class="comparison">
+        <div>
+          <strong>移除</strong>
+          • 拖拽手柄<br>
+          • 子文档计数<br>
+          • 彩色边框<br>
+          • 阴影效果<br>
+          • 背景渐变
+        </div>
+        <div>
+          <strong>保留</strong>
+          • 文本图标<br>
+          • 极简悬停<br>
+          • 紧凑间距<br>
+          • 细连接线<br>
+          • 左对齐
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 简单的交互演示
+    document.querySelectorAll('.tree-document-item').forEach(item => {
+      item.addEventListener('click', function(e) {
+        if (e.target.closest('.expand-btn')) {
+          const btn = e.target.closest('.expand-btn');
+          const node = item.closest('.tree-node');
+          const children = node.querySelector('.tree-children');
+
+          if (children) {
+            const isExpanded = btn.classList.contains('expanded');
+            btn.classList.toggle('expanded');
+            children.style.display = isExpanded ? 'none' : 'flex';
+
+            const svg = btn.querySelector('svg path');
+            if (svg) {
+              svg.setAttribute('d', isExpanded ? 'M3 2L6 5L3 8' : 'M2 3L5 6L8 3');
+            }
+          }
+          return;
+        }
+
+        document.querySelectorAll('.tree-document-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

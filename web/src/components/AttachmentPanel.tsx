@@ -1,19 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { attachmentService, workspaceAttachmentService } from '@/services/api';
+import { attachmentService } from '@/services/api';
 import { ErrorModal } from '@/components/ErrorModal';
 import type { Attachment } from '@/types';
 
 interface AttachmentPanelProps {
   documentId: string;
-  workspaceId: string;
   onInsert: (attachment: Attachment) => Promise<void>;
 }
 
-export function AttachmentPanel({ documentId, workspaceId, onInsert }: AttachmentPanelProps) {
+export function AttachmentPanel({ documentId, onInsert }: AttachmentPanelProps) {
   const { t } = useTranslation();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [workspaceAttachments, setWorkspaceAttachments] = useState<Attachment[]>([]);
   const [unreferenced, setUnreferenced] = useState<Attachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -30,8 +28,6 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
       setAttachments(atts ?? []);
       const unref = await attachmentService.getUnreferenced(documentId);
       setUnreferenced(unref ?? []);
-      const wsAtts = await workspaceAttachmentService.list(workspaceId);
-      setWorkspaceAttachments(wsAtts ?? []);
     } catch (err) {
       console.error('Failed to load attachments:', err);
     } finally {
@@ -41,7 +37,7 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
 
   useEffect(() => {
     load();
-  }, [documentId, workspaceId]);
+  }, [documentId]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.currentTarget.files;
@@ -121,47 +117,6 @@ export function AttachmentPanel({ documentId, workspaceId, onInsert }: Attachmen
         <p>{t('common.loading')}</p>
       ) : (
         <>
-          <div className="attachment-list workspace-attachment-list">
-            <h4>{t('attachments.workspaceTitle')} ({workspaceAttachments.length})</h4>
-            {workspaceAttachments.length === 0 ? (
-              <p className="empty">{t('attachments.emptyWorkspace')}</p>
-            ) : (
-              <table className="attachment-table">
-                <thead>
-                  <tr>
-                    <th>{t('attachments.file')}</th>
-                    <th>{t('attachments.size')}</th>
-                    <th className="att-actions-header">{t('attachments.actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {workspaceAttachments.map((att) => (
-                    <tr key={att.id}>
-                      <td className="att-name-cell">{att.filename}</td>
-                      <td className="att-size-cell">{formatFileSize(att.file_size)}</td>
-                      <td className="att-actions-cell">
-                        <div className="att-actions">
-                          <button
-                            onClick={() => handleInsert(att)}
-                            className="att-insert"
-                          >
-                            {t('attachments.insert')}
-                          </button>
-                          <button
-                            onClick={() => handleDownload(att)}
-                            className="att-download"
-                          >
-                            {t('attachments.download')}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
           <div className="upload-section">
             <input
               ref={fileInputRef}

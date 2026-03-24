@@ -334,6 +334,52 @@ func (s *DocumentService) ReorderDocuments(ctx context.Context, userID string, i
 	return nil
 }
 
+// MoveDocument moves a document to a new parent and/or updates its sort order.
+func (s *DocumentService) MoveDocument(ctx context.Context, docID, userID string, newParentID *string, newSortOrder int) (*models.Document, error) {
+	docUUID, err := uuid.Parse(docID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid document ID: %w", err)
+	}
+
+	// Get the document to check permissions
+	doc, err := s.db.GetDocumentByID(ctx, docUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+
+	modelDoc := storeDocToModel(&doc)
+
+	// Check permission
+	if err := s.requireWorkspaceOrDocumentPermission(ctx, modelDoc, userID, models.PermissionEdit); err != nil {
+		return nil, err
+	}
+
+	// Prepare parent ID
+	var parentUUID uuid.NullUUID
+	if newParentID != nil && *newParentID != "" {
+		pUUID, err := uuid.Parse(*newParentID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid parent ID: %w", err)
+		}
+		parentUUID = uuid.NullUUID{UUID: pUUID, Valid: true}
+	}
+
+	// Update document
+	updatedDoc, err := s.db.UpdateDocumentParent(ctx, store.UpdateDocumentParentParams{
+		ID:        docUUID,
+		ParentID:  parentUUID,
+		SortOrder: int32(newSortOrder),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("move document: %w", err)
+	}
+
+	return storeDocToModel(&updatedDoc), nil
+}
+
 // SearchDocuments searches public documents by query.
 func (s *DocumentService) SearchDocuments(ctx context.Context, query string) ([]*models.DocumentSearchResult, error) {
 	if query == "" {

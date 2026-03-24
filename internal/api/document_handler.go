@@ -27,15 +27,15 @@ func (h *DocumentHandler) Create(c *gin.Context) {
 		return
 	}
 	var body struct {
-		Title       string `json:"title"`
-		Content     string `json:"content"`
-		WorkspaceID string `json:"workspace_id"`
+		Title    string `json:"title"`
+		Content  string `json:"content"`
+		ParentID string `json:"parent_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
 		return
 	}
-	doc, err := h.docService.CreateDocument(c.Request.Context(), userID, body.WorkspaceID, body.Title, body.Content)
+	doc, err := h.docService.CreateDocument(c.Request.Context(), userID, body.ParentID, body.Title, body.Content)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -203,6 +203,31 @@ func (h *DocumentHandler) Reorder(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// Move godoc
+// PUT /api/documents/:id/move
+func (h *DocumentHandler) Move(c *gin.Context) {
+	userID, ok := getUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+		return
+	}
+	docID := c.Param("id")
+	var body struct {
+		ParentID    *string `json:"parent_id"`
+		SortOrder   int     `json:"sort_order"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
+		return
+	}
+	doc, err := h.docService.MoveDocument(c.Request.Context(), docID, userID, body.ParentID, body.SortOrder)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, doc)
 }
 
 // Headings godoc

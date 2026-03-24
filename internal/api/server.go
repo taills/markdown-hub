@@ -147,6 +147,7 @@ func NewServer(
 			docs.GET("", authMiddleware(), docH.List)
 			docs.POST("", authMiddleware(), docH.Create)
 			docs.PATCH("/reorder", authMiddleware(), docH.Reorder)
+			docs.PUT("/:id/move", authMiddleware(), docH.Move)
 			docs.PATCH("/:id/content", authMiddleware(), docH.UpdateContent)
 			docs.PATCH("/:id/title", authMiddleware(), docH.UpdateTitle)
 			docs.PATCH("/:id/public", authMiddleware(), docH.SetPublicStatus)

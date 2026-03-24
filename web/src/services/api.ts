@@ -130,10 +130,10 @@ export const documentService = {
     }
     return res.text();
   },
-  create: (title: string, content = '', _workspaceId?: string) =>
+  create: (title: string, content = '', parentId?: string) =>
     request<Document>('/documents', {
       method: 'POST',
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify({ title, content, parent_id: parentId || '' }),
     }),
   updateContent: (id: string, content: string) =>
     request<Document>(`/documents/${id}/content`, {
@@ -157,6 +157,11 @@ export const documentService = {
     request<void>('/documents/reorder', {
       method: 'PATCH',
       body: JSON.stringify({ ids }),
+    }),
+  move: (id: string, parentId: string | null, sortOrder: number) =>
+    request<Document>(`/documents/${id}/move`, {
+      method: 'PUT',
+      body: JSON.stringify({ parent_id: parentId, sort_order: sortOrder }),
     }),
   search: (query: string) =>
     request<DocumentSearchResult[]>(`/search?q=${encodeURIComponent(query)}`),

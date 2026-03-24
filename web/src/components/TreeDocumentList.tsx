@@ -312,25 +312,46 @@ export function TreeDocumentList({
               )
             ) : (
               // Flat view
-              flatNodes.length === 0 ? (
-                <div className="empty">{t('doc.empty')}</div>
-              ) : (
-                flatNodes.map((node) => (
-                  <SortableTreeItem
-                    key={node.document.id}
-                    node={node}
-                    depth={0}
-                    expandedIds={expandedIds}
-                    onToggleExpand={handleToggleExpand}
-                    isActive={node.document.id === selectedId}
-                    isOwner={node.document.owner_id === currentUserId}
-                    locale={locale}
-                    onNavigate={() => onSelect(node.document)}
-                    onDelete={() => onDelete(node.document)}
-                    onCreateChild={handleCreateChild}
-                  />
-                ))
-              )
+              <>
+                {creatingChildFor !== null && (
+                  <div className="tree-create-child" style={{ padding: '8px' }}>
+                    <input
+                      type="text"
+                      value={newChildTitle}
+                      onChange={(e) => setNewChildTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleConfirmCreateChild();
+                        if (e.key === 'Escape') handleCancelCreateChild();
+                      }}
+                      placeholder={t('doc.newTitlePlaceholder')}
+                      autoFocus
+                    />
+                    <button onClick={handleConfirmCreateChild} disabled={!newChildTitle.trim()}>
+                      {t('common.confirm')}
+                    </button>
+                    <button onClick={handleCancelCreateChild}>{t('common.cancel')}</button>
+                  </div>
+                )}
+                {flatNodes.length === 0 ? (
+                  <div className="empty">{t('doc.empty')}</div>
+                ) : (
+                  flatNodes.map((node) => (
+                    <SortableTreeItem
+                      key={node.document.id}
+                      node={node}
+                      depth={0}
+                      expandedIds={expandedIds}
+                      onToggleExpand={handleToggleExpand}
+                      isActive={node.document.id === selectedId}
+                      isOwner={node.document.owner_id === currentUserId}
+                      locale={locale}
+                      onNavigate={() => onSelect(node.document)}
+                      onDelete={() => onDelete(node.document)}
+                      onCreateChild={handleCreateChild}
+                    />
+                  ))
+                )}
+              </>
             )}
           </SortableContext>
         </DndContext>

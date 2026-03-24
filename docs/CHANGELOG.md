@@ -1,5 +1,20 @@
 # 更新日志 (CHANGELOG)
 
+## [1.3.0] - 2026-03-24
+
+### 🔧 重构
+
+#### UI 组件全面迁移至 Preline UI
+- **全面移除自定义 CSS**: `web/src/styles.css` 从 20KB+ 缩减至 247字节，所有样式迁移至 Preline UI 组件和 Tailwind 工具类
+- **Preline 组件覆盖**: Tree View、Modal/Overlay、Toast、Accordion、Button、Input 等
+- **Tailwind 原子化**: 所有布局、间距、色彩、字体使用 Tailwind 工具类
+- **深色模式完善**: 所有组件支持 Tailwind `dark:` 模式变体
+- **MarkdownPreview 重构**: HTML 生成函数直接输出带 Tailwind 类的内容
+
+### 📚 文档更新
+- `DESIGN.md` 更新至 v1.3，新增 Preline UI 实现说明
+- `CLAUDE.md` 更新前端技术栈，新增 Preline UI 使用规范
+
 ## [1.2.0] - 2026-03-24
 
 ### ✨ 新功能

@@ -15,7 +15,7 @@ MarkdownHub 是一个面向研发团队、技术写作者和知识管理者的**
 ### 前端
 - **React 18** + **TypeScript 5**
 - **Vite 5** - 构建工具
-- **Tailwind CSS 3** - 样式框架
+- **Tailwind CSS 3** + **Preline UI 4** - 样式框架与组件库
 - **Zustand 4** - 状态管理
 - **TipTap 2** - 编辑器
 - **Yjs 13** - 实时协作
@@ -38,7 +38,8 @@ MarkdownHub 是一个面向研发团队、技术写作者和知识管理者的**
 
 ### React 前端
 - 组件遵循设计系统（参考 DESIGN.md）
-- 使用 Tailwind CSS 原子化样式
+- **使用 Preline UI 组件库**，禁止编写自定义 CSS 类
+- 样式使用 Tailwind CSS 原子化工具类
 - 状态管理使用 Zustand
 - 编辑器使用 TipTap + Yjs 实现协作
 

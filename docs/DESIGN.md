@@ -5,6 +5,7 @@
 | v1.0 | 2026-03-23 | 设计团队 | 初始版本 |
 | v1.1 | 2026-03-23 | 设计团队 | 更新实现细节，补充 CSS 变量定义 |
 | v1.2 | 2026-03-23 | 设计团队 | 补充动效系统实际实现，添加组件差距说明 |
+| v1.3 | 2026-03-24 | 开发团队 | 全量迁移至 Preline UI 4 + Tailwind CSS，移除所有自定义 CSS |
 
 ---
 
@@ -12,13 +13,15 @@
 
 ### 0.1 样式方案
 
-**当前实现**: 纯 CSS + CSS 变量（非 Tailwind CSS）
+**当前实现**: Preline UI 4 + Tailwind CSS 3
 
-项目使用纯 CSS 编写样式，通过 CSS 变量（Custom Properties）定义设计令牌。这种方式与设计规范中描述的 Tailwind CSS 方案不同，但保持了设计规范的色彩、间距和动效精神。
+项目使用 [Preline UI](https://preline.co/) 作为组件库，基于 Tailwind CSS 构建。禁止编写任何自定义 CSS 类，所有样式均通过 Preline 组件和 Tailwind 原子化工具类实现。
 
-**CSS 变量定义位置**: `web/src/styles.css`
+**Preline 组件覆盖范围**: Button、Modal/Overlay、Dropdown、Accordion、Tree View、Toast Notification、Tabs、Cards 等。
 
-**深色模式**: 当前版本未实现，保留为未来迭代计划。
+**深色模式**: 通过 Preline 内置 `dark:` 变体和 Tailwind `dark:` 模式实现。
+
+**CSS 变量定义位置**: `web/src/styles.css`（仅保留 Tailwind 入口和必要的 CSS 重置）
 
 ### 0.2 字体方案
 
@@ -582,6 +585,8 @@ transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);  /* 按钮悬停 */
 ---
 
 ## 4. 组件设计
+
+> **实现说明**: 所有 UI 组件均基于 Preline UI 4 实现，参考 [Preline 官方文档](https://preline.co/docs/)。组件样式通过 Preline class + Tailwind 工具类实现，禁止自定义 CSS。
 
 ### 4.1 按钮
 
@@ -1632,6 +1637,7 @@ transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);  /* 按钮悬停 */
 | TypeScript | 5.x | 类型安全 |
 | Vite | 5.x | 构建工具 |
 | Tailwind CSS | 3.x | 样式框架 |
+| Preline UI | 4.x | 组件库 |
 | Zustand | 4.x | 状态管理 |
 | React Router | 6.x | 路由 |
 | TipTap | 2.x | 富文本编辑器 |
@@ -1649,16 +1655,15 @@ transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);  /* 按钮悬停 */
 │  - TreeSidebar                         │
 │  - PermissionPanel                      │
 ├─────────────────────────────────────────┤
-│  UI Components (通用组件)                │
-│  - Button / Input / Select              │
-│  - Modal / Dropdown / Toast             │
-│  - Card / Table / Tabs                  │
+│  UI Components (Preline UI 组件)        │
+│  - HSButton / HSInput / HSSelect       │
+│  - HSOverlay(Modal) / HSDropdown       │
+│  - HSToast / HSAccordion / HSTabs       │
+│  - HSCard / HSTable / HSTreeView        │
 ├─────────────────────────────────────────┤
-│  Design Tokens (设计令牌)                │
-│  - colors                               │
-│  - typography                           │
-│  - spacing                              │
-│  - shadows                              │
+│  Tailwind CSS (原子化样式)               │
+│  - spacing / typography / colors        │
+│  - dark: 模式变体                       │
 └─────────────────────────────────────────┘
 ```
 

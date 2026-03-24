@@ -747,7 +747,7 @@ export function NotesLayout() {
             {!docLoading && document && (
               <textarea
                 ref={textareaRef}
-                className="editor-textarea flex-1"
+                className="flex-1 w-full p-4 border border-gray-200 dark:border-neutral-700 rounded-none bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                 value={content}
                 onChange={(e) => handleContentChange(e.target.value)}
                 spellCheck={false}

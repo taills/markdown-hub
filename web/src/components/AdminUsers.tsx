@@ -142,7 +142,7 @@ export function AdminUsers() {
       <header className="admin-header">
         <div>
           <h2>{t('admin.users')}</h2>
-          <p className="muted">{t('admin.usersDescription')}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('admin.usersDescription')}</p>
         </div>
         <div className="admin-actions">
           <button className="secondary" onClick={() => navigate('/admin/settings')}>
@@ -160,16 +160,16 @@ export function AdminUsers() {
       {loading && (
         <div className="loading-container">
           <div className="spinner"></div>
-          <p className="muted">{t('common.loading')}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('common.loading')}</p>
         </div>
       )}
 
       {!loading && !error && (
         <div className="users-list">
           {users.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">👥</div>
-              <p className="muted">{t('admin.noUsers')}</p>
+            <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+              <span className="text-3xl mb-3 opacity-40">👥</span>
+              <p className="text-sm text-gray-500 dark:text-neutral-400">{t('admin.noUsers')}</p>
             </div>
           ) : (
             <>
@@ -204,7 +204,7 @@ export function AdminUsers() {
                       <tr key={parseId(user.id)} className={user.is_admin ? 'admin-row' : ''}>
                         <td className="user-name">
                           <div className="user-info-cell">
-                            <div className="user-avatar">
+                            <div className="size-8 inline-flex justify-center items-center rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
                               {user.username.charAt(0).toUpperCase()}
                             </div>
                             <span>{user.username}</span>

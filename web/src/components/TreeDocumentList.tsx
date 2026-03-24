@@ -372,7 +372,7 @@ export function TreeDocumentList({
   };
 
   return (
-    <div className="tree-document-list">
+    <div className="py-2">
       <div className="tree-content">
         {/* Tree Root */}
         <div

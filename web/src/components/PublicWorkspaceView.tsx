@@ -89,30 +89,30 @@ export function PublicWorkspaceView() {
           </div>
 
         {documents.length === 0 ? (
-            <p className="empty public-workspace-empty">{t('workspace.publicViewNoDocuments')}</p>
+            <p className="text-center text-sm text-gray-500 dark:text-neutral-400 py-12">{t('workspace.publicViewNoDocuments')}</p>
         ) : (
-            <div className="blog-posts public-workspace-doc-list">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {documents.map((doc) => (
-                <article key={doc.id} className="blog-post-card public-workspace-doc-item">
+                <article key={doc.id} className="flex flex-col gap-2 p-5 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl hover:shadow-md transition-shadow">
                   <Link
                     to={`/documents/${doc.id}/view`}
-                    className="blog-post-link public-workspace-doc-link"
+                    className="group"
                   >
-                    <h3 className="blog-post-title public-workspace-doc-title">
+                    <h3 className="text-base font-medium text-gray-900 dark:text-neutral-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                       {doc.title || t('home.untitled', '无标题文档')}
                     </h3>
                   </Link>
 
-                  <div className="blog-post-meta public-workspace-doc-meta">
-                    <time className="blog-post-date public-workspace-doc-date">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400">
+                    <time>
                       {new Date(doc.updated_at).toLocaleDateString('zh-CN', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
                       })}
                     </time>
-                    <span className="blog-post-separator">·</span>
-                    <span className="blog-post-read-time">
+                    <span>·</span>
+                    <span>
                       {t('home.readTime', '{{min}} 分钟阅读', {
                         min: Math.max(1, Math.ceil(doc.content.length / 400)),
                       })}
@@ -120,17 +120,17 @@ export function PublicWorkspaceView() {
                   </div>
 
                   {doc.content && (
-                    <p className="blog-post-excerpt public-workspace-doc-excerpt">
+                    <p className="text-sm text-gray-600 dark:text-neutral-400 line-clamp-3">
                       {getExcerpt(doc.content)}
                     </p>
                   )}
 
                 <Link
                   to={`/documents/${doc.id}/view`}
-                  className="blog-post-read-more public-workspace-read-more"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline mt-auto"
                 >
                   {t('home.readMore', '阅读全文')}
-                  <svg className="blog-post-arrow" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="size-3" viewBox="0 0 20 20" fill="currentColor">
                     <path
                       fillRule="evenodd"
                       d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"

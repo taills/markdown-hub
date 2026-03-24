@@ -127,7 +127,7 @@ export function PersonalCenter() {
       <header className="profile-header">
         <div>
           <h2>{t('profile.title')}</h2>
-          <p className="muted">{user?.email}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{user?.email}</p>
         </div>
         <div className="profile-header-buttons">
           {user?.is_admin && (
@@ -148,7 +148,7 @@ export function PersonalCenter() {
 
       <section className="profile-section">
         <h3>{t('profile.stats')}</h3>
-        {loading && <p className="muted">{t('common.loading')}</p>}
+        {loading && <p className="text-sm text-gray-500 dark:text-neutral-400">{t('common.loading')}</p>}
         {!loading && !loadError && (
           <div className="stats-grid">
             {statsItems.map((item) => (

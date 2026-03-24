@@ -61,7 +61,7 @@ export function AdminSettings() {
       <div className="admin-page">
         <div className="loading-container">
           <div className="spinner"></div>
-          <p className="muted">{t('common.loading')}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -72,7 +72,7 @@ export function AdminSettings() {
       <header className="admin-header">
         <div>
           <h2>{t('admin.siteSettings')}</h2>
-          <p className="muted">{t('admin.siteSettingsDescription')}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('admin.siteSettingsDescription')}</p>
         </div>
         <div className="admin-actions">
           <button className="secondary" onClick={() => navigate('/admin/users')}>

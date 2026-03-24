@@ -202,7 +202,7 @@ export function WorkspaceSettingsPanel({
   };
 
   if (!workspaceId) {
-    return <div className="empty-state">{t('workspace.selectToView')}</div>;
+    return <div className="flex flex-col items-center justify-center px-4 py-12 text-center text-sm text-gray-500 dark:text-neutral-400">{t('workspace.selectToView')}</div>;
   }
 
   return (

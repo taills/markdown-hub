@@ -184,14 +184,14 @@ export function DocumentEditor() {
     window.open(`/api/documents/${id}/raw`, '_blank');
   };
 
-  if (isLoading) return <div className="loading">Loading document…</div>;
+  if (isLoading) return <div className="flex items-center justify-center h-full text-sm text-gray-500 dark:text-neutral-400">Loading document…</div>;
   if (error) {
     const modalError = error !== dismissedError ? error : '';
     return (
-      <div className="editor-layout">
-        <header className="editor-header">
-          <button className="back-btn" onClick={() => navigate('/')}>⟵ Documents</button>
-          <h2 className="doc-title">{siteTitle}</h2>
+      <div className="flex flex-col h-screen bg-gray-50 dark:bg-neutral-900">
+        <header className="flex items-center gap-3 px-4 py-3 border-b bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
+          <button className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700" onClick={() => navigate('/')}>← Documents</button>
+          <h2 className="text-sm font-medium text-gray-800 dark:text-neutral-200">{siteTitle}</h2>
         </header>
         <ErrorModal
           message={modalError}
@@ -205,75 +205,77 @@ export function DocumentEditor() {
   }
   if (!document) return null;
 
+  const wsStatusClass = connectionState === 'connected'
+    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+    : connectionState === 'error' || connectionState === 'disconnected'
+    ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+
   return (
-    <div className="editor-layout">
-      <header className="editor-header">
-        <button className="back-btn" onClick={() => navigate('/')}>
-          &larr; Documents
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-neutral-900">
+      <header className="flex items-center gap-3 px-4 py-3 border-b bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 shrink-0">
+        <button className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700" onClick={() => navigate('/')}>
+          ← Documents
         </button>
-        <h2 className="doc-title">{document.title}</h2>
-        <div className="toolbar">
-          <button onClick={togglePublic}>
+        <h2 className="text-sm font-medium text-gray-800 dark:text-neutral-200 truncate max-w-[200px]">{document.title}</h2>
+        <div className="flex items-center gap-2 ms-auto">
+          <button
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
+            onClick={togglePublic}
+          >
             {document.is_public ? '🌐 Public' : '🔒 Private'}
           </button>
-          <button onClick={viewRaw}>📄 Raw</button>
-          <span className={`ws-status ws-${connectionState}`}>
+          <button
+            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
+            onClick={viewRaw}
+          >
+            📄 Raw
+          </button>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${wsStatusClass}`}>
             {connectionState}
           </span>
           {(connectionState === 'error' || connectionState === 'disconnected') && (
             <button
               onClick={reconnect}
-              className="reconnect-btn"
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
               title="Manually reconnect WebSocket"
             >
               🔄 Reconnect
             </button>
           )}
           {collaborators.length > 0 && (
-            <span className="collaborators">{collaborators.length} online</span>
+            <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-400">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
+              {collaborators.length} online
+            </span>
           )}
-          <button
-            className={activePanel === 'preview' ? 'active' : ''}
-            onClick={() => setActivePanel('preview')}
-          >
-            Preview
-          </button>
-          <button
-            className={activePanel === 'history' ? 'active' : ''}
-            onClick={() => setActivePanel('history')}
-          >
-            History
-          </button>
-          <button
-            className={activePanel === 'permissions' ? 'active' : ''}
-            onClick={() => setActivePanel('permissions')}
-          >
-            Permissions
-          </button>
-          <button
-            className={activePanel === 'attachments' ? 'active' : ''}
-            onClick={() => setActivePanel('attachments')}
-          >
-            Attachments
-          </button>
-          <button
-            className={activePanel === 'comments' ? 'active' : ''}
-            onClick={() => setActivePanel('comments')}
-          >
-            Comments
-          </button>
+        </div>
+        <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden ms-2">
+          {(['preview', 'history', 'permissions', 'attachments', 'comments'] as Panel[]).map((p) => (
+            <button
+              key={p}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                activePanel === p
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 border-s border-gray-200 dark:border-neutral-700'
+              }`}
+              onClick={() => setActivePanel(p)}
+            >
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </button>
+          ))}
         </div>
       </header>
 
-      <div className="editor-body">
+      <div className="flex flex-1 min-h-0">
         <textarea
           ref={textareaRef}
-          className="editor-textarea"
+          className="flex-1 w-full p-4 border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
           spellCheck={false}
         />
-        <div className="editor-panel">
+        <div className="w-80 border-s border-gray-200 dark:border-neutral-700 overflow-y-auto">
           {activePanel === 'preview' && (
             <MarkdownPreview
               ref={previewRef}

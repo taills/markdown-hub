@@ -191,7 +191,7 @@ export function DocumentList() {
   }, [documents, selectedWorkspaceId, showAllWorkspaces]);
 
   return (
-    <div className="document-list-page">
+    <div className="p-6">
       <header>
         <h1>{siteTitle}</h1>
         <div className="user-info">
@@ -238,7 +238,7 @@ export function DocumentList() {
         <div className="workspace-header">
           <div>
             <h2>Workspace</h2>
-            <p className="muted">管理工作空间权限与附件</p>
+            <p className="text-sm text-gray-500 dark:text-neutral-400">管理工作空间权限与附件</p>
           </div>
         </div>
 
@@ -340,7 +340,7 @@ export function DocumentList() {
           {(filteredDocuments ?? []).map((doc) => (
             <li key={doc.id} className="document-item">
               <button className="doc-link" onClick={() => navigate(`/documents/${doc.id}`)}>
-                <span className="doc-title">{doc.title}</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-neutral-200 truncate">{doc.title}</span>
                 {showAllWorkspaces && doc.workspace_id && (
                   <span className="doc-workspace">
                     {workspaceMap.get(doc.workspace_id)?.name ?? 'Workspace'}

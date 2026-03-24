@@ -67,7 +67,7 @@ export function AdminLogs() {
       <header className="admin-header">
         <div>
           <h2>{t('admin.auditLogs')}</h2>
-          <p className="muted">{t('admin.logsDescription')}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('admin.logsDescription')}</p>
         </div>
         <div className="admin-actions">
           <button className="secondary" onClick={() => navigate('/admin/users')}>
@@ -82,14 +82,14 @@ export function AdminLogs() {
       {loading && (
         <div className="loading-container">
           <div className="spinner"></div>
-          <p className="muted">{t('common.loading')}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('common.loading')}</p>
         </div>
       )}
 
       {!loading && !error && logs.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-icon">📋</div>
-          <p className="muted">{t('admin.noLogs')}</p>
+        <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+          <span className="text-3xl mb-3 opacity-40">📋</span>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('admin.noLogs')}</p>
         </div>
       )}
 
@@ -131,7 +131,7 @@ export function AdminLogs() {
                           <span className="target-name">{log.target_username}</span>
                         </>
                       ) : (
-                        <span className="muted">{log.target_type || '-'}</span>
+                        <span className="text-sm text-gray-500 dark:text-neutral-400">{log.target_type || '-'}</span>
                       )}
                     </td>
                     <td className="log-details" title={formatDetails(log.details)}>

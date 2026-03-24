@@ -150,74 +150,89 @@ export function HomePage() {
   const hasPublicContent = (data?.documents.length ?? 0) > 0;
 
   return (
-    <div className="blog-home">
+    <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
       {/* Hero 区域 */}
-      <header className="blog-hero">
-        <div className="blog-hero-content">
-          <h1 className="blog-hero-title">{siteTitle}</h1>
-          <p className="blog-hero-subtitle">
+      <header className="py-16 px-6 text-center bg-white dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">{siteTitle}</h1>
+          <p className="text-base text-gray-500 dark:text-neutral-400">
             {t('home.subtitle', '知识分享 · 协作写作 · Markdown创作平台')}
           </p>
-          <div className="blog-search-container">
-            <div className="blog-search">
-              <svg className="blog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
-              <input
-                ref={searchInputRef}
-                type="text"
-                className="blog-search-input"
-                placeholder={t('search.placeholder', '搜索文档...')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleSearchKeyDown}
-              />
-              {isSearching && <div className="search-loading-small" />}
-              <span className="blog-search-shortcut">⌘K</span>
-            </div>
-
-            {/* 搜索结果 */}
-            {searchQuery.trim() && (
-              <div className="blog-search-results" ref={searchResultsRef}>
-                {searchResults.length > 0 ? (
-                  searchResults.map((doc, index) => (
-                    <div
-                      key={doc.id}
-                      className={`blog-search-result-item ${index === selectedIndex ? 'selected' : ''}`}
-                      onClick={() => navigate(`/documents/${doc.id}`)}
-                      onMouseEnter={() => setSelectedIndex(index)}
-                    >
-                      <div className="blog-search-result-title">
-                        {doc.title || t('home.untitled', '无标题文档')}
-                        {doc.workspace_name && (
-                          <span className="blog-search-result-workspace">{doc.workspace_name}</span>
-                        )}
-                      </div>
-                      <div className="blog-search-result-excerpt">
-                        {getSearchExcerpt(doc.content, searchQuery)}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="blog-search-empty">
-                    {t('search.noResults', '未找到相关文档')}
-                  </div>
+          <div className="flex justify-center mb-8">
+            <div className="relative w-full max-w-lg">
+              <div className="flex items-center w-full">
+                <svg className="absolute left-3 size-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="w-full py-2.5 ps-10 pe-16 text-sm border border-gray-200 dark:border-neutral-700 rounded-full bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  placeholder={t('search.placeholder', '搜索文档...')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                />
+                {isSearching && (
+                  <svg className="absolute right-10 size-4 animate-spin text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
                 )}
+                <span className="absolute right-3 px-1.5 py-0.5 text-xs rounded bg-gray-100 dark:bg-neutral-700 text-gray-400 dark:text-neutral-500 font-mono pointer-events-none">⌘K</span>
               </div>
-            )}
+
+              {/* 搜索结果 */}
+              {searchQuery.trim() && (
+                <div className="absolute top-full mt-2 w-full bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-lg overflow-hidden z-10" ref={searchResultsRef}>
+                  {searchResults.length > 0 ? (
+                    searchResults.map((doc, index) => (
+                      <div
+                        key={doc.id}
+                        className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-0 ${
+                          index === selectedIndex
+                            ? 'bg-blue-50 dark:bg-blue-900/20'
+                            : 'hover:bg-gray-50 dark:hover:bg-neutral-700'
+                        }`}
+                        onClick={() => navigate(`/documents/${doc.id}`)}
+                        onMouseEnter={() => setSelectedIndex(index)}
+                      >
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-sm font-medium text-gray-900 dark:text-neutral-200 truncate">
+                            {doc.title || t('home.untitled', '无标题文档')}
+                          </span>
+                          {doc.workspace_name && (
+                            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-neutral-700 text-gray-500 dark:text-neutral-400">
+                              {doc.workspace_name}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-neutral-400 line-clamp-2">
+                          {getSearchExcerpt(doc.content, searchQuery)}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-6 text-sm text-center text-gray-500 dark:text-neutral-400">
+                      {t('search.noResults', '未找到相关文档')}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <nav className="blog-nav">
+          <nav className="flex justify-center gap-3 mt-6">
             {user ? (
               <button
-                className="blog-nav-btn blog-nav-btn-primary"
+                className="px-5 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
                 onClick={() => navigate('/documents')}
               >
                 {t('nav.editor', '进入编辑器')}
               </button>
             ) : (
               <>
-                <Link to="/login" className="blog-nav-btn blog-nav-btn-outline">
+                <Link to="/login" className="px-5 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700">
                   {t('home.login', '登录')}
                 </Link>
               </>
@@ -252,35 +267,35 @@ export function HomePage() {
           <>
             {/* 公开文章列表 */}
             {data?.documents && data.documents.length > 0 && (
-              <section className="blog-section">
-                <div className="blog-section-header">
-                  <h2 className="blog-section-title">
+              <section className="mt-12 px-6 max-w-5xl mx-auto">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                     {t('home.recentPosts', '最新文章')}
                   </h2>
-                  <p className="blog-section-subtitle">
+                  <p className="text-sm text-gray-500 dark:text-neutral-400 mt-1">
                     {t('home.latestUpdates', '查看最近更新的公开文档')}
                   </p>
                 </div>
 
-                <div className="blog-posts">
+                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {data.documents.map((doc) => (
-                    <article key={doc.id} className="blog-post-card">
-                      <Link to={`/documents/${doc.id}/view`} className="blog-post-link">
-                        <h3 className="blog-post-title">
+                    <article key={doc.id} className="flex flex-col gap-2 p-5 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl hover:shadow-md transition-shadow">
+                      <Link to={`/documents/${doc.id}/view`} className="group">
+                        <h3 className="text-base font-medium text-gray-900 dark:text-neutral-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
                           {doc.title || t('home.untitled', '无标题文档')}
                         </h3>
                       </Link>
 
-                      <div className="blog-post-meta">
-                        <time className="blog-post-date">
+                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400">
+                        <time>
                           {new Date(doc.updated_at).toLocaleDateString('zh-CN', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
                           })}
                         </time>
-                        <span className="blog-post-separator">·</span>
-                        <span className="blog-post-read-time">
+                        <span>·</span>
+                        <span>
                           {t('home.readTime', '{{min}} 分钟阅读', {
                             min: Math.max(1, Math.ceil(doc.content.length / 400)),
                           })}
@@ -288,15 +303,15 @@ export function HomePage() {
                       </div>
 
                       {doc.content && (
-                        <p className="blog-post-excerpt">{getExcerpt(doc.content)}</p>
+                        <p className="text-sm text-gray-600 dark:text-neutral-400 line-clamp-3">{getExcerpt(doc.content)}</p>
                       )}
 
                       <Link
                         to={`/documents/${doc.id}/view`}
-                        className="blog-post-read-more"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline mt-auto"
                       >
                         {t('home.readMore', '阅读全文')}
-                        <svg className="blog-post-arrow" viewBox="0 0 20 20" fill="currentColor">
+                        <svg className="size-3" viewBox="0 0 20 20" fill="currentColor">
                           <path
                             fillRule="evenodd"
                             d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"

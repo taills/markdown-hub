@@ -91,13 +91,13 @@ export function PublicDocumentView() {
           </div>
         </div>
 
-        <div className="public-doc-title-row">
-          <div className="public-doc-title-group">
-            <span className="public-badge">{t('doc.public', '公开文档')}</span>
-            <h1 className="public-doc-title">
+        <div className="flex flex-col gap-3 mb-6">
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 w-fit">{t('doc.public', '公开文档')}</span>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">
               {document.title || t('home.untitled', '无标题文档')}
             </h1>
-            <p className="public-doc-meta">
+            <p className="text-sm text-gray-500 dark:text-neutral-400">
               {t('common.updated')}: {new Date(document.updated_at).toLocaleString()}
             </p>
           </div>

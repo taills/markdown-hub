@@ -36,7 +36,7 @@ export const MarkdownPreview = forwardRef<MarkdownPreviewRef, MarkdownPreviewPro
     return (
       <div
         ref={containerRef}
-        className="markdown-preview"
+        className="px-4 py-3 overflow-y-auto text-sm text-gray-800 dark:text-neutral-200 leading-relaxed"
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: html }}
       />
@@ -71,9 +71,9 @@ function renderMarkdown(md: string): string {
       let blockHtml: string;
       try {
         const highlighted = hljs.highlight(code.trim(), { language, ignoreIllegals: true }).value;
-        blockHtml = `<pre data-line-end="${i}"><code class="hljs language-${language}">${highlighted}</code></pre>`;
+        blockHtml = `<pre data-line-end="${i}" class="bg-gray-100 dark:bg-neutral-800 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono"><code class="hljs language-${language}">${highlighted}</code></pre>`;
       } catch (e) {
-        blockHtml = `<pre data-line-end="${i}"><code class="hljs">${escapeHtml(code)}</code></pre>`;
+        blockHtml = `<pre data-line-end="${i}" class="bg-gray-100 dark:bg-neutral-800 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono"><code class="hljs">${escapeHtml(code)}</code></pre>`;
       }
       result.push(blockHtml);
       i++;
@@ -85,7 +85,8 @@ function renderMarkdown(md: string): string {
     if (headingMatch) {
       const level = headingMatch[1].length;
       const text = headingMatch[2];
-      result.push(`<h${level} data-line-end="${lineNum}">${text}</h${level}>`);
+      const sizeClass = level === 1 ? 'text-2xl font-bold mb-3 mt-4' : level === 2 ? 'text-xl font-semibold mb-2 mt-3' : level === 3 ? 'text-lg font-semibold mb-1 mt-2' : 'text-base font-medium mb-1 mt-1';
+      result.push(`<h${level} data-line-end="${lineNum}" class="${sizeClass}">${text}</h${level}>`);
       i++;
       continue;
     }
@@ -112,13 +113,13 @@ function renderMarkdown(md: string): string {
         quoteLines.push(lines[i].slice(2));
         i++;
       }
-      result.push(`<blockquote data-line-end="${i}">${quoteLines.join('<br />')}</blockquote>`);
+      result.push(`<blockquote data-line-end="${i}" class="border-s-4 border-blue-500 ps-3 my-2 text-gray-600 dark:text-neutral-400 italic">${quoteLines.join('<br />')}</blockquote>`);
       continue;
     }
 
     // Horizontal rules
     if (line.match(/^---+$/)) {
-      result.push(`<hr data-line-end="${lineNum}" />`);
+      result.push(`<hr data-line-end="${lineNum}" class="border-t border-gray-200 dark:border-neutral-700 my-4" />`);
       i++;
       continue;
     }
@@ -131,8 +132,8 @@ function renderMarkdown(md: string): string {
         listItems.push(lines[i].replace(/^[-*]\s+/, ''));
         i++;
       }
-      const listHtml = listItems.map(item => `<li>${processInlineElements(item)}</li>`).join('');
-      result.push(`<ul data-line-end="${i}">${listHtml}</ul>`);
+      const listHtml = listItems.map(item => `<li class="list-item">${processInlineElements(item)}</li>`).join('');
+      result.push(`<ul data-line-end="${i}" class="list-disc ps-5 my-1 space-y-0.5">${listHtml}</ul>`);
       continue;
     }
 
@@ -144,14 +145,14 @@ function renderMarkdown(md: string): string {
         listItems.push(lines[i].replace(/^\d+\.\s+/, ''));
         i++;
       }
-      const listHtml = listItems.map(item => `<li>${processInlineElements(item)}</li>`).join('');
-      result.push(`<ol data-line-end="${i}">${listHtml}</ol>`);
+      const listHtml = listItems.map(item => `<li class="list-item">${processInlineElements(item)}</li>`).join('');
+      result.push(`<ol data-line-end="${i}" class="list-decimal ps-5 my-1 space-y-0.5">${listHtml}</ol>`);
       continue;
     }
 
     // Paragraph
     if (line.trim()) {
-      result.push(`<p data-line-end="${lineNum}">${processInlineElements(line)}</p>`);
+      result.push(`<p data-line-end="${lineNum}" class="my-2">${processInlineElements(line)}</p>`);
     }
 
     i++;
@@ -169,11 +170,11 @@ function processInlineElements(text: string): string {
     const language = lang || 'plaintext';
     try {
       const highlighted = hljs.highlight(code.trim(), { language, ignoreIllegals: true }).value;
-      const blockHtml = `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
+      const blockHtml = `<pre class="bg-gray-100 dark:bg-neutral-800 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono"><code class="hljs language-${language}">${highlighted}</code></pre>`;
       codeBlocks.push(blockHtml);
       return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
     } catch (e) {
-      const blockHtml = `<pre><code class="hljs">${escapeHtml(code)}</code></pre>`;
+      const blockHtml = `<pre class="bg-gray-100 dark:bg-neutral-800 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono"><code class="hljs">${escapeHtml(code)}</code></pre>`;
       codeBlocks.push(blockHtml);
       return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
     }
@@ -189,16 +190,16 @@ function processInlineElements(text: string): string {
         .filter((cell) => cell.trim() !== '')
         .map((cell) => cell.trim());
 
-    const headerCells = parseRow(headerRow).map((cell) => `<th>${cell}</th>`).join('');
+    const headerCells = parseRow(headerRow).map((cell) => `<th class="bg-gray-50 dark:bg-neutral-800 font-semibold text-left px-3 py-2 border border-gray-200 dark:border-neutral-700">${cell}</th>`).join('');
     const bodyLines = bodyRows.trim().split('\n');
     const bodyCells = bodyLines
       .map((row: string) => {
-        const cells = parseRow(row).map((cell) => `<td>${cell}</td>`).join('');
+        const cells = parseRow(row).map((cell) => `<td class="px-3 py-2 border border-gray-200 dark:border-neutral-700 text-sm">${cell}</td>`).join('');
         return `<tr>${cells}</tr>`;
       })
       .join('');
 
-    const tableHtml = `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyCells}</tbody></table>`;
+    const tableHtml = `<table class="w-full border-collapse my-3 text-sm"><thead><tr>${headerCells}</tr></thead><tbody>${bodyCells}</tbody></table>`;
     tables.push(tableHtml);
     return `__TABLE_${tables.length - 1}__`;
   });
@@ -207,23 +208,23 @@ function processInlineElements(text: string): string {
   html = escapeHtml(html);
 
   // Bold / Italic
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="font-bold"><em>$1</em></strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
 
   // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-sm font-mono text-pink-600 dark:text-pink-400">$1</code>');
 
   // Images
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />');
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-2" />');
 
   // Links
   html = html.replace(/\[([^\]]+)]\(([^)]+)\)/g, (_match, text, url) => {
     const isExternal = url.startsWith('http://') || url.startsWith('https://');
     if (isExternal) {
-      return `<a href="${url}" rel="noopener noreferrer" target="_blank">${text}</a>`;
+      return `<a href="${url}" rel="noopener noreferrer" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">${text}</a>`;
     }
-    return `<a href="${url}">${text}</a>`;
+    return `<a href="${url}" class="text-blue-600 dark:text-blue-400 hover:underline">${text}</a>`;
   });
 
   // Restore code blocks
@@ -247,16 +248,16 @@ function renderTable(tableLines: string[]): string {
       .filter((cell) => cell.trim() !== '')
       .map((cell) => cell.trim());
 
-  const headerCells = parseRow(tableLines[0]).map((cell) => `<th>${cell}</th>`).join('');
+  const headerCells = parseRow(tableLines[0]).map((cell) => `<th class="bg-gray-50 dark:bg-neutral-800 font-semibold text-left px-3 py-2 border border-gray-200 dark:border-neutral-700">${cell}</th>`).join('');
   const bodyCells = tableLines
     .slice(2)
     .map((row) => {
-      const cells = parseRow(row).map((cell) => `<td>${cell}</td>`).join('');
+      const cells = parseRow(row).map((cell) => `<td class="px-3 py-2 border border-gray-200 dark:border-neutral-700 text-sm">${cell}</td>`).join('');
       return `<tr>${cells}</tr>`;
     })
     .join('');
 
-  return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyCells}</tbody></table>`;
+  return `<table class="w-full border-collapse my-3 text-sm"><thead><tr>${headerCells}</tr></thead><tbody>${bodyCells}</tbody></table>`;
 }
 
 function escapeHtml(s: string): string {
@@ -274,13 +275,22 @@ interface DiffViewProps {
 
 export function DiffView({ lines }: DiffViewProps) {
   return (
-    <div className="diff-view">
+    <div className="font-mono text-sm">
       {lines.map((line, i) => (
-        <div key={i} className={`diff-line diff-${line.type}`}>
-          <span className="diff-marker">
+        <div
+          key={i}
+          className={`flex items-start gap-2 px-3 py-0.5 ${
+            line.type === 'insert'
+              ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300'
+              : line.type === 'delete'
+              ? 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+              : 'text-gray-700 dark:text-neutral-300'
+          }`}
+        >
+          <span className="shrink-0 w-4 text-right select-none">
             {line.type === 'insert' ? '+' : line.type === 'delete' ? '-' : ' '}
           </span>
-          <span className="diff-content">{line.content}</span>
+          <span className="whitespace-pre-wrap break-all">{line.content}</span>
         </div>
       ))}
     </div>

@@ -32,6 +32,12 @@ const MIN_WIDTHS: Record<ResizableColumn, number> = {
   documents: 220,
   preview: 260,
 };
+const COLUMN_WIDTHS_STORAGE_KEY = 'markdownhub_column_widths';
+
+const DEFAULT_WIDTHS: Record<ResizableColumn, number> = {
+  documents: 280,
+  preview: 360,
+};
 
 export function NotesLayout() {
   const { t, i18n } = useTranslation();
@@ -50,10 +56,25 @@ export function NotesLayout() {
     documents: true,
     preview: true,
   });
-  const [columnWidths, setColumnWidths] = useState<Record<ResizableColumn, number>>({
-    documents: 300,
-    preview: 360,
-  });
+
+  // Load column widths from localStorage
+  const loadColumnWidths = useCallback((): Record<ResizableColumn, number> => {
+    try {
+      const saved = localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          documents: Math.max(MIN_WIDTHS.documents, parsed.documents || DEFAULT_WIDTHS.documents),
+          preview: Math.max(MIN_WIDTHS.preview, parsed.preview || DEFAULT_WIDTHS.preview),
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to load column widths from localStorage:', e);
+    }
+    return DEFAULT_WIDTHS;
+  }, []);
+
+  const [columnWidths, setColumnWidths] = useState<Record<ResizableColumn, number>>(loadColumnWidths);
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [connectionState, setConnectionState] = useState('disconnected');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -81,6 +102,15 @@ export function NotesLayout() {
     if (documentError) setDismissedDocError(documentError);
     setTitleError('');
   };
+
+  // Save column widths to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(columnWidths));
+    } catch (e) {
+      console.warn('Failed to save column widths to localStorage:', e);
+    }
+  }, [columnWidths]);
 
   // Keyboard shortcut to open search
   useEffect(() => {

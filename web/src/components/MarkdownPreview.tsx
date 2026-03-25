@@ -1,4 +1,4 @@
-import { useMemo, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useMemo, useRef, useImperativeHandle, useEffect, forwardRef } from 'react';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
 import type { DiffLine } from '@/types';
@@ -13,10 +13,24 @@ export interface MarkdownPreviewRef {
 }
 
 export const MarkdownPreview = forwardRef<MarkdownPreviewRef, MarkdownPreviewProps>(
-  function MarkdownPreview({ content }, ref) {
+  function MarkdownPreview({ content, currentLine = 1 }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
 
     const html = useMemo(() => renderMarkdown(content), [content]);
+
+    // Scroll to current line when it changes
+    useEffect(() => {
+      if (!containerRef.current) return;
+
+      const elements = containerRef.current.querySelectorAll('[data-line-end]');
+      for (const el of elements) {
+        const lineEnd = parseInt(el.getAttribute('data-line-end') || '0', 10);
+        if (lineEnd >= currentLine) {
+          (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+          break;
+        }
+      }
+    }, [currentLine]);
 
     useImperativeHandle(ref, () => ({
       scrollToLine(line: number) {

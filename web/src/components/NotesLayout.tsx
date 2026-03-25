@@ -8,7 +8,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { useImagePaste } from '@/hooks/useImagePaste';
 import { useToast } from '@/components/Toast';
 import { attachmentService, documentService } from '@/services/api';
-import { MarkdownPreview } from '@/components/MarkdownPreview';
+import { MarkdownPreview, type MarkdownPreviewRef } from '@/components/MarkdownPreview';
 import { SnapshotPanel } from '@/components/SnapshotPanel';
 import { PermissionsPanel } from '@/components/PermissionsPanel';
 import { AttachmentPanel } from '@/components/AttachmentPanel';
@@ -56,6 +56,10 @@ export function NotesLayout() {
     documents: true,
     preview: true,
   });
+
+  // Cursor tracking for preview sync
+  const [currentLine, setCurrentLine] = useState(1);
+  const previewRef = useRef<MarkdownPreviewRef>(null);
 
   // Load column widths from localStorage
   const loadColumnWidths = useCallback((): Record<ResizableColumn, number> => {
@@ -111,6 +115,13 @@ export function NotesLayout() {
       console.warn('Failed to save column widths to localStorage:', e);
     }
   }, [columnWidths]);
+
+  // Scroll preview to current cursor position
+  useEffect(() => {
+    if (activePanel === 'preview' && previewRef.current) {
+      previewRef.current.scrollToLine(currentLine);
+    }
+  }, [currentLine, activePanel]);
 
   // Keyboard shortcut to open search
   useEffect(() => {
@@ -764,6 +775,20 @@ export function NotesLayout() {
                 style={{ border: 'none', outline: 'none', background: 'transparent' }}
                 value={content}
                 onChange={(e) => handleContentChange(e.target.value)}
+                onSelect={(e) => {
+                  const textarea = e.target as HTMLTextAreaElement;
+                  const cursorPos = textarea.selectionStart;
+                  const textBefore = textarea.value.substring(0, cursorPos);
+                  const line = (textBefore.match(/\n/g) || []).length + 1;
+                  setCurrentLine(line);
+                }}
+                onClick={(e) => {
+                  const textarea = e.target as HTMLTextAreaElement;
+                  const cursorPos = textarea.selectionStart;
+                  const textBefore = textarea.value.substring(0, cursorPos);
+                  const line = (textBefore.match(/\n/g) || []).length + 1;
+                  setCurrentLine(line);
+                }}
                 spellCheck={false}
               />
             )}
@@ -781,7 +806,7 @@ export function NotesLayout() {
             <aside className="panel flex flex-col min-h-0">
               {activePanel === 'preview' && (
                 document
-                  ? <MarkdownPreview content={content} />
+                  ? <MarkdownPreview ref={previewRef} content={content} currentLine={currentLine} />
                   : <div className="empty-state flex-1 text-sm text-gray-500 dark:text-neutral-400">{t('doc.previewEmpty')}</div>
               )}
               {activePanel === 'history' && (

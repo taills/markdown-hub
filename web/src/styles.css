@@ -363,10 +363,36 @@ html { scroll-behavior: smooth; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ============================================================
-   Resizer - Minimal Divider
+   Resizer - Visual Divider with Wide Hit Area
    ============================================================ */
-.resizer { width: 4px; background: transparent; cursor: col-resize; transition: background 200ms ease; flex-shrink: 0; border-radius: 99px; }
-.resizer:hover, .resizer:active { background: var(--brand-400); }
+.resizer {
+  position: relative;
+  width: 12px;
+  margin: 0 -6px;
+  background: transparent;
+  cursor: col-resize;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.resizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 100%;
+  background: transparent;
+  border-radius: 99px;
+  transition: all 200ms ease;
+}
+
+.resizer:hover::before,
+.resizer:active::before {
+  background: var(--brand-400);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
 
 /* ============================================================
    Homepage - Premium Blog Experience

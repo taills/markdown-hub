@@ -393,17 +393,15 @@ export function NotesLayout() {
     setVisibleColumns((prev) => ({ ...prev, [column]: !prev[column] }));
   };
 
-  const startResize = useCallback((type: ResizableColumn) => {
-    return (event: React.MouseEvent) => {
-      event.preventDefault();
-      resizeRef.current = {
-        type,
-        startX: event.clientX,
-        startWidths: { ...columnWidths },
-        containerWidth: containerRef.current?.offsetWidth ?? 0,
-      };
-      window.document.body.classList.add('is-resizing');
+  const startResize = useCallback((type: ResizableColumn, event: React.MouseEvent) => {
+    event.preventDefault();
+    resizeRef.current = {
+      type,
+      startX: event.clientX,
+      startWidths: { ...columnWidths },
+      containerWidth: containerRef.current?.offsetWidth ?? 0,
     };
+    window.document.body.classList.add('is-resizing');
   }, [columnWidths]);
 
   useEffect(() => {
@@ -463,7 +461,7 @@ export function NotesLayout() {
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
     };
-  }, [visibleColumns]);
+  }, [visibleColumns, columnWidths]);
 
   const columnsStyle = useMemo(() => {
     const columns: string[] = [];
@@ -761,7 +759,7 @@ export function NotesLayout() {
               className="resizer"
               role="separator"
               aria-label="调整左侧列表宽度"
-              onMouseDown={startResize('documents')}
+              onMouseDown={(e) => startResize('documents', e)}
             />
           </>
         )}
@@ -818,7 +816,7 @@ export function NotesLayout() {
               className="resizer"
               role="separator"
               aria-label="调整预览宽度"
-              onMouseDown={startResize('preview')}
+              onMouseDown={(e) => startResize('preview', e)}
             />
             <aside className="panel flex flex-col min-h-0">
               {activePanel === 'preview' && (

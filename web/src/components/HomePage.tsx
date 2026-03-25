@@ -152,8 +152,8 @@ export function HomePage() {
   return (
     <div className="blog-home">
       {/* Hero 区域 */}
-      <header className="blog-hero">
-        <div className="max-w-3xl mx-auto text-center">
+      <header className="blog-hero flex justify-center">
+        <div className="max-w-3xl text-center">
           <h1 className="blog-hero-title">{siteTitle}</h1>
           <p className="blog-hero-subtitle">
             {t('home.subtitle', '知识分享 · 协作写作 · Markdown创作平台')}

@@ -90,6 +90,7 @@ export function NotesLayout() {
     type: ResizableColumn;
     startX: number;
     startWidths: Record<ResizableColumn, number>;
+    containerWidth: number;
   } | null>(null);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -387,6 +388,7 @@ export function NotesLayout() {
         type,
         startX: event.clientX,
         startWidths: { ...columnWidths },
+        containerWidth: containerRef.current?.offsetWidth ?? 0,
       };
       window.document.body.classList.add('is-resizing');
     };
@@ -395,10 +397,8 @@ export function NotesLayout() {
   useEffect(() => {
     const handleMove = (event: MouseEvent) => {
       if (!resizeRef.current) return;
-      const containerWidth = containerRef.current?.offsetWidth ?? 0;
-      if (!containerWidth) return;
+      const { type, startX, startWidths, containerWidth } = resizeRef.current;
 
-      const { type, startX, startWidths } = resizeRef.current;
       const delta = event.clientX - startX;
 
       const hasDocuments = visibleColumns.documents;

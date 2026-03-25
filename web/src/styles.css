@@ -367,8 +367,7 @@ html { scroll-behavior: smooth; }
    ============================================================ */
 .resizer {
   position: relative;
-  width: 12px;
-  margin: 0 -6px;
+  width: 6px;
   background: transparent;
   cursor: col-resize;
   flex-shrink: 0;
@@ -379,19 +378,30 @@ html { scroll-behavior: smooth; }
   content: '';
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
+  left: 0;
+  width: 2px;
   height: 100%;
-  background: transparent;
+  background: var(--border);
   border-radius: 99px;
   transition: all 200ms ease;
 }
 
 .resizer:hover::before,
 .resizer:active::before {
+  left: 1px;
+  width: 4px;
   background: var(--brand-400);
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
+
+/* Global resize cursor during drag */
+body.is-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+body.is-resizing * {
+  cursor: col-resize !important;
 }
 
 /* ============================================================

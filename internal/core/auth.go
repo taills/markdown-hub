@@ -134,6 +134,20 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 			return fmt.Errorf("create user: %w", err)
 		}
 
+		// Create root document for new user
+		_, err = qtx.CreateDocument(ctx, store.CreateDocumentParams{
+			OwnerID:           row.ID,
+			ParentID:          uuid.NullUUID{}, // NULL for root document
+			Title:             "欢迎使用 MarkdownHub",
+			Content:           "# 欢迎使用 MarkdownHub\n\n这是你的第一个文档，开始你的写作之旅吧！\n\n## 功能特性\n\n- 实时协作编辑\n- Markdown 语法支持\n- 文档树形结构\n- 权限管理\n\n开始编辑这个文档，或创建新的文档。",
+			Visibility:        "internal",
+			InheritVisibility: true,
+			SortOrder:         0,
+		})
+		if err != nil {
+			return fmt.Errorf("create root document: %w", err)
+		}
+
 		// Convert sql.NullString to string for model
 		emailStr := ""
 		if row.Email.Valid {

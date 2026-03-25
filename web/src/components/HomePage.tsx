@@ -150,71 +150,65 @@ export function HomePage() {
   const hasPublicContent = (data?.documents.length ?? 0) > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-neutral-900">
+    <div className="blog-home">
       {/* Hero 区域 */}
-      <header className="py-16 px-6 text-center bg-white dark:bg-neutral-800 border-b border-gray-200 dark:border-neutral-700">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">{siteTitle}</h1>
-          <p className="text-base text-gray-500 dark:text-neutral-400">
+      <header className="blog-hero">
+        <div className="max-w-3xl mx-auto" style={{ textAlign: 'center' }}>
+          <h1 className="blog-hero-title">{siteTitle}</h1>
+          <p className="blog-hero-subtitle">
             {t('home.subtitle', '知识分享 · 协作写作 · Markdown创作平台')}
           </p>
-          <div className="flex justify-center mb-8">
-            <div className="relative w-full max-w-lg">
-              <div className="flex items-center w-full">
-                <svg className="absolute left-3 size-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="M21 21l-4.35-4.35" />
+          <div className="search-wrapper">
+            <div className="search-input-container">
+              <svg className="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                className="search-input"
+                placeholder={t('search.placeholder', '搜索文档...')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+              />
+              {isSearching && (
+                <svg className="absolute right-24 top-1/2 -translate-y-1/2 size-4 animate-spin text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  className="w-full py-2.5 ps-10 pe-16 text-sm border border-gray-200 dark:border-neutral-700 rounded-full bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 placeholder-gray-400 dark:placeholder-neutral-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                  placeholder={t('search.placeholder', '搜索文档...')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={handleSearchKeyDown}
-                />
-                {isSearching && (
-                  <svg className="absolute right-10 size-4 animate-spin text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                )}
-                <span className="absolute right-3 px-1.5 py-0.5 text-xs rounded bg-gray-100 dark:bg-neutral-700 text-gray-400 dark:text-neutral-500 font-mono pointer-events-none">⌘K</span>
-              </div>
+              )}
+              <span className="search-kbd">⌘K</span>
 
               {/* 搜索结果 */}
               {searchQuery.trim() && (
-                <div className="absolute top-full mt-2 w-full bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-lg overflow-hidden z-10" ref={searchResultsRef}>
+                <div className="search-results-dropdown" ref={searchResultsRef}>
                   {searchResults.length > 0 ? (
                     searchResults.map((doc, index) => (
                       <div
                         key={doc.id}
-                        className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-0 ${
-                          index === selectedIndex
-                            ? 'bg-blue-50 dark:bg-blue-900/20'
-                            : 'hover:bg-gray-50 dark:hover:bg-neutral-700'
-                        }`}
+                        className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
                         onClick={() => navigate(`/documents/${doc.id}`)}
                         onMouseEnter={() => setSelectedIndex(index)}
                       >
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-sm font-medium text-gray-900 dark:text-neutral-200 truncate">
+                          <span className="text-sm font-medium text-slate-900 dark:text-slate-200 truncate">
                             {doc.title || t('home.untitled', '无标题文档')}
                           </span>
                           {doc.workspace_name && (
-                            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-neutral-700 text-gray-500 dark:text-neutral-400">
+                            <span className="search-result-tag">
                               {doc.workspace_name}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-neutral-400 line-clamp-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                           {getSearchExcerpt(doc.content, searchQuery)}
                         </p>
                       </div>
                     ))
                   ) : (
-                    <div className="px-4 py-6 text-sm text-center text-gray-500 dark:text-neutral-400">
+                    <div className="px-4 py-6 text-sm text-center text-slate-500 dark:text-slate-400">
                       {t('search.noResults', '未找到相关文档')}
                     </div>
                   )}
@@ -222,17 +216,17 @@ export function HomePage() {
               )}
             </div>
           </div>
-          <nav className="flex justify-center gap-3 mt-6">
+          <nav className="blog-hero-nav">
             {user ? (
               <button
-                className="px-5 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                className="btn btn-primary btn-lg"
                 onClick={() => navigate('/documents')}
               >
                 {t('nav.editor', '进入编辑器')}
               </button>
             ) : (
               <>
-                <Link to="/login" className="px-5 py-2 text-sm font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700">
+                <Link to="/login" className="btn btn-secondary btn-lg">
                   {t('home.login', '登录')}
                 </Link>
               </>
@@ -244,9 +238,9 @@ export function HomePage() {
       {/* 主体内容区 */}
       <main className="blog-container">
         {!hasPublicContent ? (
-          <div className="blog-empty">
+          <div className="homepage-empty">
             <svg
-              className="blog-empty-icon"
+              className="homepage-empty-icon"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -255,11 +249,11 @@ export function HomePage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={1.5}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
               />
             </svg>
-            <p className="blog-empty-text">{t('home.noPublicContent', '暂无公开内容')}</p>
-            <p className="blog-empty-hint">
+            <p className="homepage-empty-title">{t('home.noPublicContent', '暂无公开内容')}</p>
+            <p className="homepage-empty-hint">
               {t('home.noPublicContentHint', '管理员可以在工作空间或文档中设置为公开,内容将展示在此处')}
             </p>
           </div>
@@ -267,57 +261,54 @@ export function HomePage() {
           <>
             {/* 公开文章列表 */}
             {data?.documents && data.documents.length > 0 && (
-              <section className="mt-12 px-6 max-w-5xl mx-auto">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <section className="blog-section">
+                <div className="blog-section-header">
+                  <h2 className="blog-section-title">
                     {t('home.recentPosts', '最新文章')}
                   </h2>
-                  <p className="text-sm text-gray-500 dark:text-neutral-400 mt-1">
+                  <p className="blog-section-description">
                     {t('home.latestUpdates', '查看最近更新的公开文档')}
                   </p>
                 </div>
 
-                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="blog-grid">
                   {data.documents.map((doc) => (
-                    <article key={doc.id} className="flex flex-col gap-2 p-5 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl hover:shadow-md transition-shadow">
-                      <Link to={`/documents/${doc.id}/view`} className="group">
-                        <h3 className="text-base font-medium text-gray-900 dark:text-neutral-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                    <article key={doc.id} className="blog-card">
+                      <Link to={`/documents/${doc.id}/view`} className="blog-card-link-wrapper">
+                        <h3 className="blog-card-title">
                           {doc.title || t('home.untitled', '无标题文档')}
                         </h3>
-                      </Link>
 
-                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-neutral-400">
-                        <time>
-                          {new Date(doc.updated_at).toLocaleDateString('zh-CN', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </time>
-                        <span>·</span>
-                        <span>
-                          {t('home.readTime', '{{min}} 分钟阅读', {
-                            min: Math.max(1, Math.ceil(doc.content.length / 400)),
-                          })}
+                        <div className="blog-card-meta">
+                          <time>
+                            {new Date(doc.updated_at).toLocaleDateString('zh-CN', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </time>
+                          <span>·</span>
+                          <span>
+                            {t('home.readTime', '{{min}} 分钟阅读', {
+                              min: Math.max(1, Math.ceil(doc.content.length / 400)),
+                            })}
+                          </span>
+                        </div>
+
+                        {doc.content && (
+                          <p className="blog-card-excerpt">{getExcerpt(doc.content)}</p>
+                        )}
+
+                        <span className="blog-card-cta">
+                          {t('home.readMore', '阅读全文')}
+                          <svg className="size-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                              fillRule="evenodd"
+                              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
                         </span>
-                      </div>
-
-                      {doc.content && (
-                        <p className="text-sm text-gray-600 dark:text-neutral-400 line-clamp-3">{getExcerpt(doc.content)}</p>
-                      )}
-
-                      <Link
-                        to={`/documents/${doc.id}/view`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline mt-auto"
-                      >
-                        {t('home.readMore', '阅读全文')}
-                        <svg className="size-3" viewBox="0 0 20 20" fill="currentColor">
-                          <path
-                            fillRule="evenodd"
-                            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
                       </Link>
                     </article>
                   ))}

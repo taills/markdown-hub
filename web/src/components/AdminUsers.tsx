@@ -142,16 +142,16 @@ export function AdminUsers() {
       <header className="admin-header">
         <div>
           <h2>{t('admin.users')}</h2>
-          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('admin.usersDescription')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('admin.usersDescription')}</p>
         </div>
         <div className="admin-actions">
-          <button className="secondary" onClick={() => navigate('/admin/settings')}>
+          <button className="btn btn-secondary" onClick={() => navigate('/admin/settings')}>
             {t('admin.siteSettings')}
           </button>
-          <button className="secondary" onClick={() => navigate('/admin/logs')}>
+          <button className="btn btn-secondary" onClick={() => navigate('/admin/logs')}>
             {t('admin.viewLogs')}
           </button>
-          <button className="secondary" onClick={() => navigate('/me')}>
+          <button className="btn btn-secondary" onClick={() => navigate('/me')}>
             {t('nav.backToProfile')}
           </button>
         </div>
@@ -160,16 +160,21 @@ export function AdminUsers() {
       {loading && (
         <div className="loading-container">
           <div className="spinner"></div>
-          <p className="text-sm text-gray-500 dark:text-neutral-400">{t('common.loading')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('common.loading')}</p>
         </div>
       )}
 
       {!loading && !error && (
         <div className="users-list">
           {users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-              <span className="text-3xl mb-3 opacity-40">👥</span>
-              <p className="text-sm text-gray-500 dark:text-neutral-400">{t('admin.noUsers')}</p>
+            <div className="empty-state">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="empty-state-icon">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <p className="empty-state-description">{t('admin.noUsers')}</p>
             </div>
           ) : (
             <>
@@ -203,18 +208,20 @@ export function AdminUsers() {
                     {users.map((user) => (
                       <tr key={parseId(user.id)} className={user.is_admin ? 'admin-row' : ''}>
                         <td className="user-name">
-                          <div className="user-info-cell">
-                            <div className="size-8 inline-flex justify-center items-center rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+                          <div className="flex items-center gap-3">
+                            <span className="user-avatar">
                               {user.username.charAt(0).toUpperCase()}
-                            </div>
-                            <span>{user.username}</span>
+                            </span>
+                            <span className="font-medium">{user.username}</span>
                           </div>
                         </td>
                         <td className="user-email">
                           {editingEmail === parseId(user.id) ? (
-                            <div className="email-edit">
+                            <div className="flex items-center gap-2">
                               <input
                                 type="email"
+                                className="input"
+                                style={{ maxWidth: '200px' }}
                                 value={emailInput}
                                 onChange={(e) => setEmailInput(e.target.value)}
                                 placeholder={t('admin.emailPlaceholder')}
@@ -225,20 +232,18 @@ export function AdminUsers() {
                                 }}
                               />
                               <button
-                                className="save-btn"
+                                className="btn btn-primary btn-sm"
                                 onClick={() => saveEmail(parseId(user.id))}
                                 disabled={actionInProgress}
-                                title={t('common.save')}
                               >
-                                ✓
+                                {t('common.save')}
                               </button>
                               <button
-                                className="cancel-btn"
+                                className="btn btn-secondary btn-sm"
                                 onClick={cancelEditEmail}
                                 disabled={actionInProgress}
-                                title={t('common.cancel')}
                               >
-                                ✕
+                                {t('common.cancel')}
                               </button>
                             </div>
                           ) : (
@@ -272,22 +277,20 @@ export function AdminUsers() {
                         </td>
                         <td className="user-actions">
                           <button
-                            className="reset-password-btn"
+                            className="btn btn-secondary btn-sm"
                             onClick={() =>
                               handleResetPassword(parseId(user.id), user.username)
                             }
                             disabled={actionInProgress}
-                            title={t('admin.resetPassword')}
                           >
                             🔑 {t('admin.resetPassword')}
                           </button>
                           <button
-                            className="delete-btn"
+                            className="btn btn-danger btn-sm"
                             onClick={() =>
                               handleDeleteUser(parseId(user.id), user.username)
                             }
                             disabled={actionInProgress}
-                            title={t('admin.deleteUser')}
                           >
                             🗑️ {t('admin.delete')}
                           </button>

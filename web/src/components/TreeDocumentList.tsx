@@ -372,7 +372,7 @@ export function TreeDocumentList({
   };
 
   return (
-    <div className="py-2">
+    <div className="tree-container">
       <div className="tree-content">
         {/* Tree Root */}
         <div
@@ -381,8 +381,12 @@ export function TreeDocumentList({
           aria-orientation="vertical"
         >
           {tree.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-neutral-400">
-              {t('doc.empty', '暂无文档')}
+            <div className="empty-state py-8">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="empty-state-icon">
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <p className="empty-state-description">{t('doc.empty', '暂无文档')}</p>
             </div>
           ) : (
             tree.map((node) => (
@@ -406,7 +410,7 @@ export function TreeDocumentList({
           <div className="px-4 py-2">
             <input
               type="text"
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="input"
               value={newChildTitle}
               onChange={(e) => setNewChildTitle(e.target.value)}
               onKeyDown={(e) => {
@@ -425,7 +429,7 @@ export function TreeDocumentList({
           <div className="px-4 py-2">
             <input
               type="text"
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="input"
               value={editingTitle}
               onChange={(e) => setEditingTitle(e.target.value)}
               onKeyDown={(e) => {
@@ -443,7 +447,7 @@ export function TreeDocumentList({
       {contextMenu.visible && contextMenu.node && (
         <div
           ref={contextMenuRef}
-          className="fixed z-50 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+          className="fixed bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[160px]"
           style={{
             position: 'fixed',
             left: contextMenu.x,
@@ -452,7 +456,7 @@ export function TreeDocumentList({
           }}
         >
           <button
-            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
             onClick={handleStartRename}
           >
             <svg
@@ -472,7 +476,7 @@ export function TreeDocumentList({
             {t('doc.rename', '重命名')}
           </button>
           <button
-            className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
             onClick={handleInsertChild}
           >
             <svg
@@ -492,7 +496,7 @@ export function TreeDocumentList({
             </svg>
             {t('doc.insertChild', '插入子级')}
           </button>
-          <div className="h-px bg-gray-200 dark:bg-neutral-700 my-1" />
+          <div className="h-px bg-slate-200 dark:bg-slate-700 my-1" />
           <button
             className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
             onClick={handleDelete}

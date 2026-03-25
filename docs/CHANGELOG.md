@@ -2,6 +2,19 @@
 
 ## [1.3.1] - 2026-03-25
 
+### 🐛 修复
+
+#### 编辑器列宽拖动
+- 增大resizer宽度至12px，视觉线条4px居中
+- 添加::before伪元素实现可视化拖动手柄
+- 悬停时显示品牌色高亮和光晕效果
+
+#### 预览同步
+- 添加currentLine状态跟踪编辑器光标位置
+- textarea添加onSelect和onClick事件监听光标变化
+- MarkdownPreview接收currentLine prop并自动滚动到当前位置
+- useEffect监听currentLine变化触发预览滚动
+
 ### ✨ 改进
 
 #### 登录页面重新设计

@@ -451,7 +451,7 @@ export function NotesLayout() {
       if (type === 'preview' && hasPreview) {
         const maxWidth = containerWidth - resizerTotal - documentsWidth - MIN_EDITOR_WIDTH;
         const nextWidth = clamp(
-          startWidths.preview + delta,
+          startWidths.preview - delta,
           MIN_PREVIEW_WIDTH,
           maxWidth
         );

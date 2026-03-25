@@ -26,12 +26,10 @@ type Column = 'documents' | 'preview';
 
 type ResizableColumn = 'documents' | 'preview';
 
-const RESIZER_WIDTH = 6;
+const RESIZER_WIDTH = 12;
+const MIN_DOCUMENTS_WIDTH = 220;
+const MIN_PREVIEW_WIDTH = 260;
 const MIN_EDITOR_WIDTH = 420;
-const MIN_WIDTHS: Record<ResizableColumn, number> = {
-  documents: 220,
-  preview: 260,
-};
 const COLUMN_WIDTHS_STORAGE_KEY = 'markdownhub_column_widths';
 
 const DEFAULT_WIDTHS: Record<ResizableColumn, number> = {
@@ -68,8 +66,8 @@ export function NotesLayout() {
       if (saved) {
         const parsed = JSON.parse(saved);
         return {
-          documents: Math.max(MIN_WIDTHS.documents, parsed.documents || DEFAULT_WIDTHS.documents),
-          preview: Math.max(MIN_WIDTHS.preview, parsed.preview || DEFAULT_WIDTHS.preview),
+          documents: Math.max(MIN_DOCUMENTS_WIDTH, parsed.documents || DEFAULT_WIDTHS.documents),
+          preview: Math.max(MIN_PREVIEW_WIDTH, parsed.preview || DEFAULT_WIDTHS.preview),
         };
       }
     } catch (e) {
@@ -79,6 +77,7 @@ export function NotesLayout() {
   }, []);
 
   const [columnWidths, setColumnWidths] = useState<Record<ResizableColumn, number>>(loadColumnWidths);
+  const [containerWidth, setContainerWidth] = useState(0);
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [connectionState, setConnectionState] = useState('disconnected');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -116,6 +115,19 @@ export function NotesLayout() {
       console.warn('Failed to save column widths to localStorage:', e);
     }
   }, [columnWidths]);
+
+  // Track container width for calculating editor column width
+  useEffect(() => {
+    const updateContainerWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+    };
+
+    updateContainerWidth();
+    window.addEventListener('resize', updateContainerWidth);
+    return () => window.removeEventListener('resize', updateContainerWidth);
+  }, []);
 
   // Scroll preview to current cursor position
   useEffect(() => {
@@ -420,7 +432,7 @@ export function NotesLayout() {
         const maxWidth = containerWidth - resizerTotal - previewWidth - MIN_EDITOR_WIDTH;
         const nextWidth = clamp(
           startWidths.documents + delta,
-          MIN_WIDTHS.documents,
+          MIN_DOCUMENTS_WIDTH,
           maxWidth
         );
         setColumnWidths((prev) => ({ ...prev, documents: nextWidth }));
@@ -430,8 +442,8 @@ export function NotesLayout() {
       if (type === 'preview' && hasPreview) {
         const maxWidth = containerWidth - resizerTotal - documentsWidth - MIN_EDITOR_WIDTH;
         const nextWidth = clamp(
-          startWidths.preview - delta,
-          MIN_WIDTHS.preview,
+          startWidths.preview + delta,
+          MIN_PREVIEW_WIDTH,
           maxWidth
         );
         setColumnWidths((prev) => ({ ...prev, preview: nextWidth }));
@@ -461,15 +473,20 @@ export function NotesLayout() {
     const hasEditor = !isSettingsMode;
     const hasLeftColumn = hasDocuments;
 
+    const resizerCount = (hasLeftColumn ? 1 : 0) + (hasPreview ? 1 : 0);
+    const resizersTotal = resizerCount * RESIZER_WIDTH;
+    const sideColumnsTotal = (hasDocuments ? columnWidths.documents : 0) + (hasPreview ? columnWidths.preview : 0);
+    const editorWidth = Math.max(MIN_EDITOR_WIDTH, containerWidth - sideColumnsTotal - resizersTotal);
+
     if (hasDocuments) columns.push(`${columnWidths.documents}px`);
     if (hasLeftColumn && hasEditor) columns.push(`${RESIZER_WIDTH}px`);
-    if (hasEditor) columns.push(`minmax(${MIN_EDITOR_WIDTH}px, 1fr)`);
+    if (hasEditor) columns.push(`${editorWidth}px`);
     if (hasPreview) columns.push(`${RESIZER_WIDTH}px`, `${columnWidths.preview}px`);
     if (isSettingsMode) columns.push(`minmax(${MIN_EDITOR_WIDTH}px, 1fr)`);
     return {
       gridTemplateColumns: columns.join(' '),
     } as React.CSSProperties;
-  }, [visibleColumns, columnWidths, mode]);
+  }, [visibleColumns, columnWidths, mode, containerWidth]);
 
   return (
     <div className="editor-layout">

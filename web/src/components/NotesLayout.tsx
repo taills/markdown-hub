@@ -91,6 +91,8 @@ export function NotesLayout() {
     startWidths: Record<ResizableColumn, number>;
     containerWidth: number;
   } | null>(null);
+  const columnWidthsRef = useRef(columnWidths);
+  const visibleColumnsRef = useRef(visibleColumns);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -128,6 +130,15 @@ export function NotesLayout() {
     window.addEventListener('resize', updateContainerWidth);
     return () => window.removeEventListener('resize', updateContainerWidth);
   }, []);
+
+  // Update refs when values change
+  useEffect(() => {
+    columnWidthsRef.current = columnWidths;
+  }, [columnWidths]);
+
+  useEffect(() => {
+    visibleColumnsRef.current = visibleColumns;
+  }, [visibleColumns]);
 
   // Scroll preview to current cursor position
   useEffect(() => {
@@ -411,8 +422,8 @@ export function NotesLayout() {
 
       const delta = event.clientX - startX;
 
-      const hasDocuments = visibleColumns.documents;
-      const hasPreview = visibleColumns.preview;
+      const hasDocuments = visibleColumnsRef.current.documents;
+      const hasPreview = visibleColumnsRef.current.preview;
       const hasLeftColumn = hasDocuments;
       const resizerCount = (hasLeftColumn ? 1 : 0)
         + (hasPreview ? 1 : 0);
@@ -461,7 +472,7 @@ export function NotesLayout() {
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
     };
-  }, [visibleColumns, columnWidths]);
+  }, []); // 空依赖数组 - 只注册一次
 
   const columnsStyle = useMemo(() => {
     const columns: string[] = [];

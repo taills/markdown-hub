@@ -33,7 +33,7 @@ const MIN_EDITOR_WIDTH = 420;
 const COLUMN_WIDTHS_STORAGE_KEY = 'markdownhub_column_widths';
 
 const DEFAULT_WIDTHS: Record<ResizableColumn, number> = {
-  documents: 280,
+  documents: 250,
   preview: 360,
 };
 
@@ -484,13 +484,18 @@ export function NotesLayout() {
 
     const resizerCount = (hasLeftColumn ? 1 : 0) + (hasPreview ? 1 : 0);
     const resizersTotal = resizerCount * RESIZER_WIDTH;
-    const sideColumnsTotal = (hasDocuments ? columnWidths.documents : 0) + (hasPreview ? columnWidths.preview : 0);
-    const editorWidth = Math.max(MIN_EDITOR_WIDTH, containerWidth - sideColumnsTotal - resizersTotal);
+    const sideColumnsTotal = hasDocuments ? columnWidths.documents : 0;
+    const remainingSpace = containerWidth - sideColumnsTotal - resizersTotal;
+
+    // 编辑器和预览平分剩余空间
+    const halfSpace = Math.max(MIN_EDITOR_WIDTH, remainingSpace / 2);
+    const editorWidth = halfSpace;
+    const previewWidth = hasPreview ? Math.max(MIN_PREVIEW_WIDTH, halfSpace) : 0;
 
     if (hasDocuments) columns.push(`${columnWidths.documents}px`);
     if (hasLeftColumn && hasEditor) columns.push(`${RESIZER_WIDTH}px`);
     if (hasEditor) columns.push(`${editorWidth}px`);
-    if (hasPreview) columns.push(`${RESIZER_WIDTH}px`, `${columnWidths.preview}px`);
+    if (hasPreview) columns.push(`${RESIZER_WIDTH}px`, `${previewWidth}px`);
     if (isSettingsMode) columns.push(`minmax(${MIN_EDITOR_WIDTH}px, 1fr)`);
     return {
       gridTemplateColumns: columns.join(' '),

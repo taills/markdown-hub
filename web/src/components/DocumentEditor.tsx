@@ -189,8 +189,8 @@ export function DocumentEditor() {
     const modalError = error !== dismissedError ? error : '';
     return (
       <div className="flex flex-col h-screen bg-gray-50 dark:bg-neutral-900">
-        <header className="flex items-center gap-3 px-4 py-3 border-b bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
-          <button className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700" onClick={() => navigate('/')}>← Documents</button>
+        <header className="flex items-center gap-3 px-4 py-3 border-b bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 shrink-0">
+          <button className="px-3 py-1.5 text-xs font-medium rounded border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700" onClick={() => navigate('/')}>← Documents</button>
           <h2 className="text-sm font-medium text-gray-800 dark:text-neutral-200">{siteTitle}</h2>
         </header>
         <ErrorModal
@@ -214,30 +214,30 @@ export function DocumentEditor() {
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-neutral-900">
       <header className="flex items-center gap-3 px-4 py-3 border-b bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 shrink-0">
-        <button className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700" onClick={() => navigate('/')}>
+        <button className="px-3 py-1.5 text-xs font-medium rounded border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700" onClick={() => navigate('/')}>
           ← Documents
         </button>
         <h2 className="text-sm font-medium text-gray-800 dark:text-neutral-200 truncate max-w-[200px]">{document.title}</h2>
         <div className="flex items-center gap-2 ms-auto">
           <button
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
+            className="px-3 py-1.5 text-xs font-medium rounded border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
             onClick={togglePublic}
           >
             {document.is_public ? '🌐 Public' : '🔒 Private'}
           </button>
           <button
-            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
+            className="px-3 py-1.5 text-xs font-medium rounded border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
             onClick={viewRaw}
           >
             📄 Raw
           </button>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${wsStatusClass}`}>
+          <span className={`px-2 py-1 rounded text-xs font-medium ${wsStatusClass}`}>
             {connectionState}
           </span>
           {(connectionState === 'error' || connectionState === 'disconnected') && (
             <button
               onClick={reconnect}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
+              className="px-3 py-1.5 text-xs font-medium rounded border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700"
               title="Manually reconnect WebSocket"
             >
               🔄 Reconnect
@@ -250,7 +250,7 @@ export function DocumentEditor() {
             </span>
           )}
         </div>
-        <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden ms-2">
+        <div className="flex rounded border border-gray-200 dark:border-neutral-700 overflow-hidden ms-2">
           {(['preview', 'history', 'permissions', 'attachments', 'comments'] as Panel[]).map((p) => (
             <button
               key={p}

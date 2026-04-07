@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { adminService } from '@/services/api';
+import { AdminHeaderMenu } from '@/components/AdminHeaderMenu';
 import { ErrorModal } from '@/components/ErrorModal';
 import type { User } from '@/types';
 
@@ -145,15 +146,14 @@ export function AdminUsers() {
           <p className="text-sm text-slate-500 dark:text-slate-400">{t('admin.usersDescription')}</p>
         </div>
         <div className="admin-actions">
-          <button className="btn btn-secondary" onClick={() => navigate('/admin/settings')}>
-            {t('admin.siteSettings')}
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/admin/logs')}>
-            {t('admin.viewLogs')}
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/me')}>
-            {t('nav.backToProfile')}
-          </button>
+          <AdminHeaderMenu
+            ariaLabel={t('admin.users')}
+            items={[
+              { label: t('admin.siteSettings'), onClick: () => navigate('/admin/settings') },
+              { label: t('admin.viewLogs'), onClick: () => navigate('/admin/logs') },
+              { label: t('nav.backToProfile'), onClick: () => navigate('/me') },
+            ]}
+          />
         </div>
       </header>
 

@@ -115,14 +115,14 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   return (
     <div
-      className="hs-overlay open size-full fixed top-0 start-0 z-[80] overflow-x-hidden overflow-y-auto"
+      className="search-modal-overlay"
       onClick={onClose}
     >
       <div
-        className="hs-overlay-open:mt-7 hs-overlay-open:opacity-100 hs-overlay-open:duration-500 mt-0 opacity-0 ease-out transition-all sm:max-w-lg sm:w-full m-3 sm:mx-auto"
+        className="search-modal-container"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex flex-col bg-white border shadow-sm rounded-xl dark:bg-neutral-800 dark:border-neutral-700">
+        <div className="flex flex-col bg-white border shadow-sm dark:bg-neutral-800 dark:border-neutral-700">
           {/* Search Input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-neutral-700">
             <svg className="shrink-0 size-4 text-gray-500 dark:text-neutral-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -164,7 +164,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               {results.map((doc, index) => (
                 <div
                   key={doc.id}
-                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-neutral-700 last:border-0 ${
+                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-neutral-700 ${
                     index === selectedIndex
                       ? 'bg-blue-50 dark:bg-blue-900/20'
                       : 'hover:bg-gray-50 dark:hover:bg-neutral-700'

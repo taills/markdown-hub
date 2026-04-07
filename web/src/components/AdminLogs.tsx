@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { adminService } from '@/services/api';
+import { AdminHeaderMenu } from '@/components/AdminHeaderMenu';
 import { ErrorModal } from '@/components/ErrorModal';
 import type { AdminLog } from '@/types';
 
@@ -70,12 +71,14 @@ export function AdminLogs() {
           <p className="text-sm text-gray-500 dark:text-neutral-400">{t('admin.logsDescription')}</p>
         </div>
         <div className="admin-actions">
-          <button className="secondary" onClick={() => navigate('/admin/users')}>
-            {t('admin.backToUsers')}
-          </button>
-          <button className="secondary" onClick={() => navigate('/me')}>
-            {t('nav.backToProfile')}
-          </button>
+          <AdminHeaderMenu
+            ariaLabel={t('admin.auditLogs')}
+            items={[
+              { label: t('admin.backToUsers'), onClick: () => navigate('/admin/users') },
+              { label: t('admin.siteSettings'), onClick: () => navigate('/admin/settings') },
+              { label: t('nav.backToProfile'), onClick: () => navigate('/me') },
+            ]}
+          />
         </div>
       </header>
 

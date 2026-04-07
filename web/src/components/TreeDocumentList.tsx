@@ -37,142 +37,89 @@ function TreeItem({
   const isExpanded = expandedIds.has(doc.id);
   const isSelected = doc.id === selectedId;
 
-  const paddingLeft = level * 16 + 8;
-
   return (
-    <div
-      className={`hs-accordion hs-accordion-treeview-level-${level + 1} ${isSelected ? 'active' : ''}`}
-      role="treeitem"
-      aria-expanded={hasChildren ? isExpanded : undefined}
-      data-doc-id={doc.id}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onContextMenu(e, node);
-      }}
-    >
-      {/* Accordion Heading */}
+    <div className="tree-node" data-doc-id={doc.id}>
+      {/* Node Row */}
       <div
-        className="hs-accordion-heading py-0.5 flex items-center gap-x-0.5 w-full"
-        style={{ paddingLeft: `${paddingLeft}px` }}
+        className={`tree-row ${isSelected ? 'selected' : ''}`}
+        style={{ '--tree-level': level } as React.CSSProperties}
+        onClick={() => onSelect(doc)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onContextMenu(e, node);
+        }}
       >
-        {/* Toggle Button */}
-        {hasChildren ? (
-          <button
-            className="hs-accordion-toggle size-6 flex justify-center items-center hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-md focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none"
-            onClick={() => onToggleExpand(doc.id)}
-            aria-expanded={isExpanded}
-          >
-            <svg
-              className={`size-4 text-gray-600 dark:text-neutral-400 ${isExpanded ? 'hs-accordion-active:rotate-90' : ''} transition-transform duration-200`}
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
-        ) : (
-          <span className="size-6" />
-        )}
-
-        {/* Document Link */}
-        <div
-          className={`grow px-1.5 rounded-md cursor-pointer ${
-            isSelected
-              ? 'bg-blue-100 dark:bg-blue-900/30'
-              : 'hover:bg-gray-50 dark:hover:bg-neutral-800'
-          }`}
-          onClick={() => onSelect(doc)}
+        {/* Expand Toggle */}
+        <button
+          className="tree-toggle"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (hasChildren) onToggleExpand(doc.id);
+          }}
+          aria-expanded={hasChildren ? isExpanded : undefined}
         >
-          <div className="flex items-center gap-x-3">
-            {/* Document Icon */}
+          {hasChildren && (
             <svg
-              className={`shrink-0 size-4 ${
-                hasChildren
-                  ? 'text-yellow-500'
-                  : 'text-gray-400 dark:text-neutral-500'
-              }`}
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
+              className={`toggle-icon ${isExpanded ? 'expanded' : ''}`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeWidth="2"
             >
-              {hasChildren ? (
-                <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
-              ) : (
-                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-              )}
+              <path d="M9 18l6-6-6-6" />
             </svg>
+          )}
+        </button>
 
-            {/* Title */}
-            <span className="grow text-sm text-gray-800 dark:text-neutral-200 truncate">
-              {doc.title}
-            </span>
+        {/* Document Icon */}
+        <svg
+          className={`tree-icon ${hasChildren ? 'folder' : 'file'}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
+          {hasChildren ? (
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+          ) : (
+            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+          )}
+        </svg>
 
-            {/* Add Child Button */}
-            <button
-              className="shrink-0 size-5 flex justify-center items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateChild(doc.id);
-              }}
-              title="添加子文档"
-            >
-              <svg
-                className="size-3.5"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14" />
-                <path d="M12 5v14" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        {/* Title */}
+        <span className="tree-title">{doc.title}</span>
+
+        {/* Add Child Button */}
+        <button
+          className="tree-add-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCreateChild(doc.id);
+          }}
+          title="添加子文档"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
       </div>
 
-      {/* Accordion Content */}
+      {/* Children */}
       {hasChildren && (
-        <div
-          id={`collapse-${doc.id}`}
-          className={`hs-accordion-content w-full overflow-hidden transition-[height] duration-300 ${
-            isExpanded ? 'active' : ''
-          }`}
-          role="group"
-        >
-          <div className="pb-1">
-            {children.map((child) => (
-              <TreeItem
-                key={child.document.id}
-                node={child}
-                level={level + 1}
-                expandedIds={expandedIds}
-                onToggleExpand={onToggleExpand}
-                selectedId={selectedId}
-                onSelect={onSelect}
-                onContextMenu={onContextMenu}
-                onCreateChild={onCreateChild}
-              />
-            ))}
-          </div>
+        <div className={`tree-children ${isExpanded ? 'expanded' : ''}`}>
+          {children.map((child) => (
+            <TreeItem
+              key={child.document.id}
+              node={child}
+              level={level + 1}
+              expandedIds={expandedIds}
+              onToggleExpand={onToggleExpand}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              onContextMenu={onContextMenu}
+              onCreateChild={onCreateChild}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -253,10 +200,10 @@ export function TreeDocumentList({
   useEffect(() => {
     const handleNativeContextMenu = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      const treeItem = target.closest('.hs-accordion');
-      if (treeItem) {
+      const treeNode = target.closest('.tree-node');
+      if (treeNode) {
         e.preventDefault();
-        const docId = treeItem.getAttribute('data-doc-id');
+        const docId = treeNode.getAttribute('data-doc-id');
         if (docId) {
           const node = findNodeById(tree, docId);
           if (node) {
@@ -375,18 +322,14 @@ export function TreeDocumentList({
     <div className="tree-container">
       <div className="tree-content">
         {/* Tree Root */}
-        <div
-          className="hs-accordion-treeview-root"
-          role="tree"
-          aria-orientation="vertical"
-        >
+        <div className="tree-root" role="tree" aria-orientation="vertical">
           {tree.length === 0 ? (
-            <div className="empty-state py-8">
-              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="empty-state-icon">
+            <div className="tree-empty">
+              <svg className="tree-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
-              <p className="empty-state-description">{t('doc.empty', '暂无文档')}</p>
+              <p className="tree-empty-text">{t('doc.empty', '暂无文档')}</p>
             </div>
           ) : (
             tree.map((node) => (
@@ -407,7 +350,7 @@ export function TreeDocumentList({
 
         {/* Inline Create Child Input */}
         {creatingChildFor && (
-          <div className="px-4 py-2">
+          <div className="tree-inline-input">
             <input
               type="text"
               className="input"
@@ -426,7 +369,7 @@ export function TreeDocumentList({
 
         {/* Inline Rename Input */}
         {editingNode && (
-          <div className="px-4 py-2">
+          <div className="tree-inline-input">
             <input
               type="text"
               className="input"
@@ -443,11 +386,11 @@ export function TreeDocumentList({
         )}
       </div>
 
-      {/* Context Menu */}
+      {/* Context Menu - BMW Style */}
       {contextMenu.visible && contextMenu.node && (
         <div
           ref={contextMenuRef}
-          className="fixed bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[160px]"
+          className="context-menu"
           style={{
             position: 'fixed',
             left: contextMenu.x,
@@ -455,67 +398,22 @@ export function TreeDocumentList({
             zIndex: 1000,
           }}
         >
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
-            onClick={handleStartRename}
-          >
-            <svg
-              className="size-4"
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+          <button className="context-menu-item" onClick={handleStartRename}>
+            <svg className="context-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
             </svg>
             {t('doc.rename', '重命名')}
           </button>
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
-            onClick={handleInsertChild}
-          >
-            <svg
-              className="size-4"
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M5 12h14" />
-              <path d="M12 5v14" />
+          <button className="context-menu-item" onClick={handleInsertChild}>
+            <svg className="context-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M5 12h14" />
             </svg>
             {t('doc.insertChild', '插入子级')}
           </button>
-          <div className="h-px bg-slate-200 dark:bg-slate-700 my-1" />
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-            onClick={handleDelete}
-          >
-            <svg
-              className="size-4"
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 6h18" />
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+          <div className="context-menu-divider" />
+          <button className="context-menu-item danger" onClick={handleDelete}>
+            <svg className="context-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
             </svg>
             {t('doc.delete', '删除')}
           </button>

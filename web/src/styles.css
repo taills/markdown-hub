@@ -1339,6 +1339,15 @@ html { scroll-behavior: smooth; }
 .markdown-content hr { border: none; border-top: 1px solid #e5e5e5; margin: 2em 0; }
 .markdown-content img { max-width: 100%; height: auto; margin: 1.25em 0; }
 
+/* Line highlight for preview sync */
+.markdown-preview .line-highlight {
+  background: rgba(201, 148, 10, 0.15);
+  border-left: 3px solid #c9940a;
+  margin-left: -4px;
+  padding-left: 4px;
+  transition: background 200ms;
+}
+
 /* ============================================================
    Editor Layout - BMW Style
    ============================================================ */
@@ -1961,8 +1970,8 @@ html { scroll-behavior: smooth; }
    ============================================================ */
 .resizer {
   position: relative;
-  width: 8px;
-  margin: 0 -4px;
+  width: 12px;
+  margin: 0 -6px;
   background: transparent;
   cursor: col-resize;
   flex-shrink: 0;
@@ -1974,15 +1983,16 @@ html { scroll-behavior: smooth; }
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 1px;
+  width: 4px;
   height: 100%;
-  background: #e5e5e5;
-  transition: all 150ms;
+  background: transparent;
+  border-radius: 99px;
+  transition: all 200ms ease;
 }
 .resizer:hover::before,
 .resizer:active::before {
-  width: 3px;
   background: var(--bmw-blue);
+  box-shadow: 0 0 8px rgba(201, 148, 10, 0.4);
 }
 body.is-resizing { cursor: col-resize !important; user-select: none !important; }
 body.is-resizing * { cursor: col-resize !important; }

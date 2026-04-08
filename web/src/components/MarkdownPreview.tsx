@@ -15,20 +15,46 @@ export interface MarkdownPreviewRef {
 export const MarkdownPreview = forwardRef<MarkdownPreviewRef, MarkdownPreviewProps>(
   function MarkdownPreview({ content, currentLine = 1 }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const html = useMemo(() => renderMarkdown(content), [content]);
 
-    // Scroll to current line when it changes
+    // Scroll and highlight current line
     useEffect(() => {
       if (!containerRef.current) return;
 
-      const elements = containerRef.current.querySelectorAll('[data-line-end]');
+      // Clear previous timeout
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+
+      // Remove previous highlight
+      const prevHighlight = containerRef.current.querySelector('.line-highlight');
+      if (prevHighlight) {
+        prevHighlight.classList.remove('line-highlight');
+      }
+
+      // Find and highlight current element, then scroll
+      const elements = containerRef.current.querySelectorAll('[data-line-start]');
+      let targetEl: Element | null = null;
+
       for (const el of elements) {
+        const lineStart = parseInt(el.getAttribute('data-line-start') || '0', 10);
         const lineEnd = parseInt(el.getAttribute('data-line-end') || '0', 10);
-        if (lineEnd >= currentLine) {
-          (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (currentLine >= lineStart && currentLine <= lineEnd) {
+          targetEl = el;
           break;
         }
+      }
+
+      if (targetEl) {
+        targetEl.classList.add('line-highlight');
+        (targetEl as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Remove highlight after 3 seconds
+        highlightTimeoutRef.current = setTimeout(() => {
+          targetEl?.classList.remove('line-highlight');
+        }, 1000);
       }
     }, [currentLine]);
 
@@ -36,10 +62,11 @@ export const MarkdownPreview = forwardRef<MarkdownPreviewRef, MarkdownPreviewPro
       scrollToLine(line: number) {
         if (!containerRef.current) return;
 
-        const elements = containerRef.current.querySelectorAll('[data-line-end]');
+        const elements = containerRef.current.querySelectorAll('[data-line-start]');
         for (const el of elements) {
+          const lineStart = parseInt(el.getAttribute('data-line-start') || '0', 10);
           const lineEnd = parseInt(el.getAttribute('data-line-end') || '0', 10);
-          if (lineEnd >= line) {
+          if (line >= lineStart && line <= lineEnd) {
             (el as HTMLElement).scrollIntoView({ behavior: 'auto', block: 'center' });
             break;
           }
@@ -50,7 +77,7 @@ export const MarkdownPreview = forwardRef<MarkdownPreviewRef, MarkdownPreviewPro
     return (
       <div
         ref={containerRef}
-        className="px-4 py-3 overflow-y-auto text-sm text-gray-800 dark:text-neutral-200 leading-relaxed"
+        className="px-4 py-3 overflow-y-auto text-sm text-gray-800 dark:text-neutral-200 leading-relaxed markdown-preview"
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: html }}
       />
@@ -73,6 +100,7 @@ function renderMarkdown(md: string): string {
 
     // Code blocks
     if (line.startsWith('```')) {
+      const startLine = i + 1;
       const langMatch = line.slice(3).trim();
       const language = langMatch || 'plaintext';
       const codeLines: string[] = [];
@@ -81,13 +109,14 @@ function renderMarkdown(md: string): string {
         codeLines.push(lines[i]);
         i++;
       }
+      const endLine = i;
       const code = codeLines.join('\n');
       let blockHtml: string;
       try {
         const highlighted = hljs.highlight(code.trim(), { language, ignoreIllegals: true }).value;
-        blockHtml = `<pre data-line-end="${i}" class="bg-gray-100 dark:bg-neutral-800 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono"><code class="hljs language-${language}">${highlighted}</code></pre>`;
+        blockHtml = `<pre data-line-start="${startLine}" data-line-end="${endLine}" class="bg-gray-100 dark:bg-neutral-800 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono"><code class="hljs language-${language}">${highlighted}</code></pre>`;
       } catch (e) {
-        blockHtml = `<pre data-line-end="${i}" class="bg-gray-100 dark:bg-neutral-800 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono"><code class="hljs">${escapeHtml(code)}</code></pre>`;
+        blockHtml = `<pre data-line-start="${startLine}" data-line-end="${endLine}" class="bg-gray-100 dark:bg-neutral-800 p-3 rounded-lg overflow-x-auto my-3 text-sm font-mono"><code class="hljs">${escapeHtml(code)}</code></pre>`;
       }
       result.push(blockHtml);
       i++;
@@ -100,7 +129,7 @@ function renderMarkdown(md: string): string {
       const level = headingMatch[1].length;
       const text = headingMatch[2];
       const sizeClass = level === 1 ? 'text-2xl font-bold mb-3 mt-4' : level === 2 ? 'text-xl font-semibold mb-2 mt-3' : level === 3 ? 'text-lg font-semibold mb-1 mt-2' : 'text-base font-medium mb-1 mt-1';
-      result.push(`<h${level} data-line-end="${lineNum}" class="${sizeClass}">${text}</h${level}>`);
+      result.push(`<h${level} data-line-start="${lineNum}" data-line-end="${lineNum}" class="${sizeClass}">${text}</h${level}>`);
       i++;
       continue;
     }
@@ -108,65 +137,73 @@ function renderMarkdown(md: string): string {
     // Tables
     const tableMatch = line.match(/^\|(.+)\|$/);
     if (tableMatch && i + 1 < lines.length && lines[i + 1].match(/^\|[-:\s|]+\|$/)) {
+      const startLine = i + 1;
       const tableLines: string[] = [line];
       i++;
       while (i < lines.length && lines[i].match(/^\|.+\|$/)) {
         tableLines.push(lines[i]);
         i++;
       }
+      const endLine = i;
       const tableHtml = renderTable(tableLines);
-      result.push(`<div data-line-end="${i - 1}">${tableHtml}</div>`);
+      result.push(`<div data-line-start="${startLine}" data-line-end="${endLine}">${tableHtml}</div>`);
       continue;
     }
 
     // Blockquotes
     if (line.startsWith('> ')) {
+      const startLine = i + 1;
       const quoteLines: string[] = [line.slice(2)];
       i++;
       while (i < lines.length && lines[i].startsWith('> ')) {
         quoteLines.push(lines[i].slice(2));
         i++;
       }
-      result.push(`<blockquote data-line-end="${i}" class="border-s-4 border-blue-500 ps-3 my-2 text-gray-600 dark:text-neutral-400 italic">${quoteLines.join('<br />')}</blockquote>`);
+      const endLine = i;
+      result.push(`<blockquote data-line-start="${startLine}" data-line-end="${endLine}" class="border-s-4 border-blue-500 ps-3 my-2 text-gray-600 dark:text-neutral-400 italic">${quoteLines.join('<br />')}</blockquote>`);
       continue;
     }
 
     // Horizontal rules
     if (line.match(/^---+$/)) {
-      result.push(`<hr data-line-end="${lineNum}" class="border-t border-gray-200 dark:border-neutral-700 my-4" />`);
+      result.push(`<hr data-line-start="${lineNum}" data-line-end="${lineNum}" class="border-t border-gray-200 dark:border-neutral-700 my-4" />`);
       i++;
       continue;
     }
 
     // List items (unordered)
     if (line.match(/^[-*]\s+/)) {
+      const startLine = i + 1;
       const listItems: string[] = [line.replace(/^[-*]\s+/, '')];
       i++;
       while (i < lines.length && lines[i].match(/^[-*]\s+/)) {
         listItems.push(lines[i].replace(/^[-*]\s+/, ''));
         i++;
       }
+      const endLine = i;
       const listHtml = listItems.map(item => `<li class="list-item">${processInlineElements(item)}</li>`).join('');
-      result.push(`<ul data-line-end="${i}" class="list-disc ps-5 my-1 space-y-0.5">${listHtml}</ul>`);
+      result.push(`<ul data-line-start="${startLine}" data-line-end="${endLine}" class="list-disc ps-5 my-1 space-y-0.5">${listHtml}</ul>`);
       continue;
     }
 
     // List items (ordered)
     if (line.match(/^\d+\.\s+/)) {
+      const startLine = i + 1;
       const listItems: string[] = [line.replace(/^\d+\.\s+/, '')];
       i++;
       while (i < lines.length && lines[i].match(/^\d+\.\s+/)) {
         listItems.push(lines[i].replace(/^\d+\.\s+/, ''));
         i++;
       }
+      const endLine = i;
       const listHtml = listItems.map(item => `<li class="list-item">${processInlineElements(item)}</li>`).join('');
-      result.push(`<ol data-line-end="${i}" class="list-decimal ps-5 my-1 space-y-0.5">${listHtml}</ol>`);
+      result.push(`<ol data-line-start="${startLine}" data-line-end="${endLine}" class="list-decimal ps-5 my-1 space-y-0.5">${listHtml}</ol>`);
       continue;
     }
 
     // Paragraph
     if (line.trim()) {
-      result.push(`<p data-line-end="${lineNum}" class="my-2">${processInlineElements(line)}</p>`);
+      result.push(`<p data-line-start="${lineNum}" data-line-end="${lineNum}" class="my-2">${processInlineElements(line)}</p>`);
     }
 
     i++;

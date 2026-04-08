@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { attachmentService } from '@/services/api';
 import { ErrorModal } from '@/components/ErrorModal';
@@ -48,8 +48,6 @@ export function AttachmentPanel({ documentId, onInsert }: AttachmentPanelProps) 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [showUnreferenced, setShowUnreferenced] = useState(false);
-  // 修复：fileInputRef 始终挂载，不受 isLoading 条件渲染影响
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCloseError = () => setError('');
 
@@ -83,9 +81,8 @@ export function AttachmentPanel({ documentId, onInsert }: AttachmentPanelProps) 
         await attachmentService.upload(documentId, files[i]);
       }
       await load();
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      // input 在 label 内，上传完成后通过重置 event target 清空选择
+      (event.target as HTMLInputElement).value = '';
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -141,27 +138,21 @@ export function AttachmentPanel({ documentId, onInsert }: AttachmentPanelProps) 
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* 修复：input 始终渲染在 DOM 中，不被条件渲染包裹，保证 ref 始终绑定 */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        onChange={handleFileSelect}
-        disabled={uploading}
-        className="hidden"
-        aria-hidden="true"
-      />
-
-      {/* 标题栏 + 上传按钮 */}
+      {/* 标题栏 + 上传按钮（用 label 原生触发，避免 .click() 堆积 filechooser） */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-neutral-800 shrink-0">
         <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-neutral-500">
           {t('attachments.title')}
         </span>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="btn btn-secondary btn-xs flex items-center gap-1.5"
+        <label
+          className={`btn btn-secondary btn-xs flex items-center gap-1.5 cursor-pointer ${uploading ? 'opacity-35 pointer-events-none' : ''}`}
         >
+          <input
+            type="file"
+            multiple
+            onChange={handleFileSelect}
+            disabled={uploading}
+            className="hidden"
+          />
           {uploading ? (
             <>
               <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
@@ -177,7 +168,7 @@ export function AttachmentPanel({ documentId, onInsert }: AttachmentPanelProps) 
               {t('attachments.uploadFiles')}
             </>
           )}
-        </button>
+        </label>
       </div>
 
       {/* 附件列表区域 */}

@@ -485,12 +485,11 @@ export function NotesLayout() {
     const resizerCount = (hasLeftColumn ? 1 : 0) + (hasPreview ? 1 : 0);
     const resizersTotal = resizerCount * RESIZER_WIDTH;
     const sideColumnsTotal = hasDocuments ? columnWidths.documents : 0;
-    const remainingSpace = containerWidth - sideColumnsTotal - resizersTotal;
+    const previewWidth = hasPreview ? Math.max(MIN_PREVIEW_WIDTH, columnWidths.preview) : 0;
+    const remainingSpace = containerWidth - sideColumnsTotal - previewWidth - resizersTotal;
 
-    // 编辑器和预览平分剩余空间
-    const halfSpace = Math.max(MIN_EDITOR_WIDTH, remainingSpace / 2);
-    const editorWidth = halfSpace;
-    const previewWidth = hasPreview ? Math.max(MIN_PREVIEW_WIDTH, halfSpace) : 0;
+    // 编辑器占据剩余空间
+    const editorWidth = Math.max(MIN_EDITOR_WIDTH, remainingSpace);
 
     if (hasDocuments) columns.push(`${columnWidths.documents}px`);
     if (hasLeftColumn && hasEditor) columns.push(`${RESIZER_WIDTH}px`);

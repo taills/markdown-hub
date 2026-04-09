@@ -77,6 +77,9 @@
   --space-10: 2.5rem;
   --space-12: 3rem;
   --space-16: 4rem;
+  --control-height-md: 2.5rem;
+  --control-height-sm: 2rem;
+  --control-height-lg: 3rem;
 }
 
 /* Dark mode */
@@ -255,6 +258,7 @@ html { scroll-behavior: smooth; }
 .ml-4 { margin-left: var(--space-4); }
 .mr-1 { margin-right: var(--space-1); }
 .mr-2 { margin-right: var(--space-2); }
+.mx-auto { margin-left: auto; margin-right: auto; }
 
 /* ============================================================
    Width & Height
@@ -283,6 +287,22 @@ html { scroll-behavior: smooth; }
 .overflow-hidden { overflow: hidden; }
 .overflow-auto { overflow: auto; }
 .overflow-y-auto { overflow-y: auto; }
+
+/* Grid utilities */
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+
+/* Responsive utilities - only the variants used in this app */
+@media (min-width: 640px) {
+  .sm\:inline { display: inline; }
+  .sm\:w-full { width: 100%; }
+  .sm\:max-w-lg { max-width: 32rem; }
+  .sm\:mx-auto { margin-left: auto; margin-right: auto; }
+  .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 /* ============================================================
    Border Utilities
@@ -415,6 +435,7 @@ html { scroll-behavior: smooth; }
 .dark .nav-group { background: rgba(255,255,255,0.05); }
 
 .nav-btn {
+  min-height: var(--control-height-md);
   padding: var(--space-2) var(--space-4);
   font-size: 0.875rem;
   font-weight: 500;
@@ -451,6 +472,7 @@ html { scroll-behavior: smooth; }
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+  min-height: var(--control-height-md);
   padding: var(--space-3) var(--space-6);
   font-size: 0.875rem;
   font-weight: 700;
@@ -518,14 +540,17 @@ html { scroll-behavior: smooth; }
 
 /* Button sizes */
 .btn-sm {
+  min-height: var(--control-height-sm);
   padding: var(--space-2) var(--space-4);
   font-size: 0.75rem;
 }
 .btn-lg {
+  min-height: var(--control-height-lg);
   padding: var(--space-4) var(--space-8);
   font-size: 1rem;
 }
 .btn-xs {
+  min-height: calc(var(--control-height-sm) - 0.25rem);
   padding: var(--space-1) var(--space-3);
   font-size: 0.6875rem;
 }
@@ -535,8 +560,8 @@ html { scroll-behavior: smooth; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: var(--control-height-md);
+  height: var(--control-height-md);
   border-radius: 0;
   border: none;
   background: transparent;
@@ -743,11 +768,11 @@ html { scroll-behavior: smooth; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
   background: var(--bmw-blue);
   color: var(--white);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -785,30 +810,49 @@ html { scroll-behavior: smooth; }
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.625rem;
+  height: var(--control-height-md);
+  padding: 0 var(--space-3);
+  font-size: 0.75rem;
   font-weight: 700;
-  background: var(--surface-sunken);
+  border: 1px solid #e5e7eb;
+  background: var(--surface);
   color: var(--meta-gray);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 .ws-status::before {
   content: '';
   width: 6px;
   height: 6px;
   background: currentColor;
+  border-radius: 9999px;
 }
 .ws-status.connected {
-  background: var(--emerald-50);
-  color: #059669;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
 }
 .ws-status.connected::before { background: var(--emerald-500); }
-.ws-status.connecting {
-  background: var(--amber-50);
-  color: #d97706;
+.ws-status.connecting,
+.ws-status.reconnecting {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
 }
-.ws-status.connecting::before { background: var(--amber-500); animation: pulse 1s ease-in-out infinite; }
+.ws-status.connecting::before,
+.ws-status.reconnecting::before {
+  background: var(--amber-500);
+  animation: pulse 1s ease-in-out infinite;
+}
+.ws-status.error,
+.ws-status.disconnected {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+.ws-status.error::before,
+.ws-status.disconnected::before { background: var(--rose-500); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -881,6 +925,20 @@ html { scroll-behavior: smooth; }
   justify-content: center;
   gap: var(--space-4);
   margin-top: 2.5rem;
+}
+.blog-hero-nav .btn {
+  min-width: 10rem;
+}
+.blog-hero-nav .btn-primary,
+.blog-hero-nav .btn-secondary {
+  border: 1px solid rgba(255,255,255,0.22);
+  color: var(--white);
+  background: rgba(255,255,255,0.08);
+}
+.blog-hero-nav .btn-primary:hover:not(:disabled),
+.blog-hero-nav .btn-secondary:hover:not(:disabled) {
+  background: var(--white);
+  color: var(--near-black);
 }
 
 /* Search - BMW clean style */
@@ -1045,7 +1103,12 @@ html { scroll-behavior: smooth; }
   padding: 5rem var(--space-8);
   text-align: center;
 }
-.homepage-empty-icon { width: 4rem; height: 4rem; margin-bottom: var(--space-6); color: var(--silver); }
+.homepage-empty-icon {
+  width: var(--control-height-lg);
+  height: var(--control-height-lg);
+  margin-bottom: var(--space-6);
+  color: var(--silver);
+}
 .homepage-empty-title {
   font-size: 1.125rem;
   font-weight: 700;
@@ -1494,6 +1557,7 @@ html { scroll-behavior: smooth; }
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  height: var(--control-height-md);
   padding: var(--space-2) var(--space-3);
   font-size: 0.8125rem;
   font-weight: 700;
@@ -1505,6 +1569,13 @@ html { scroll-behavior: smooth; }
   transition: all 150ms var(--ease-out);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+.user-btn-label {
+  display: inline-block;
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .user-btn:hover {
   background: var(--surface-sunken);
@@ -3405,6 +3476,7 @@ body.is-resizing * { cursor: col-resize !important; }
 
 /* Profile buttons */
 button.primary {
+  min-height: var(--control-height-md);
   padding: var(--space-3) var(--space-6);
   font-size: 0.875rem;
   font-weight: 700;
@@ -3421,6 +3493,7 @@ button.primary:hover:not(:disabled) { background: var(--bmw-focus); }
 button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 button.secondary {
+  min-height: var(--control-height-md);
   padding: var(--space-2) var(--space-4);
   font-size: 0.75rem;
   font-weight: 700;

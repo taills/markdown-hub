@@ -2,6 +2,7 @@ import i18n from '@/i18n';
 import type { AuthResponse, Document, DocumentListItem, DocumentSearchResult, Snapshot, DocumentPermission, HeadingSection, PermissionLevel, DiffLine, Attachment, Workspace, WorkspaceMember, UserStats, User, AdminLog, Comment, AIConversation, AIMessage } from '@/types';
 
 const API_BASE_URL = '/api';
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
 // ---- Home Page ----
 
@@ -41,19 +42,37 @@ export function getCsrfToken(): string {
   return csrfToken;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('mh_token');
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers ?? {}),
-  };
+function isStateChangingMethod(method?: string): boolean {
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method?.toUpperCase() ?? '');
+}
 
-  // Add CSRF token for state-changing methods
-  if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method?.toUpperCase() ?? '')) {
-    (headers as Record<string, string>)['X-CSRF-Token'] = csrfToken;
+async function buildAuthHeaders(
+  method?: string,
+  headers?: HeadersInit,
+  includeJsonContentType = true,
+): Promise<Headers> {
+  if (isStateChangingMethod(method) && !csrfToken) {
+    await fetchCsrfToken();
   }
 
+  const token = localStorage.getItem('mh_token');
+  const mergedHeaders = new Headers(headers);
+
+  if (includeJsonContentType && !mergedHeaders.has('Content-Type')) {
+    mergedHeaders.set('Content-Type', 'application/json');
+  }
+  if (token && !mergedHeaders.has('Authorization')) {
+    mergedHeaders.set('Authorization', `Bearer ${token}`);
+  }
+  if (csrfToken && isStateChangingMethod(method) && !mergedHeaders.has(CSRF_HEADER_NAME)) {
+    mergedHeaders.set(CSRF_HEADER_NAME, csrfToken);
+  }
+
+  return mergedHeaders;
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = await buildAuthHeaders(options.method, options.headers);
   const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -264,15 +283,13 @@ export const attachmentService = {
   list: (documentId: string) =>
     request<Attachment[]>(`/documents/${documentId}/attachments`),
   upload: async (documentId: string, file: File): Promise<Attachment> => {
-    const token = localStorage.getItem('mh_token');
     const formData = new FormData();
     formData.append('file', file);
+    const headers = await buildAuthHeaders('POST', undefined, false);
 
     const res = await fetch(`${API_BASE_URL}/documents/${documentId}/attachments`, {
       method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers,
       body: formData,
     });
 
@@ -308,15 +325,13 @@ export const workspaceAttachmentService = {
   list: (workspaceId: string) =>
     request<Attachment[]>(`/workspaces/${workspaceId}/attachments`),
   upload: async (workspaceId: string, file: File): Promise<Attachment> => {
-    const token = localStorage.getItem('mh_token');
     const formData = new FormData();
     formData.append('file', file);
+    const headers = await buildAuthHeaders('POST', undefined, false);
 
     const res = await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/attachments`, {
       method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers,
       body: formData,
     });
 

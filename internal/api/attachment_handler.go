@@ -15,16 +15,40 @@ import (
 	"markdownhub/internal/core"
 )
 
-// Allowed file types and their extensions
-var allowedFileTypes = map[string]string{
-	"image/jpeg":        ".jpg",
-	"image/png":         ".png",
-	"image/gif":         ".gif",
-	"image/webp":        ".webp",
-	"image/svg+xml":     ".svg",
-	"text/plain":        ".txt",
-	"text/markdown":     ".md",
-	"application/pdf":   ".pdf",
+// Allowed file types and their extensions.
+// Archive uploads often fall back to application/octet-stream when sniffed,
+// so archive extensions are also checked explicitly in validateFileType.
+var allowedFileTypes = map[string][]string{
+	"image/jpeg":                   {".jpg", ".jpeg"},
+	"image/png":                    {".png"},
+	"image/gif":                    {".gif"},
+	"image/webp":                   {".webp"},
+	"image/svg+xml":                {".svg"},
+	"text/plain":                   {".txt"},
+	"text/markdown":                {".md"},
+	"application/pdf":              {".pdf"},
+	"application/zip":              {".zip"},
+	"application/gzip":             {".gz"},
+	"application/x-gzip":           {".gz", ".tgz"},
+	"application/x-tar":            {".tar"},
+	"application/x-bzip2":          {".bz2", ".tbz", ".tbz2"},
+	"application/x-xz":             {".xz", ".txz"},
+	"application/x-7z-compressed":  {".7z"},
+	"application/x-rar-compressed": {".rar"},
+}
+
+var allowedArchiveExtensions = map[string]struct{}{
+	".zip":  {},
+	".tar":  {},
+	".gz":   {},
+	".tgz":  {},
+	".bz2":  {},
+	".tbz":  {},
+	".tbz2": {},
+	".xz":   {},
+	".txz":  {},
+	".7z":   {},
+	".rar":  {},
 }
 
 // Max file size (10MB)
@@ -85,16 +109,10 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 	actualType := http.DetectContentType(fileData)
 
 	// Validate file type against whitelist
-	allowedExt, ok := allowedFileTypes[actualType]
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file type not allowed"})
-		return
-	}
+	fileExt := strings.ToLower(filepath.Ext(fileName))
 
-	// Validate file extension matches detected type
-	fileExt := filepath.Ext(fileName)
-	if fileExt != allowedExt {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file extension does not match content type"})
+	if !isAllowedFileType(actualType, fileExt) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file type not allowed"})
 		return
 	}
 
@@ -144,6 +162,30 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, attachment)
+}
+
+func isAllowedFileType(actualType, fileExt string) bool {
+	allowedExts, ok := allowedFileTypes[actualType]
+	if ok && containsExtension(allowedExts, fileExt) {
+		return true
+	}
+
+	// Common archive formats are frequently detected as octet-stream.
+	if actualType == "application/octet-stream" {
+		_, ok := allowedArchiveExtensions[fileExt]
+		return ok
+	}
+
+	return false
+}
+
+func containsExtension(extensions []string, target string) bool {
+	for _, ext := range extensions {
+		if ext == target {
+			return true
+		}
+	}
+	return false
 }
 
 // List godoc

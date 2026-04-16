@@ -44,7 +44,7 @@ export function NotesLayout() {
   const { user, logout, token } = useAuth();
   const { siteTitle } = useSiteTitle();
   const { showToast } = useToast();
-  const { documents, isLoading: docsLoading, reload } = useDocumentList();
+  const { documents, reload } = useDocumentList();
   const { document, setDocument, isLoading: docLoading, error: documentError } = useDocument(id ?? '');
 
   const [content, setContent] = useState('');
@@ -83,6 +83,7 @@ export function NotesLayout() {
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef('');
   const lastSyncedContentRef = useRef('');
   const resizeRef = useRef<{
@@ -199,8 +200,11 @@ export function NotesLayout() {
       setCollaborators((prev) =>
         prev.includes(msg.user_id!) ? prev : [...prev, msg.user_id!]
       );
+      // 远端有更新时防抖刷新文档列表（2 秒静默后执行）
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+      reloadTimerRef.current = setTimeout(reload, 2000);
     }
-  }, [setContentFromServer, user?.id]);
+  }, [setContentFromServer, user?.id, reload]);
 
   const { send, connectionState: wsState } = useWebSocket({
     documentId: id ?? '',
@@ -501,6 +505,24 @@ export function NotesLayout() {
     } as React.CSSProperties;
   }, [visibleColumns, columnWidths, mode, containerWidth]);
 
+  const wsStatusTone = connectionState === 'connected'
+    ? 'connected'
+    : connectionState === 'connecting' || connectionState === 'reconnecting'
+      ? 'connecting'
+      : connectionState === 'error'
+        ? 'error'
+        : 'disconnected';
+
+  const wsStatusLabel = connectionState === 'connected'
+    ? t('common.connected')
+    : connectionState === 'connecting'
+      ? t('common.connecting')
+      : connectionState === 'reconnecting'
+        ? t('common.reconnecting')
+        : connectionState === 'error'
+          ? t('common.connectionError')
+          : t('common.disconnected');
+
   return (
     <div className="editor-layout">
       {/* Topbar */}
@@ -667,8 +689,8 @@ export function NotesLayout() {
           )}
 
           {id && (
-            <span className={`ws-status ${connectionState === 'connected' ? 'connected' : connectionState === 'connecting' ? 'connecting' : 'disconnected'}`}>
-              {connectionState === 'connected' ? t('common.connected') : connectionState === 'connecting' ? t('common.connecting') : t('common.disconnected')}
+            <span className={`ws-status ${wsStatusTone}`}>
+              {wsStatusLabel}
             </span>
           )}
           {collaborators.length > 0 && (
@@ -697,7 +719,7 @@ export function NotesLayout() {
             <span className="user-avatar">
               {user?.username?.charAt(0).toUpperCase()}
             </span>
-            <span className="hidden sm:inline">
+            <span className="user-btn-label hidden sm:inline">
               {user?.username}
               {user?.is_admin && <span className="text-amber-500 ml-0.5">★</span>}
             </span>
@@ -730,13 +752,6 @@ export function NotesLayout() {
                 <h3 className="panel-title">
                   {t('nav.documents')}
                 </h3>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={reload}
-                  disabled={docsLoading}
-                >
-                  {t('common.refresh')}
-                </button>
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto">
                 <TreeDocumentList
